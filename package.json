@@ -1,0 +1,28 @@
+{
+  "name": "zapid",
+  "type": "module",
+  "packageManager": "bun",
+  "scripts": {
+    "dev": "bun --hot --no-clear-screen run src/server.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/google": "^1.2.22",
+    "@ai-sdk/openai": "^1.3.23",
+    "ai": "^4.3.19",
+    "compromise": "^14.14.4",
+    "hono": "^4.8.5",
+    "openai": "^5.10.1",
+    "retext": "^9.0.0",
+    "retext-readability": "^8.0.0",
+    "retext-smartypants": "^6.2.0",
+    "unpdf": "^1.1.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.18",
+    "chalk": "^5.4.1",
+    "oxlint": "^1.7.0",
+    "typescript": "^5.8.3"
+  }
+}

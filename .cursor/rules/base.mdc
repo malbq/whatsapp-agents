@@ -1,0 +1,14 @@
+---
+alwaysApply: true
+---
+
+# Constraints
+
+- Use native `fetch`.
+- Use OpenAI Responses API over Completions API.
+- Use Bun file API for file operations.
+
+# Tooling
+
+- `oxc` for linting, via editor integration.
+- `prettier` for styling, via editor integration.

@@ -1,0 +1,19 @@
+{
+  "strict": true,
+  "type": "function",
+  "name": "retrieve_file",
+  "description": "Retrieve a file to be sent to the user.",
+  "parameters": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "file_id": {
+        "type": "string",
+        "description": "The id of the file to retrieve."
+      }
+    },
+    "required": [
+      "file_id"
+    ]
+  }
+}

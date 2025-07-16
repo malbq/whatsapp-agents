@@ -1,0 +1,11 @@
+{
+  "plugins": ["eslint", "unicorn", "typescript", "oxc", "import"],
+  "categories": {
+    "perf": "warn",
+    "suspicious": "warn"
+  },
+  "rules": {
+    "prefer-node-protocol": "error"
+  },
+  "ignorePatterns": ["node_modules"]
+}

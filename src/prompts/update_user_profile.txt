@@ -1,0 +1,13 @@
+Identify relevant personal information about the user and update their profile.
+Store only the information that would be relevant to identify the user and personalize your responses, like:
+
+- age
+- location
+- family
+- best friends
+- pets
+- work
+- interests & hobbies
+- current plans
+
+Try to find the languange user understands better and the tone they prefer.

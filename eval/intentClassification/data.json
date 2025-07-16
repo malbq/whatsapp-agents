@@ -1,0 +1,422 @@
+[
+  {
+    "input": "Mostre-me aquele script de deploy que te enviei.",
+    "output": ["memory", "file"]
+  },
+  {
+    "input": "O que eu anotei sobre FaaS para o projeto?",
+    "output": ["memory"]
+  },
+  {
+    "input": "Qual é a senha do Wi-Fi de visitantes?",
+    "output": ["memory"]
+  },
+  {
+    "input": "Qual foi o valor que gastei em Uber na última semana?",
+    "output": ["memory"]
+  },
+  {
+    "input": "Ajude-me a criar um orçamento para este mês.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Mostra todas as metas de leitura que defini em junho.",
+    "output": ["memory", "schedule"]
+  },
+  {
+    "input": "Ajude-me a criar uma lista de tarefas para hoje.",
+    "output": ["memory", "schedule"]
+  },
+  {
+    "input": "Estou me sentindo sobrecarregado. Pode me ajudar a priorizar minhas tarefas?",
+    "output": ["memory", "schedule"]
+  },
+  {
+    "input": "Qual é a melhor maneira de organizar meu armário?",
+    "output": ["memory", "web"]
+  },
+  {
+    "input": "Vou fazer uma viagem. Pode me ajudar a planejar meu itinerário?",
+    "output": ["memory", "web"]
+  },
+  {
+    "input": "Acabei de ter uma ideia para um novo projeto: criar um jardim comunitário no bairro. Guarde isso para mim.",
+    "output": ["memory"]
+  },
+  {
+    "input": "A Maria é minha melhor amiga.",
+    "output": ["memory"]
+  },
+  {
+    "input": "A medida da parede da sala onde vai a estante é de 3,20 metros de largura.",
+    "output": ["memory"]
+  },
+  {
+    "input": "A melhor forma de eu entender um algoritmo complexo é implementando ele do zero.",
+    "output": ["memory"]
+  },
+  {
+    "input": "A nova faixa da banda Tame Impala é simplesmente genial.",
+    "output": ["memory"]
+  },
+  {
+    "input": "A senha do Wi-Fi de visitantes é 'convidado123'.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Acabei de ler um livro ótimo sobre inteligência artificial.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Acabei de tomar o melhor café da minha vida num café novo no centro.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Adoro café com leite todas as manhãs.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Anote que minha senha Wi-Fi mudou para 'Zapid2025!'.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Aquele caminho pela ciclovia da orla economiza pelo menos 15 minutos no meu trajeto para o trabalho.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Aquele restaurante italiano, o 'La Trattoria', tem o melhor carbonara da cidade.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Conversei com a arquiteta e o piso da cozinha será de porcelanato cinza.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Decidi que vou focar em aprender Rust no próximo trimestre.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Esta é a foto do medidor de luz de Julho/2025.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Estou animado com o novo projeto que começo na próxima semana.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Estou considerando mudar de carreira.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Estou gostando muito de usar o framework Svelte para projetos pessoais.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Estou iniciando aulas de violão.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Estou pensando em adotar um pet.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Estou pensando em começar um novo hobby, como pintura ou fotografia.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Estou planejando uma viagem pra Europa no próximo verão.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Estou seguindo uma dieta low-carb.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Gastei R$ 75 no supermercado hoje com o cartão de crédito final 4021.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Gosto de podcasts sobre história.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Guarda essa foto do recibo e associe ao projeto Apollo.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Guarda que comprei 3 ingressos para o show do Coldplay em setembro.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Guarde este contrato de prestação de serviços.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Guarde este snippet de shell para automação de deploy: scp -r ./build/* user@host:/var/www/html.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Hoje celebrei cinco anos de casado.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Meu aniversário é em 12 de novembro.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Meu destino de férias dos sonhos é a Islândia para ver a aurora boreal.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Meu filme favorito é 'O Poderoso Chefão'.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Meu nível de inglês é avançado.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Meu time do coração é o Palmeiras.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Meu treino de hoje foi: 3x10 agachamento, 3x12 leg press, 4x15 panturrilha.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Minha alergia a amendoim é bem severa.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Minha irmã vem me visitar no próximo mês.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Moro em Fortaleza desde 2018.",
+    "output": ["memory"]
+  },
+  {
+    "input": "O aniversário da minha sobrinha é no dia 15 de maio.",
+    "output": ["memory"]
+  },
+  {
+    "input": "O nome final para o nosso novo app será 'Conecta'.",
+    "output": ["memory"]
+  },
+  {
+    "input": "O número da minha apólice de seguro do carro é 98765-BR.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Percebi que sou muito mais produtivo programando pela manhã, logo depois do café.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Planejo correr uma meia-maratona no fim do ano.",
+    "output": ["memory", "schedule"]
+  },
+  {
+    "input": "Preciso fazer check-up médico em agosto.",
+    "output": ["memory", "schedule"]
+  },
+  {
+    "input": "Preciso renovar meu passaporte em outubro.",
+    "output": ["memory", "schedule"]
+  },
+  {
+    "input": "Quero aprender a meditar.",
+    "output": ["memory", "web"]
+  },
+  {
+    "input": "Quero salvar esta receita para mais tarde: https://example.com/recipe",
+    "output": ["memory", "web"]
+  },
+  {
+    "input": "Resumo da reunião com o time de front-end: o componente de data precisa de um fallback para navegadores mais antigos e devemos usar Intl.DateTimeFormat para localização.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Salva este áudio com a ideia do novo design de interface.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Sou alérgico a amendoim.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Tenho medo de voar desde criança.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Tenho um gato chamado Mingau.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Tive um dia super produtivo no trabalho hoje.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Tive uma ideia para o projeto: usar FaaS (Function as a Service) para processar os uploads de arquivos e otimizar custos.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Tive uma reunião hoje com a equipe de vendas e decidimos focar em campanhas online. Anote isso.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Viajo para Nova York todo ano em março.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Vou começar a investir 15% do meu salário em um fundo de índice a partir do mês que vem.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Apaga a memória sobre a compra de ingressos de cinema.",
+    "output": ["memory"]
+  },
+  {
+    "input": "Envia para mim o documento 'Plano de Ação Q3'.",
+    "output": ["file"]
+  },
+  {
+    "input": "Onde está a versão final do contrato que enviei ontem?",
+    "output": ["file"]
+  },
+  {
+    "input": "Onde eu salvei a receita de bolo de cenoura?",
+    "output": ["file"]
+  },
+  {
+    "input": "Preciso encontrar um documento que salvei no mês passado sobre estratégias de marketing.",
+    "output": ["file"]
+  },
+  {
+    "input": "Qual documento eu anotei sobre a reunião de preços?",
+    "output": ["file"]
+  },
+  {
+    "input": "Qual receita de salada saudável eu salvei mês passado?",
+    "output": ["file"]
+  },
+  {
+    "input": "Lista todos os lembretes ativos de agosto.",
+    "output": ["schedule"]
+  },
+  {
+    "input": "Apaga todos os lembretes de finanças pessoais.",
+    "output": ["schedule"]
+  },
+  {
+    "input": "Anota que meu voo para Lisboa é no dia 15 de agosto, partida às 14h30.",
+    "output": ["schedule"]
+  },
+  {
+    "input": "Cria um lembrete recorrente toda segunda-feira às 7h: treino de corrida.",
+    "output": ["schedule"]
+  },
+  {
+    "input": "Defina um lembrete para minha aula de yoga às terças-feiras às 18:00.",
+    "output": ["schedule"]
+  },
+  {
+    "input": "Defina um lembrete para minha consulta no dentista na sexta-feira às 14:00.",
+    "output": ["schedule"]
+  },
+  {
+    "input": "Lembra que tenho reunião de alinhamento mensal todo dia 1.",
+    "output": ["schedule"]
+  },
+  {
+    "input": "Lembre-me de beber água a cada 90 minutos durante o horário de trabalho.",
+    "output": ["schedule"]
+  },
+  {
+    "input": "Lembre-me de ligar para o cliente às 16:30.",
+    "output": ["schedule"]
+  },
+  {
+    "input": "Lembre-me de pagar a conta de luz dia 10 de julho, às 8h.",
+    "output": ["schedule"]
+  },
+  {
+    "input": "Lembre-me de tomar meu remédio às 8:00 da manhã todos os dias.",
+    "output": ["schedule"]
+  },
+  {
+    "input": "Lembre-me toda sexta-feira às 17h de fazer o commit do meu progresso da semana.",
+    "output": ["schedule"]
+  },
+  {
+    "input": "Me avisa 30 minutos antes de eu precisar sair para o dentista.",
+    "output": ["schedule"]
+  },
+  {
+    "input": "Me avisa uma hora antes da reunião com o time de marketing.",
+    "output": ["schedule"]
+  },
+  {
+    "input": "Me lembra de beber água a cada duas horas hoje.",
+    "output": ["schedule"]
+  },
+  {
+    "input": "Me recorda de enviar feedback ao cliente quando eu terminar o relatório.",
+    "output": ["schedule"]
+  },
+  {
+    "input": "O prazo final do projeto é dia 25. Lembre-me 3 dias antes de revisar a documentação.",
+    "output": ["schedule"]
+  },
+  {
+    "input": "Preciso lembrar de regar minhas plantas a cada dois dias.",
+    "output": ["schedule"]
+  },
+  {
+    "input": "Preciso ligar pra minha mãe mais tarde.",
+    "output": ["schedule"]
+  },
+  {
+    "input": "Você pode agendar uma reunião com o João para a próxima semana?",
+    "output": ["schedule"]
+  },
+  {
+    "input": "Planeje um cardápio vegano para a próxima semana.",
+    "output": ["web"]
+  },
+  {
+    "input": "Quais as novidades da última versão do ECMAScript?",
+    "output": ["web"]
+  },
+  {
+    "input": "Qual a cotação do euro hoje?",
+    "output": ["web"]
+  },
+  {
+    "input": "Qual a distância entre a Terra e a Lua em quilômetros?",
+    "output": ["web"]
+  },
+  {
+    "input": "Qual é a definição de 'serendipidade'?",
+    "output": ["web"]
+  },
+  {
+    "input": "Qual é o clima hoje?",
+    "output": ["web"]
+  },
+  {
+    "input": "Quero aprender um novo idioma. Pode recomendar alguns recursos?",
+    "output": ["web"]
+  },
+  {
+    "input": "Sugere uma receita rápida para jantar com frango e legumes.",
+    "output": ["web"]
+  },
+  {
+    "input": "Você pode encontrar uma receita de lasanha vegana para mim?",
+    "output": ["web"]
+  },
+  {
+    "input": "Você pode encontrar uma receita de pão sem glúten para mim?",
+    "output": ["web"]
+  }
+]
