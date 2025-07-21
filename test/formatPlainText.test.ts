@@ -1,5 +1,5 @@
 import chalk from 'chalk'
-import { splitIntoSentences } from './formatPlainText'
+import { splitIntoSentences } from '../src/utils/formatPlainText'
 
 const original = `In these terms (the “Card Issuing Terms”), the following terms have the following meanings
 (unless the context requires otherwise). All other capitalized terms shall have the meaning

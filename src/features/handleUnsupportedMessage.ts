@@ -1,13 +1,13 @@
-import { WA } from '../infra/whatsapp'
+import type { UnsupportedMessage } from '../domain/message'
 
 export async function handleUnsupportedMessage(
-  businessPhoneNumberId: string,
-  message: WA.Message
+  { chat }: Deps,
+  message: UnsupportedMessage
 ) {
-  await WA.sendTextMessage({
-    businessPhoneNumberId,
-    toPhoneNumber: message.from,
+  await chat.sendTextMessage({
+    from: message.to,
+    to: message.from,
     text: 'Me desculpe, mas ainda não consigo responder a este tipo de mensagem.',
-    replyToMessage: message.id,
+    replyingTo: message.id,
   })
 }

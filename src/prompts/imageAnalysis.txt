@@ -1,4 +1,3 @@
 Forneça uma descrição detalhada desta imagem em português brasileiro.
 Se for uma foto ou ilustração, sem texto, dê apenas a descrição.
-Se houver algum texto presente na imagem, transcreva-o com precisão e tente reproduzir na sua responsa a mesma
-estrutura que o texto tiver na imagem.
+Se houver algum texto presente na imagem, transcreva-o com precisão e tente reproduzir na sua responsta a mesma estrutura que o texto tiver na imagem.

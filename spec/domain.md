@@ -7,11 +7,7 @@
   - `id: string`
   - `waId: string`
   - `name: string`
-  - `phoneNumber: string`
-  - `createdAt: Date`
-  - `plan: 'free' | 'pro'`
-  - `status: 'active' | 'delinquent' | 'blocked'`
-  - `profile: string`
+  - `joinedAt: Date`
 
 - **Memory Chunk**
 

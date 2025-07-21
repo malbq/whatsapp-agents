@@ -1,13 +1,13 @@
-import { WA } from '../infra/whatsapp'
+import type { DocumentMessage } from '../domain/message'
 
 export async function handleDocumentMessage(
-  businessPhoneNumberId: string,
-  message: WA.DocumentMessage
+  { chat }: Deps,
+  message: DocumentMessage
 ) {
-  await WA.sendTextMessage({
-    businessPhoneNumberId,
-    toPhoneNumber: message.from,
+  await chat.sendTextMessage({
+    from: message.to,
+    to: message.from,
     text: 'Em breve poderei ler e guardar seus documentos.',
-    replyToMessage: message.id,
+    replyingTo: message.id,
   })
 }

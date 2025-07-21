@@ -1,6 +1,6 @@
 import chalk from 'chalk'
 import path from 'node:path'
-import OpenAI from 'openai'
+import { OpenAI } from 'openai'
 
 const client = new OpenAI()
 

@@ -1,6 +1,6 @@
 import chalk from 'chalk'
-import { WA } from '../infra/whatsapp'
+import type { StatusUpdate } from '../domain/message'
 
-export async function handleStatusUpdate(statusUpdate: WA.StatusUpdate) {
+export async function handleStatusUpdate(statusUpdate: StatusUpdate) {
   console.debug(chalk.green('Status update:', statusUpdate.status))
 }

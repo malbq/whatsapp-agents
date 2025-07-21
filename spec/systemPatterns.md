@@ -1,6 +1,6 @@
 # System Patterns
 
-## Architectural Overview
+## System Architecture
 
 The system is a WhatsApp-based AI agent that processes multi-modal messages (text, audio, images, documents) and provides intelligent responses with memory, context, and tool capabilities. The architecture consists of four main layers:
 
@@ -60,4 +60,32 @@ graph TD
 
     wab -->|webhook| wh
     reply --> wab
+```
+
+## Code Architecture
+
+The codebase follows Domain-Driven Design principles with unidirectional dependencies to ensure maintainability, testability, and extensibility. The architecture uses **parameter injection** for dependency management without external DI libraries.
+
+### Layered Structure
+
+- **Domain Layer** (`src/domain/`): Pure entities and types with no external dependencies
+- **Features Layer** (`src/features/`): Application use cases that depend on domain entities and receive infrastructure via parameters
+- **Infrastructure Layer** (`src/infra/`): Concrete implementations of external services (WhatsApp, DB, AI, Storage)
+- **Composition Root** (`src/index.ts`): Application startup and wires concrete infrastructure to features at runtime
+
+### Dependency Flow
+
+```mermaid
+graph TD
+    subgraph "Layers"
+        C[<strong>Composition Root</strong><br/><small>Dependency Wiring</small>]
+        F[<strong>Features Layer</strong><br/><small>Use Cases</small>]
+        I[<strong>Infrastructure Layer</strong><br/><small>Abstract Ports and Concrete Adapters</small>]
+        D[<strong>Domain Layer</strong><br/><small>Pure Entities</small>]
+    end
+
+    C --> F
+    C --> I
+    F --> D
+    I --> D
 ```

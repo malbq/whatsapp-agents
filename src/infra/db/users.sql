@@ -1,0 +1,8 @@
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  external_id TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  joined_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_external_id ON users (external_id); 

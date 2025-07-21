@@ -1,30 +1,27 @@
-import { AI } from '../infra/ai'
-import { WA } from '../infra/whatsapp'
+import type { ImageMessage } from '../domain/message'
 
 export async function handleImageMessage(
-  businessPhoneNumberId: string,
-  message: WA.ImageMessage
+  { chat, ai }: Deps,
+  message: ImageMessage
 ) {
   try {
-    const { media, mimeType } = await WA.downloadMedia(message.image.id)
-    const base64Image = Buffer.from(await media.arrayBuffer()).toString(
-      'base64'
-    )
+    const { media, mimeType } = await chat.fetchReceivedMedia(message.mediaId)
+    const base64Image = Buffer.from(media).toString('base64')
     const imageUrl = `data:${mimeType};base64,${base64Image}`
-    const text = await AI.analyzeImage({ imageUrl })
-    await WA.sendTextMessage({
-      businessPhoneNumberId,
-      toPhoneNumber: message.from,
+    const text = await ai.analyzeImage({ imageUrl, caption: message.caption })
+    await chat.sendTextMessage({
+      from: message.to,
+      to: message.from,
       text,
-      replyToMessage: message.id,
+      replyingTo: message.id,
     })
   } catch (error) {
     console.error(error)
-    await WA.sendTextMessage({
-      businessPhoneNumberId,
-      toPhoneNumber: message.from,
+    await chat.sendTextMessage({
+      from: message.to,
+      to: message.from,
       text: 'Desculpe, não consegui analisar esta imagem.',
-      replyToMessage: message.id,
+      replyingTo: message.id,
     })
   }
 }
