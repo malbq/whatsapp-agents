@@ -1,101 +1,78 @@
-import type { Message, TextMessage } from './domain/message'
-import type { Reminder } from './domain/schedule'
-import type { User, UserProfile } from './domain/user'
-import type { VectorMemory } from './domain/vectorMemory'
-import { generateResponse } from './features/generateResponse'
-import { transcribeAudioMessage } from './features/transcribeAudioMessage'
+import { Frame } from './agent/frame'
+import { EmbeddingSystem } from './agent/systems/embeddingSystem'
+import { ImproveUserProfileSystem } from './agent/systems/improveUserProfileSystem'
+import { IngestionSystem } from './agent/systems/ingestionSystem'
+import { MediaStorageSystem } from './agent/systems/mediaStorageSystem'
+import { ReceiveMessageSystem } from './agent/systems/receiveMessageSystem'
+import { ResponseDeliverySystem } from './agent/systems/responseDeliverySystem'
+import { ResponseGenerationSystem } from './agent/systems/responseGenerationSystem'
+import { StoreMessageExchangeSystem } from './agent/systems/storeMessageExchangeSystem'
+import { UserSystem } from './agent/systems/userSystem'
+import type { IncomingMessage } from './infra/chat'
+import { ASSISTANT_PRIORITY } from './utils/priorities'
 
-//TODO: user e userMessage podem estar em AsyncLocalStorage
-// inicializado no endpoint /webhook
-type AgentContext = {
-  userMessage: Message
-  user: User
-  userProfile: UserProfile
-  vectorSearchResults: Array<VectorMemory>
-  recentMessages: Array<Message>
-  scheduledReminders: Array<Reminder>
-  agentActions: {
-    createReminder: any
-    cancelReminder: any
-    retrieveFile: any
-  }
-  agentMessage: Message
-}
+export async function agent(deps: Deps, message: IncomingMessage): Promise<void> {
+  const frame = new Frame()
+  try {
+    const messageEntity = await ReceiveMessageSystem(frame, deps, message)
 
-type S1_Context = Pick<AgentContext, 'userMessage' | 'user'>
-type S2_Context = S1_Context
-type S3_Context = S2_Context &
-  Pick<
-    AgentContext,
-    'vectorSearchResults' | 'recentMessages' | 'scheduledReminders'
-  >
-type S4_Context = S3_Context & Pick<AgentContext, 'agentActions'>
+    await UserSystem(frame, deps, {
+      externalId: message.userExternalId,
+      name: message.userName,
+    })
 
-// TODO: handle different response types
-export async function agent(
-  deps: Deps,
-  step1context: S1_Context
-): Promise<TextMessage> {
-  // 1. Message Ingestion
-  // 1.1. Process Audio Message
-  if (
-    step1context.userMessage.type === 'audio' ||
-    step1context.userMessage.type === 'voice'
-  ) {
-    try {
-      step1context.userMessage = await transcribeAudioMessage(
-        deps,
-        step1context.userMessage
-      )
-    } catch {
-      return {
-        role: 'agent',
-        type: 'text',
-        from: step1context.userMessage.to,
-        to: step1context.userMessage.from,
-        body: 'Desculpe, não consegui transcrever este áudio.',
+    await IngestionSystem(frame, deps, messageEntity, message)
+
+    await ResponseGenerationSystem(frame, deps, messageEntity)
+    // ⤷ TODO: ToolExecutionSystem
+    //   ⤷ TODO: SearchFileSystem
+    //   ⤷ TODO: RetrieveFileSystem
+    //   ⤷ TODO: CreateReminderSystem
+    //   ⤷ TODO: CancelReminderSystem
+
+    await ResponseDeliverySystem(frame, deps)
+
+    ImproveUserProfileSystem(frame, deps, messageEntity)
+
+    MediaStorageSystem(frame, deps, messageEntity)
+    await EmbeddingSystem(frame, deps)
+    await StoreMessageExchangeSystem(frame, deps)
+  } catch (error) {
+    console.error('Agent error:', error)
+
+    // Check if there are any error components that need to be delivered
+    const errorEntities = frame.query(['ErrorComponent'])
+    if (errorEntities.length > 0) {
+      // Convert error components to message entities for delivery
+      for (const errorEntityId of errorEntities) {
+        const errorComponent = frame.getComponent(errorEntityId, 'ErrorComponent')!
+        const errorMessageEntity = frame.createEntity()
+        frame.addComponent(errorMessageEntity, 'Message', {
+          role: 'assistant',
+          type: 'text',
+          priority: ASSISTANT_PRIORITY,
+        })
+        frame.addComponent(errorMessageEntity, 'TextContent', { text: errorComponent.message })
       }
+    } else {
+      // Generic error message if no specific error component exists
+      const errorMessageEntity = frame.createEntity()
+      frame.addComponent(errorMessageEntity, 'Message', {
+        role: 'assistant',
+        type: 'text',
+        priority: ASSISTANT_PRIORITY,
+      })
+      frame.addComponent(errorMessageEntity, 'TextContent', {
+        text: 'Desculpe, tive algum problema ao tentar te responder.',
+      })
     }
-  }
-  // 1.2. Process Image Message
-  // 1.3. Process Document Message
-  // 1.4. Store Embeddings
-  // 1.5. Update User Profile
 
-  // 2. Prompt Preparation and Context Orchestration
-  // 2.1. assembleContext
-  // 2.1.1. loadUserProfile
-  // 2.1.2. loadRecentMessages
-  // 2.1.3. loadScheduledReminders
-  // 2.1.4. vectorSearch
-  // 2.1.4.1. include metadata to potentially retrieve file (doc or image)
-  // 2.2. buildSystemPrompt
-
-  // 3. Tool Integration
-  // 3.1. executeReminderTools
-  // 3.2. executeFileRetrievalTools
-  // 4. Response Delivery
-  // 4.1. integrateToolResults
-  // 4.2. prepareFinalResponse
-  // 4.3. sendResponse
-  // 4.4. storeAssistantResponse
-
-  if (step1context.userMessage.type === 'text') {
-    const response = await generateResponse(deps, step1context.userMessage.body)
-    return {
-      role: 'agent',
-      type: 'text',
-      from: step1context.userMessage.to,
-      to: step1context.userMessage.from,
-      body: response,
+    // Always attempt delivery when we have a user
+    try {
+      await ResponseDeliverySystem(frame, deps)
+    } catch (deliveryError) {
+      console.error('Failed to deliver error response:', deliveryError)
     }
-  }
-
-  return {
-    role: 'agent',
-    type: 'text',
-    from: step1context.userMessage.to,
-    to: step1context.userMessage.from,
-    body: 'Desculpe, não consigo responder a esta mensagem.',
+  } finally {
   }
 }

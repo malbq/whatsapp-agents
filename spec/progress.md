@@ -2,53 +2,80 @@
 
 ## Current Focus
 
-0. **POC**
+- **ECS Architecture Implementation**: Successfully migrated from monolithic agent to Entity-Component-System architecture
 
-   - Receive and parse documents
-   - Parse document into chunks and embed
-   - Document parsing approach:
-     - Phase 1: pdf.js for native PDF text extraction (semantic text preservation)
-     - Phase 2: Tesseract.js OCR fallback for scanned documents
-     - Phase 3: GPT-4o-mini for complex/failed extractions
-     - Pure text output optimized for embedding (no structured output needed)
+  - Implemented Frame system with component-based entities
+  - Created specialized systems for different concerns (ingestion, embedding, response generation, etc.)
+  - Improved separation of concerns and testability
 
-1. **Basic communication**
+- **Multi-Modal Processing**: Fully implemented support for:
 
-   - Persist messages in chat table
-     - Only audio transcription is persisted, no audio file
-   - Embed messages
-   - Treat audio with `voice: true` as user direct input, like text messages
-   - Treat audio with `voice: false` as external content, like images and documents
-   - **Tool** `web_search`
-     - If searching for a business, try to find contact info and location and reply with appropriate WhatsApp message types
+  - Text messages with context retrieval
+  - Voice recordings with transcription
+  - Audio files with transcription
+  - Images with analysis and description
+  - Documents with transcription and storage
+
+- **Memory System**: Vector-based memory with similarity search
+
+  - Embeddings generation and storage
+  - Similar message retrieval
+  - Context assembly with deduplication
+  - User profile maintenance and updates
+
+- **Database Schema**: Updated to support new architecture
+  - User table with profile storage
+  - Message table with media storage keys
+  - Embedding table with vector support
+  - Raw incoming message storage
 
 ## Next
 
-- **Media handling**
-  - Persist image descriptions with reference in chat table
-  - Persist document content with reference in chat table
-  - Persist images and documents in object store
-  - Embed image descriptions
-  - Embed documents content
-  - **Tool** `retrieve_file`
-- **Context orchestration**
-  - Recent conversation history from chat table
-  - User profile management and automatic improvement
-  - Memory: Vector search for similar content (see `memoryRetrieval.md`) (TODO)
-    - document match, we have 3 options:
-      - add the chunk to context
-      - add whole file to the prompt via file_search and URL parameter
-      - both
-    - image match:
-      - add image and its description to context
-- **Scheduler**
-  - Schedule management
-  - Schedule triggering
+- **Tool Integration**: Implement tools
+
+  - `search_file` and `retrieve_file` tools for file access
+  - `create_reminder` and `cancel_reminder` tools
+  - Tool execution system in agent workflow
+
+- **Scheduler System**: Implement reminder functionality
+
+  - Manual schedule management
+  - Test schedule triggering
   - Add schedule to context
-  - **Tools** `create_reminder` and `cancel_reminder`
-- Privacy features (delete/export) and onboarding
-- Rate limiting, retry/back-off, improved error handling
-- TTS: Answer with audio message
+
+- **User Management**: Complete user profile system
+
+  - Profile improvement based on interactions
+  - Subscription plan management
+  - Usage tracking and limits
+
+- **Privacy & Compliance**: Data management features
+
+  - Data export functionality
+  - Data deletion for GDPR compliance
+  - Privacy controls and onboarding
+
+- **Performance & Reliability**: System improvements
+  - Rate limiting and retry mechanisms
+  - Improved error handling
+  - TTS: Answer with audio message
+
+## Open Questions
+
+- **Similar Messages Context**:
+
+  - Should we add full messages that match vector search?
+  - What if we match a document? Should we add at most a single document?
+
+- **Tool Execution Strategy**:
+
+  - How to integrate tool calls into the ECS architecture?
+  - Should tools be separate systems or integrated into response generation?
+
+- **Performance Optimization**:
+  - Token budget management for large contexts
+  - Embedding generation optimization
+  - Database query optimization for vector search
 
 ## Learnings & Insights
 

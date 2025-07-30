@@ -1,6 +1,6 @@
 import chalk from 'chalk'
 import { join } from 'node:path'
-import OpenAI from 'openai'
+import { OpenAI } from 'openai'
 import imageAnalysisPrompt from '../../src/prompts/imageAnalysis.txt'
 
 const client = new OpenAI()
@@ -16,13 +16,7 @@ try {
   throw error
 }
 
-const models = [
-  'gpt-4.1',
-  'gpt-4.1-mini',
-  'gpt-4.1-nano',
-  'gpt-4o',
-  'gpt-4o-mini',
-]
+const models = ['gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano', 'gpt-4o', 'gpt-4o-mini']
 models.forEach(async (model) => {
   try {
     const start = performance.now()

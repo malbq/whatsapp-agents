@@ -20,8 +20,12 @@ export async function generateEmbeddings(text: string | string[]) {
       body: JSON.stringify({ text }),
     }
   )
-  console.log('CF embed request', response.statusText)
+  console.log('Input', text)
+  console.log('CF embed request', response.status, response.statusText)
   const responseBody = (await response.json()) as EmbeddingsResponseBody
-  console.log(`generated embeddings with ${model}`, responseBody.result.shape)
+  console.log(
+    `generated embeddings with ${model}`,
+    JSON.stringify(responseBody.result.shape, null, 2)
+  )
   return responseBody.result.data
 }

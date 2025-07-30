@@ -1,5 +1,5 @@
 import path from 'node:path'
-import data from '../../eval/intentClassification/data.json'
+import data from '../../test/eval/intentClassification/data.json'
 import { generateEmbeddings } from './generateEmbeddings'
 
 export interface Vector {

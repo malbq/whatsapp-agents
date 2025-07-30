@@ -5,16 +5,15 @@
   "scripts": {
     "dev": "bun --hot --no-clear-screen run src/index.ts",
     "typecheck": "tsc --noEmit",
-    "db:init": "bun run src/infra/db/init.ts"
+    "db:init": "bun run src/infra/dbSetup/init.ts"
   },
   "dependencies": {
-    "@ai-sdk/google": "2.0.0-beta.12",
-    "@ai-sdk/openai": "2.0.0-beta.10",
+    "@ai-sdk/google": "^2.0.0-beta.17",
+    "@ai-sdk/openai": "^2.0.0-beta.14",
     "@libsql/client": "^0.15.10",
-    "ai": "5.0.0-beta.23",
+    "ai": "^5.0.0-beta.32",
     "compromise": "^14.14.4",
     "hono": "^4.8.5",
-    "openai": "^5.10.1",
     "retext": "^9.0.0",
     "retext-readability": "^8.0.0",
     "retext-smartypants": "^6.2.0",

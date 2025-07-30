@@ -42,19 +42,12 @@ You're ONLY allowed to avoid reading the spec if you're asked something quick an
    - Technical constraints
    - Other tools used in the project
 
-5. spec/domain.md
-
-   - Describe Entities and their relationships in high level language
-   - Use Cases
-
 ```mermaid
 flowchart TD
    PB[projectbrief.md]
-   D[domain.md]
    S[systemPatterns.md]
    T[techContext.md]
    PR[progress.md]
-   PB --> D --> PR
    PB --> S --> PR
    PB --> T --> PR
 ```

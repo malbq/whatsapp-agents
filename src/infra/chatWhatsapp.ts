@@ -1,80 +1,76 @@
 import chalk from 'chalk'
-import type { MessageBase } from '../domain/message'
-import type { Chat } from './chat'
+import { createHash } from 'node:crypto'
+import { FailedToDownloadMediaError, MediaHashMismatchError } from '../errors'
+import type { Store } from '../index'
+import type { Chat, IncomingMessage } from './chat'
 
 const { META_API_TOKEN, WA_API_VERSION } = process.env
 
 export namespace Whatsapp {
-  export const chat: Chat = {
-    parseNotification: (body) => {
-      const change = (body as Notification).entry?.[0]?.changes?.[0]
+  export const chat = (store: Store): Chat => ({
+    parseNotification: async (body) => {
+      if (!store.getStore()) {
+        throw new Error('Store not found')
+      }
 
+      const change = (body as Notification).entry?.[0]?.changes?.[0]
       if (!change) return {}
+
+      const statusUpdate = change.value.statuses?.[0]
+      if (statusUpdate) return { statusUpdate }
 
       const contact = change.value.contacts?.[0]
       const waMessage = change.value.messages?.[0]
-      const statusUpdate = change.value.statuses?.[0]
-
-      if (statusUpdate) return { statusUpdate }
-
       if (!contact || !waMessage) return {}
 
-      const chatUser = {
-        externalId: contact.wa_id,
-        name: contact.profile.name,
-      }
-      const message: Omit<MessageBase, 'type'> = {
-        role: 'user',
-        id: waMessage.id,
-        from: waMessage.from,
-        to: change.value.metadata.phone_number_id,
-        timestamp: waMessage.timestamp,
+      store.getStore()?.set('businessPhoneNumberId', change.value.metadata.phone_number_id)
+      store.getStore()?.set('userWhatsappId', contact.wa_id)
+
+      const message: Pick<IncomingMessage, 'userExternalId' | 'userName' | 'externalId'> = {
+        userExternalId: contact.wa_id,
+        userName: contact.profile.name,
+        externalId: waMessage.id,
       }
       switch (waMessage.type) {
         case 'text':
           return {
-            chatUser,
             message: {
               ...message,
               type: 'text',
-              body: waMessage.text.body,
+              text: waMessage.text.body,
             },
           }
         case 'audio':
           return {
-            chatUser,
             message: {
               ...message,
               type: waMessage.audio.voice ? 'voice' : 'audio',
-              mediaId: waMessage.audio.id,
+              mediaData: await fetchReceivedMedia(waMessage.audio.id, waMessage.audio.sha256),
               mimeType: waMessage.audio.mime_type,
             },
           }
         case 'document':
           return {
-            chatUser,
             message: {
               ...message,
               type: 'document',
-              mediaId: waMessage.document.id,
+              documentFilename: waMessage.document.filename,
+              mediaData: await fetchReceivedMedia(waMessage.document.id, waMessage.document.sha256),
               mimeType: waMessage.document.mime_type,
-              filename: waMessage.document.filename,
             },
           }
         case 'image':
           return {
-            chatUser,
             message: {
               ...message,
               type: 'image',
-              mediaId: waMessage.image.id,
+              text: waMessage.image.caption,
+              mediaData: await fetchReceivedMedia(waMessage.image.id, waMessage.image.sha256),
               mimeType: waMessage.image.mime_type,
-              caption: waMessage.image.caption,
             },
           }
         default:
           return {
-            chatUser,
             message: {
               ...message,
               type: 'unsupported',
@@ -84,8 +80,15 @@ export namespace Whatsapp {
       }
     },
 
-    acknowledgeProcessingMessage: async (businessPhoneNumberId, messageId) => {
-      const response = await fetch(
+    acknowledgeProcessingMessage: async (messageId) => {
+      const businessPhoneNumberId = store.getStore()?.get('businessPhoneNumberId')
+
+      if (!businessPhoneNumberId) {
+        console.error('Business phone number ID not found')
+        return
+      }
+
+      const response = (await fetch(
         `https://graph.facebook.com/${WA_API_VERSION}/${businessPhoneNumberId}/messages`,
         {
           method: 'POST',
@@ -101,41 +104,40 @@ export namespace Whatsapp {
           }),
         }
       )
-
-      const data = (await response.json()) as {
-        success?: boolean
-        error?: {
-          message: string
-          type: string
-          code: number
-          error_data: {
-            messaging_product: string
-            details: string
+        .then((response) => response.json())
+        .catch((error) => {
+          return {
+            success: false,
+            error: {
+              message: error.message,
+              code: error.code,
+            },
           }
-          fbtrace_id: string
-        }
-      }
-      if (data.success) {
+        })) as AcknowledgeMessageResponse
+
+      if (response.success) {
         console.debug('Message acknowledged', messageId)
         return
       }
 
-      console.error(`Failed to acknowledge message ${messageId}
-${data.error?.message}
-${data.error?.code}
-${data.error?.type}
-${data.error?.error_data?.details}`)
+      console.error(`Failed to acknowledge message ${messageId}`)
+      response.error?.message && console.error(response.error?.message)
+      response.error?.code && console.error(response.error?.code)
+      response.error?.type && console.error(response.error?.type)
+      response.error?.error_data?.details && console.error(response.error?.error_data?.details)
     },
 
-    sendTextMessage: async ({
-      from: businessPhoneNumberId,
-      to: toPhoneNumber,
-      text,
-      replyingTo: replyToMessage,
-    }) => {
+    sendTextMessage: async ({ text, replyingTo: replyToMessage }) => {
+      const businessPhoneNumberId = store.getStore()?.get('businessPhoneNumberId')
+      const userWhatsappId = store.getStore()?.get('userWhatsappId')
+
+      if (!businessPhoneNumberId || !userWhatsappId) {
+        throw new Error('Business number or user WhatsApp ID not found')
+      }
+
       const requestBody: OutgoingTextMessage = {
         messaging_product: 'whatsapp',
-        to: toPhoneNumber,
+        to: userWhatsappId,
         text: { body: text },
       }
 
@@ -145,7 +147,7 @@ ${data.error?.error_data?.details}`)
         }
       }
 
-      const response = await fetch(
+      const response = (await fetch(
         `https://graph.facebook.com/${WA_API_VERSION}/${businessPhoneNumberId}/messages`,
         {
           method: 'POST',
@@ -155,38 +157,56 @@ ${data.error?.error_data?.details}`)
           },
           body: JSON.stringify(requestBody),
         }
-      )
-
-      const data = await response.json()
-      console.debug(chalk.gray('Text message response:', JSON.stringify(data)))
+      ).then((response) => response.json())) as OutgoingMessageResponse
+      if (!response.messages?.[0]?.id) {
+        throw new Error('Failed to send message')
+      }
+      return response.messages[0].id
     },
+  })
 
-    fetchReceivedMedia: async (mediaId) => {
-      const init: RequestInit = {
-        headers: {
-          Authorization: `Bearer ${META_API_TOKEN}`,
-        },
-      }
-      const urlResponse = await fetch(
-        `https://graph.facebook.com/${WA_API_VERSION}/${mediaId}/`,
-        init
+  async function fetchReceivedMedia(mediaId: string, sha256: string) {
+    const init: RequestInit = {
+      headers: {
+        Authorization: `Bearer ${META_API_TOKEN}`,
+      },
+    }
+    const urlData = (await fetch(
+      `https://graph.facebook.com/${WA_API_VERSION}/${mediaId}/`,
+      init
+    ).then((response) => response.json())) as MediaUrlResponse
+    console.debug(chalk.gray('Download media response:', JSON.stringify(urlData)))
+
+    const mediaResponse = await fetch(urlData.url, init)
+
+    if (!mediaResponse.body) {
+      console.error(
+        `Failed to download media\nURL: ${urlData.url}\nStatus: ${mediaResponse.status}\nStatus Text: ${mediaResponse.statusText}`
       )
-      const urlData = (await urlResponse.json()) as MediaUrlResponse
-      console.debug(
-        chalk.gray('Download media response:', JSON.stringify(urlData))
-      )
+      throw new FailedToDownloadMediaError()
+    }
 
-      const mediaResponse = await fetch(urlData.url, init)
+    const media = await mediaResponse.arrayBuffer()
+    const computed = createHash('sha256').update(new Uint8Array(media)).digest('base64')
+    if (computed !== sha256) {
+      console.error(`Media SHA256 mismatch\nreceived: ${sha256}\ncomputed: ${computed}`)
+      throw new MediaHashMismatchError()
+    }
+    return media
+  }
 
-      if (!mediaResponse.body) {
-        throw new Error('Failed to download media')
+  export type AcknowledgeMessageResponse = {
+    success?: boolean
+    error?: {
+      message: string
+      code: number
+      type?: string
+      error_data?: {
+        messaging_product: string
+        details: string
       }
-
-      return {
-        media: await mediaResponse.arrayBuffer(),
-        mimeType: urlData.mime_type,
-      }
-    },
+      fbtrace_id?: string
+    }
   }
 
   export type Notification = {
@@ -199,6 +219,18 @@ ${data.error?.error_data?.details}`)
     to: string
     text: { body: string }
     context?: { message_id: string }
+  }
+
+  export type OutgoingMessageResponse = {
+    messaging_product: 'whatsapp'
+    contacts?: Array<{
+      input: string
+      wa_id: string
+    }>
+    messages?: Array<{
+      id: string
+      message_status: string
+    }>
   }
 
   export type MessagesChange = {

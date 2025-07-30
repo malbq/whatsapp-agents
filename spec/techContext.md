@@ -6,20 +6,20 @@
 
 ## Development Runtime
 
-- **Bun**
-- `bun run dev` → `localhost:8080`.
-- Env vars from `.env`.
+- **Bun** JS runtime
+- `bun run dev` → `localhost:8080`
+- Env vars from `.env`
 
 ## Production Runtime
 
-- **Cloudflare Workers**
-- **HonoJS v4** – Worker-style router.
-- **Cloudflare D1** (relational).
-- **Cloudflare Vectorize** (embeddings).
-- **Cloudflare R2** (files).
+- **Bun** JS runtime
+- **HonoJS v4** – Worker-style router
+- **Cloudflare Vectorize** (embeddings)
+- **Cloudflare R2** (files)
 
-## External Services
+## Architecture
 
-- **Meta Business API** – WhatsApp messaging and media download.
-- **OpenAI Responses API** – text generation and image analysis.
-- **OpenAI Whisper** – speech-to-text transcription.
+- **Entity-Component-System (ECS)**: Component-based architecture for better separation of concerns
+- **Frame**: Central ECS engine managing entities and components
+- **Systems**: Specialized processors for different concerns (ingestion, embedding, response generation, etc.)
+- **Components**: Data-only structures for entity state

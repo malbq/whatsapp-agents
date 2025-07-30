@@ -2,231 +2,263 @@
 
 ## Purpose
 
-Implement agent workflow that provides contextual, personalized responses by orchestrating context retrieval before generating responses.
+Implement agent workflow that provides contextual, personalized responses using an Entity-Component-System (ECS) architecture with specialized systems for different concerns.
 
 ## Workflow Overview
 
-The agent follows a systematic approach to handle each incoming message:
+The agent follows a systematic ECS-based approach to handle each incoming message:
 
 ```mermaid
 sequenceDiagram
     participant U as User
     participant S as Server
+    participant F as Frame
     participant M as Memory
-    participant C as Scheduler
-    participant FS as File Storage
-    participant L as LLM
+    participant L as AI
 
-    Note over S: Step 1: Message ingestion
+    Note over S: Step 1: Message reception and user management
     U->>S: Send message
-    alt Audio
-        S->>S: Transcribe
-    else Document
-        S->>S: Convert to text
+    S->>F: Create Frame
+    F->>F: Receive Message
+    F->>F: Persist User
+
+    Note over S: Step 2: Content ingestion
+    alt Audio/Voice
+        F->>L: Transcribe Audio
+        activate L
+        L-->>F: Transcription
+        deactivate L
     else Image
-        S->>S: Describe
+        F->>L: Analyze Image
+        activate L
+        L-->>F: Description
+        deactivate L
+    else Document
+        F->>L: Transcribe Document
+        activate L
+        L-->>F: Transcription
+        deactivate L
     end
-    S->>M: Store embeddings
-    S->>M: Improve user profile
+    F->>F: Embed Input Message
 
-    Note over S: Step 2: Prompt preparation
-    S->>M: Prepare context
+    Note over S: Step 3: Response generation
+    F->>M: Retrieve context
     activate M
-    M-->>S: System prompt<br>+ user profile<br>+ recent messages<br>+ scheduled reminders<br>+ vector search results
+    M-->>F: User Profile
+    M-->>F: Similar Chunks
+    M-->>F: Recent Messages
     deactivate M
+    F->>L: Generate response with context
+    activate L
+    L-->>F: Response content
+    deactivate L
 
-    Note over S: Step 3: Tool integration
-    S->>L: Send enriched prompt + tools
-    L-->>S: Response + tool calls
-    opt Reminder tool call
-    S->>C: Create/cancel reminder
-    end
-    opt File retrieval tool call
-    S->>FS: Retrieve file
-    activate FS
-    FS-->>S: File
-    deactivate FS
-    end
-
-    Note over S: Step 4: Response delivery
-    S->>S: Finalize response with integrated results
+    Note over S: Step 4: Response delivery and storage
+    F->>S: Response Delivery
     S->>U: Send response
+    F->>F: Improve User Profile
+    F->>F: Store Media
+    F->>F: Embed Rest of Content
+    F->>F: Store Message Exchange
+```
+
+## ECS Architecture
+
+### Frame Management
+
+The agent uses a Frame-based ECS architecture:
+
+- **Frame**: Central entity manager with component storage
+- **Entities**: Message entities with various components
+- **Systems**: Specialized processors for different concerns
+- **Components**: Data-only structures for entity state
+
+### System Flow
+
+```mermaid
+graph TD
+    A[Incoming Message] --> B[ReceiveMessageSystem]
+    B --> C[UserSystem]
+    C --> D[IngestionSystem]
+    D --> E[ResponseGenerationSystem]
+    E --> F[ResponseDeliverySystem]
+    F --> G[ImproveUserProfileSystem]
+    G --> H[MediaStorageSystem]
+    H --> I[EmbeddingSystem]
+    I --> J[StoreMessageExchangeSystem]
+
+    D --> K[Content-Specific Systems]
+    K --> L[AudioIngestSystem]
+    K --> M[VoiceIngestSystem]
+    K --> N[TextIngestSystem]
+    K --> O[ImageIngestSystem]
+    K --> P[DocumentIngestSystem]
 ```
 
 ## Step-by-Step Implementation
 
-### Step 1: Message Ingestion
+### Step 1: Message Reception and User Management
 
-**Responsibility:** Initial message processing and storage
+**ReceiveMessageSystem**: Processes incoming webhook payload
 
-- Receive webhook payload from WhatsApp
-- Parse message content and metadata
-- Store raw message for processing
-- Route to appropriate content handler
-- Handle content-specific processing (e.g., audio transcription, document parsing, image analysis)
-- Store and embed processed content chunks in vector store
+- Parse WhatsApp webhook payload
+- Create message entity with appropriate components
+- Extract user information and message content
+- Handle different message types (text, media, etc.)
 
-### Step 2: Prompt Preparation and Context Orchestration
+**UserSystem**: Manages user persistence
 
-Responsibility: Prepare base prompt structure with placeholders and coordinate context retrieval and assembly
+- Create or update user from external ID
+- Maintain user profile information
+- Handle user state across sessions
 
-- Load base system prompt template
-- Prepare placeholders for dynamic content:
-  - `{{ user_profile }}` - User's persistent profile
-  - `{{ recent_messages }}` - Recent conversation history
-  - `{{ memory }}` - Retrieved similar content
-  - `{{ schedule }}` - Relevant reminders
+### Step 2: Content Ingestion
 
-Implementation:
+**IngestionSystem**: Routes messages to appropriate processors
 
-- Manages context assembly from multiple sources
-- Handles deduplication and token budget management
-- Returns composed context for prompt enrichment
+- Determine content type from message
+- Route to specialized ingestion systems
+- Handle media download and processing
 
-Context Sources:
+**Specialized Ingestion Systems**:
 
-- User profile (persistent user information)
-- Recent conversation history
-- Vector search results for similar content (can be messages or files)
-- Scheduled reminders
+- **TextIngestSystem**: Process text messages directly
+- **VoiceIngestSystem**: Transcribe voice recordings
+- **AudioIngestSystem**: Process audio files with system messages
+- **ImageIngestSystem**: Analyze images and generate descriptions
+- **DocumentIngestSystem**: Extract text from documents
 
-#### Conceptual Layers
+### Step 3: Response Generation
+
+**ResponseGenerationSystem**: Generate contextual responses
+
+- Assemble context from multiple sources:
+  - User profile (persistent information)
+  - Recent messages (configurable window)
+  - Similar messages (vector search results)
+  - Scheduled reminders (future feature)
+- Generate AI response with full context
+- Handle tool calls and integrations
+
+### Step 4: Response Delivery and Storage
+
+**ResponseDeliverySystem**: Send responses to user
+
+- Format response for WhatsApp
+- Send message via WhatsApp API
+- Handle delivery confirmation
+
+**ImproveUserProfileSystem**: Update user profile
+
+- Analyze user interactions
+- Update persistent profile information
+- Maintain user preferences and context
+
+**MediaStorageSystem**: Handle file storage
+
+- Store media files in object storage
+- Generate storage keys
+- Link media to messages
+
+**EmbeddingSystem**: Generate and store embeddings
+
+- Create vector embeddings for all content
+- Store embeddings in database
+- Enable similarity search
+
+**StoreMessageExchangeSystem**: Persist conversation
+
+- Store user and assistant messages
+- Maintain conversation history
+- Enable context retrieval
+
+## Context Assembly
+
+### Context Sources
+
+The system assembles context from multiple sources:
+
+1. **User Profile**: Persistent user information maintained across sessions
+2. **Recent Messages**: Configurable window of recent conversation history
+3. **Similar Messages**: Vector search results for semantic similarity
+4. **Scheduled Reminders**: Active and upcoming reminders (future feature)
+
+### Context Limits
+
+- **Recent Messages**: Configurable via `MAX_RECENT_MESSAGES` environment variable
+- **Similar Messages**: Configurable via `MAX_SIMILAR_MESSAGES` environment variable
+- **Token Budget**: 64k maximum prompt tokens per request
+- **Deduplication**: Remove duplicate content between different context sources
+
+### Context Assembly Process
 
 ```mermaid
 graph TD
-    A[Multi-Modal Input] --> B[Memory Chunks + Embeddings]
-    C[Prompt Builder] -->|similarity × recency| B
-    C -->|dedup + token cap| D[LLM]
-    E[User Profile] --> C
-    F[Recent Context] --> C
-    G[Scheduled Reminders] --> C
+    A[User Message] --> B[Generate Embeddings]
+    B --> C[Vector Search]
+    C --> D[Retrieve Similar Messages]
+    D --> E[Assemble Context]
+    E --> F[User Profile]
+    E --> G[Recent Messages]
+    E --> H[Similar Messages]
+    F --> I[LLM Response]
+    G --> I
+    H --> I
 ```
 
-**Memory Chunks**
+## Error Handling
 
-- Core content with embeddings
-- Flexible source metadata supporting multiple content types
-- User isolation and timestamp tracking
-- Extensible structure for future content types
+The ECS architecture provides robust error handling:
 
-**Context Sources**
+### Error Components
 
-- User profiles (maintained and updated by LLM)
-- Recent message history (configurable window)
-- Scheduled reminders (active and upcoming)
-- File references (documents, images with summaries)
-- Vector search results (similarity-based retrieval)
+- **ErrorComponent**: Captures error state in entities
+- **Error Delivery**: Converts error components to user-friendly messages
+- **Graceful Degradation**: Continues processing even with partial failures
 
-#### Runtime Flow
+### Error Flow
 
 ```mermaid
-sequenceDiagram
-    participant S as Server
-    participant P as Prompt Builder
-    participant M as Memory
-
-    P->>M: get user profile
-    S->>P: get current message + attachments
-    P->>M: get scheduled reminders
-    P->>M: get recent messages
-    P->>M: vector search similar chunks
-    note over P, M: for every chat message<br>the corresponding pair will be retrieved too
-    P->>P: deduplicate chunks
-    P-->>S: return prompt
+graph TD
+    A[System Error] --> B[Create ErrorComponent]
+    B --> C[ErrorEntity]
+    C --> D[ResponseDeliverySystem]
+    D --> E[User-Friendly Message]
+    E --> F[Send to User]
 ```
-
-#### Configuration Parameters
-
-**Content Processing**
-
-- Text chunking strategy
-  - Filter out deleted messages, stickers, captions, etc.
-- Document parsing configuration:
-  - `pdf.js` for native PDF text (fast, semantic preservation)
-  - `tesseract.js` OCR threshold (e.g., <50 chars from Phase 1 = trigger OCR)
-  - GPT-4o-mini fallback (for OCR accuracy <80% or complex layouts)
-  - Semantic chunking post-extraction (as in supermemory)
-  - Max chunk size
-- Fast image analysis model
-- Audio transcription service
-  - double speed before transcribing
-  - whisper-1
-- User profile update frequency and scope
-
-**Retrieval Settings**
-
-- Recent message window size (e.g., last 1 week)
-- Vector search top-K (e.g., 15-30 similar chunks before deduplication)
-- Similarity threshold for deduplication (e.g., cosine distance < 0.1)
-- 64k maximum prompt token budget per request
-
-**Memory Management**
-
-- Embedding model consistency
-- Archival policies for old content
-- Storage optimization strategies
-- Cross-user isolation enforcement
-
-### Step 3: Tool Integration
-
-**Responsibility:** Enable tool usage and execute tool calls
-
-**Available Tools:**
-
-- `create_reminder` - Schedule new reminders
-- `cancel_reminder` - Cancel existing reminders
-- `retrieve_file` - Access and return stored files
-
-Note: Web search is managed directly by the LLM provider.
-
-**Process:**
-
-1. Prepare tool definitions for LLM
-2. Send enriched prompt with available tools to LLM
-3. Receive response and potential tool calls
-4. Execute scheduler-related tool calls (create/cancel reminder)
-5. Execute file retrieval calls and integrate retrieved files into response
-6. Integrate tool results into final response
-
-### Step 4: Response Delivery
-
-**Responsibility:** Finalize and send response to user
-
-- Process tool call results
-- Generate final response content
-- Send response via WhatsApp
-- Store assistant response for future context
 
 ## Integration Points
 
-**Memory System Integration**
+### Memory System Integration
 
-- Delegates context retrieval to memory system
-- Receives assembled context respecting token budgets
-- No direct vector search or embedding logic in workflow
+- **EmbeddingSystem**: Generates and stores vector embeddings
+- **Vector Search**: Retrieves similar messages for context
+- **Context Assembly**: Combines multiple context sources
 
-**Scheduler Integration**
+### Database Integration
 
-- Handles reminder creation and cancellation
-- Abstracts scheduling logic from workflow
+- **User Persistence**: Maintains user profiles and state
+- **Message Storage**: Stores conversation history
+- **Embedding Storage**: Enables similarity search
 
-**File Storage Integration**
+### WhatsApp Integration
 
-- Handles file retrieval from object storage
-- Integrates retrieved files into responses
-- Abstracts storage details from workflow
+- **Message Reception**: Processes incoming webhooks
+- **Response Delivery**: Sends messages to users
+- **Media Handling**: Downloads and stores media files
 
-**LLM Provider Integration**
+### AI Provider Integration
 
-- Manages model selection and configuration
-- Handles function calling and tool integration
-- Processes enriched prompts with full context
-- Manages web search tool directly
+- **Text Generation**: Creates contextual responses
+- **Audio Transcription**: Converts voice to text
+- **Image Analysis**: Describes visual content
+- **Document Processing**: Extracts text from documents
 
 ## Success Metrics
 
-- **Context Relevance:** Appropriate context retrieved for user queries
-- **Tool Usage Success:** Successful execution of reminder and file operations
-- **Response Quality:** Contextual and personalized responses
-- **Performance:** End-to-end response time <3 seconds
-- **Token Efficiency:** Optimal context without exceeding budgets
+- **Context Relevance**: Appropriate context retrieved for user queries
+- **Response Quality**: Contextual and personalized responses
+- **Performance**: End-to-end response time <3 seconds
+- **Error Recovery**: Graceful handling of failures
+- **Memory Effectiveness**: Accurate similarity search results
+- **User Experience**: Seamless multi-modal interactions

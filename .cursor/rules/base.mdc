@@ -2,6 +2,16 @@
 alwaysApply: true
 ---
 
+# Tech Context
+
+- **TypeScript** with `strict` mode enabled; no `any` type.
+- **Bun** JS runtime.
+- `bun run dev` → `localhost:8080`.
+- Env vars from `.env`.
+- **libsql (sqlite fork)** relational database.
+- Embeddings are stored in libsql using its native vector support.
+- Files are mananed by _unstorage_.
+
 # Style
 
 - prefer single word variable/function names
@@ -14,8 +24,16 @@ alwaysApply: true
 - Use native `fetch`.
 - Use Responses API over Completions API.
 - Use Bun apis over Node apis.
+- Always run scripts from project root to properly load env vars.
 
 # Tooling
 
 - `oxc` for linting, via editor integration.
 - `prettier` for styling, via editor integration.
+
+# External Services
+
+- **Meta Business API** – WhatsApp messaging and media download.
+- **OpenAI Responses API** – text generation and image analysis.
+- **OpenAI Whisper** – speech-to-text transcription.
+- **Google AI Studio** – document processing and embeddings.

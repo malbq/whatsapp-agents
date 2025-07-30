@@ -1,29 +1,23 @@
-import type { Message, StatusUpdate } from '../domain/message'
-import type { User } from '../domain/user'
+import type { MessageComponent } from '../agent/components'
+import type { StatusUpdate } from '../domain'
 
+export interface IncomingMessage {
+  userExternalId: string
+  userName: string
+  externalId: string
+  type: MessageComponent['type']
+  text?: string
+  mediaData?: ArrayBuffer
+  mimeType?: string
+  documentFilename?: string
+}
 export interface Notification {
-  chatUser?: Pick<User, 'externalId' | 'name'>
-  message?: Message
+  message?: IncomingMessage
   statusUpdate?: StatusUpdate
 }
 
 export interface Chat {
-  parseNotification: (notification: any) => Notification
-
-  acknowledgeProcessingMessage: (
-    from: string,
-    messageId: string
-  ) => Promise<void>
-
-  sendTextMessage: (params: {
-    from: string
-    to: string
-    text: string
-    replyingTo?: string
-  }) => Promise<void>
-
-  fetchReceivedMedia: (mediaId: string) => Promise<{
-    media: ArrayBuffer
-    mimeType: string
-  }>
+  parseNotification: (notification: any) => Promise<Notification>
+  acknowledgeProcessingMessage: (messageId: string) => Promise<void>
+  sendTextMessage: (params: { text: string; replyingTo?: string }) => Promise<string>
 }

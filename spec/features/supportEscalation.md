@@ -1,7 +1,5 @@
 # Support & Escalation Flow
 
-_Last updated: <!-- YYYY-MM-DD -->2025-06-30_
-
 ## Principles
 
 1. The assistant remains the sole speaker in the main WhatsApp chat.

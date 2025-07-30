@@ -1,7 +1,9 @@
 import chalk from 'chalk'
 import { Hono } from 'hono'
+import { AsyncLocalStorage } from 'node:async_hooks'
 import { createHmac } from 'node:crypto'
 import { agent } from './agent'
+import { MediaHashMismatchError } from './errors'
 import { handleStatusUpdate } from './features/handleStatusUpdate'
 import { AIProvider } from './infra/ai'
 import { Whatsapp } from './infra/chatWhatsapp'
@@ -13,9 +15,12 @@ if (!META_APP_SECRET) {
   throw new Error('Missing app secret in environment variables')
 }
 
+const store = new AsyncLocalStorage<Map<string, any>>()
+export type Store = typeof store
+
 const deps: Deps = {
-  chat: Whatsapp.chat,
-  storage: FilesystemStorage.storage,
+  chat: Whatsapp.chat(store),
+  storage: FilesystemStorage.storage(),
   ai: AIProvider,
   db: LibSql.db(),
 }
@@ -28,58 +33,45 @@ app.get('/', async (c) => {
 
 app.post('/webhook', async (c) => {
   try {
-    const headerSignature = c.req.header('x-hub-signature-256')?.slice(7)
-    if (!headerSignature) return c.status(401)
+    // TODO: how to early respond webhook request withou waiting for agent promise to resolve?
+    await store.run(new Map(), async () => {
+      const headerSignature = c.req.header('x-hub-signature-256')?.slice(7)
+      if (!headerSignature) return c.status(401)
 
-    const body = await c.req.text()
-    const computedSignature = createHmac('sha256', META_APP_SECRET)
-      .update(body)
-      .digest('hex')
+      const body = await c.req.text()
+      const computedSignature = createHmac('sha256', META_APP_SECRET).update(body).digest('hex')
 
-    if (computedSignature !== headerSignature) return c.status(401)
+      if (computedSignature !== headerSignature) return c.status(401)
 
-    console.debug(chalk.gray(body))
-    const { chatUser, message, statusUpdate } = deps.chat.parseNotification(
-      JSON.parse(body)
-    )
+      const { message, statusUpdate } = await deps.chat.parseNotification(JSON.parse(body))
 
-    if (statusUpdate) {
-      await handleStatusUpdate(statusUpdate)
-      return c.body('', 200)
-    }
+      if (statusUpdate) {
+        await handleStatusUpdate(statusUpdate)
+        return c.body('', 200)
+      }
 
-    if (!chatUser || !message || !message.id) {
-      console.debug(chalk.yellow('Unknown notification'))
-      return c.body('', 200)
-    }
+      if (!message) {
+        console.debug(chalk.yellow('Unknown notification:', body))
+        return c.body('', 200)
+      }
 
-    // store only messages, not status updates
-    deps.db.storeWebhookEvent(body)
-    console.debug(chalk.green(`${message.type} message`))
-    if (message.type === 'unsupported') {
-      return c.body('', 200)
-    }
+      console.debug(chalk.gray(body))
+      // store only messages, not status updates
+      deps.db.storeWebhookEvent(body)
+      console.debug(chalk.green(`${message.type} message`))
+      if (message.type === 'unsupported') {
+        return c.body('', 200)
+      }
 
-    deps.chat.acknowledgeProcessingMessage(message.to, message.id)
-    const user =
-      (await deps.db.findUser(chatUser.externalId)) ??
-      (await deps.db.storeUser(chatUser))
-
-    const agentResponse = await agent(deps, {
-      user,
-      userMessage: message,
+      await agent(deps, message)
     })
-
-    // TODO: handle different response types
-    await deps.chat.sendTextMessage({
-      from: message.to,
-      to: message.from,
-      text: agentResponse.body,
-    })
-
     return c.body('', 200)
   } catch (error) {
-    console.error('webhook endpoint', error)
+    if (error instanceof MediaHashMismatchError) {
+      return c.body('', 200)
+    }
+    console.error('webhook endpoint')
+    console.error(error)
     return c.body('', 500)
   }
 })
@@ -90,11 +82,7 @@ app.get('/webhook', function webhookVerificationRequest(c) {
   const token = c.req.query('hub.verify_token')
   const challenge = c.req.query('hub.challenge')
 
-  if (
-    mode === 'subscribe' &&
-    token === process.env.WEBHOOK_VERIFY_TOKEN &&
-    challenge
-  ) {
+  if (mode === 'subscribe' && token === process.env.WEBHOOK_VERIFY_TOKEN && challenge) {
     console.log('Webhook verified successfully!')
     return c.text(challenge)
   }

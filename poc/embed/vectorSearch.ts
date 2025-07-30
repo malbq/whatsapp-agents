@@ -29,11 +29,11 @@ function calcSimilarity(a: number[], b: number[]): number {
   return dotProduct / (Math.sqrt(magnitudeA) * Math.sqrt(magnitudeB))
 }
 
-const input = 'quais os meus agendamentos?'
-const inputEmbedding =
-  (await generateEmbeddings(input).then((embeddings) => embeddings[0])) ?? []
-const results = search(inputEmbedding, 10)
+const input = "It's sunny today."
+const inputEmbedding = (await generateEmbeddings(input).then((embeddings) => embeddings[0])) ?? []
+const results = search(inputEmbedding, 100)
 console.log(`Query: ${input}`)
+console.log('Input Embedding:', JSON.stringify(inputEmbedding))
 console.table(
   results.map((result) => ({
     text: result.text,

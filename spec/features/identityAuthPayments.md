@@ -1,7 +1,5 @@
 # Identity, Authorization & Payments
 
-_Last updated: <!-- YYYY-MM-DD -->2025-06-30_
-
 ## Goals
 
 1. Reliably map each incoming WhatsApp message to a unique user.
@@ -10,14 +8,13 @@ _Last updated: <!-- YYYY-MM-DD -->2025-06-30_
 
 ## Identity
 
-- **Primary Key:** `wa_id` (WhatsApp phone number).
+- **Primary Key:** `external_id` (WhatsApp phone number).
 - **User Table:**
-  - `wa_id` string PK
+  - `id` string PK (UUID)
+  - `external_id` string UNIQUE (WhatsApp phone number)
   - `name` string
-  - `phone_number` string
-  - `created_at` datetime
-  - `plan` enum(free, pro, enterprise)
-  - `status` enum(active, delinquent, blocked)
+  - `joined_at` datetime
+  - `profile` string (persistent user information)
 
 _No password storage required; WhatsApp itself authenticates the sender._
 
@@ -31,9 +28,9 @@ sequenceDiagram
     participant DB as Users Table
 
     W->>G: message
-    G->>S: webhook + wa_id + HMAC
+    G->>S: webhook + external_id + HMAC
     S->>S: verify HMAC
-    S->>DB: upsert user by wa_id
+    S->>DB: upsert user by external_id
 ```
 
 ## Authorization & Feature Limits
