@@ -1,5 +1,12 @@
 import type { ComponentType, EntityId } from './agent/frame'
 
+export class FailedToPersistUserError extends Error {
+  constructor() {
+    super('Failed to persist user')
+    this.name = 'FailedToPersistUserError'
+  }
+}
+
 export class MediaHashMismatchError extends Error {
   constructor() {
     super('Media SHA256 mismatch')
@@ -32,5 +39,12 @@ export class EmbeddingsGenerationError extends Error {
   constructor(message: string) {
     super(message)
     this.name = 'EmbeddingsGenerationError'
+  }
+}
+
+export class IngestionError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'IngestionError'
   }
 }

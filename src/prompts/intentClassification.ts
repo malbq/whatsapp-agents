@@ -1,4 +1,3 @@
-import { zodTextFormat } from 'openai/helpers/zod'
 import { z } from 'zod'
 
 /**
@@ -39,9 +38,4 @@ export const instructions = `Identify user intent in inputs for an AI personal a
 
 export const requiredContext = ['memory', 'schedule', 'file', 'web'] as const
 
-export const format = zodTextFormat(
-  z.object({
-    context: z.array(z.enum(requiredContext)),
-  }),
-  'intent_classification'
-)
+export const format = z.object({ context: z.array(z.enum(requiredContext)) })

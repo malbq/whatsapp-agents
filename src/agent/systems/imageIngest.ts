@@ -1,6 +1,6 @@
-import { ComponentNotFoundError } from '../../errors'
+import { ComponentNotFoundError, IngestionError } from '../../errors'
 import * as Prompt from '../../prompts/prompt'
-import { SYSTEM_PRIORITY } from '../../utils/priorities'
+import { ASSISTANT_PRIORITY, SYSTEM_PRIORITY } from '../../utils/priorities'
 import type { EntityId, Frame } from '../frame'
 
 export async function imageIngest(
@@ -41,9 +41,18 @@ export async function imageIngest(
         text: Prompt.imageWithoutCaption,
       })
     }
-  } catch {
-    frame.addComponent(messageEntity, 'ErrorComponent', {
-      message: 'Desculpe, tive um problema ao analisar a imagem.',
+  } catch (error) {
+    console.error('ImageIngest error:', error)
+    const errorMessageEntity = frame.createEntity()
+    frame.addComponent(errorMessageEntity, 'Message', {
+      role: 'assistant',
+      type: 'text',
+      priority: ASSISTANT_PRIORITY,
     })
+    frame.addComponent(errorMessageEntity, 'TextContent', {
+      text: `Desculpe, tive um problema ao analisar a imagem.`,
+    })
+
+    throw new IngestionError('Failed to analyze image')
   }
 }

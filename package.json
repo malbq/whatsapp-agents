@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "bun --hot --no-clear-screen run src/index.ts",
     "typecheck": "tsc --noEmit",
-    "db:init": "bun run src/infra/dbSetup/init.ts"
+    "db:init": "bun run src/infra/dbSetup/init.ts",
+    "lint": "oxlint --fix"
   },
   "dependencies": {
     "@ai-sdk/google": "^2.0.0-beta.17",

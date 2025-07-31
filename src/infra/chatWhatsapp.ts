@@ -116,7 +116,7 @@ export namespace Whatsapp {
         })) as AcknowledgeMessageResponse
 
       if (response.success) {
-        console.debug('Message acknowledged', messageId)
+        console.debug(chalk.gray('Message acknowledged', messageId))
         return
       }
 

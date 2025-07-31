@@ -1,3 +1,4 @@
+import chalk from 'chalk'
 import { ComponentNotFoundError } from '../../errors'
 import type { AIMessage } from '../../infra/ai'
 import * as Prompt from '../../prompts/prompt'
@@ -5,6 +6,7 @@ import { ASSISTANT_PRIORITY } from '../../utils/priorities'
 import type { EntityId, Frame } from '../frame'
 
 export async function ResponseGenerationSystem(frame: Frame, deps: Deps, messageEntity: EntityId) {
+  console.debug(chalk.green('ResponseGenerationSystem'))
   const userComponent = frame.getComponent(frame.USER_ENTITY_ID, 'User')
   if (!userComponent) throw new ComponentNotFoundError(frame.USER_ENTITY_ID, 'User')
 
@@ -25,16 +27,19 @@ export async function ResponseGenerationSystem(frame: Frame, deps: Deps, message
 
   if (userComponent.profile) {
     messages.push({ role: 'system', content: Prompt.userProfile(userComponent.profile) })
+    console.debug(chalk.gray('context: user profile'))
   }
   // TODO: current schedule
   if (similarMessages.length) {
     messages.push({ role: 'system', content: Prompt.userMemory(similarMessages) })
+    console.debug(chalk.gray('context: similar messages'))
   }
   if (recentMessages.length) {
     messages.push({ role: 'system', content: Prompt.recentMessages })
     recentMessages.forEach((message) => {
       messages.push({ role: message.role, content: message.content })
     })
+    console.debug(chalk.gray('context: recent messages'))
   }
 
   frame
@@ -52,7 +57,9 @@ export async function ResponseGenerationSystem(frame: Frame, deps: Deps, message
     })
 
   try {
-    const response = await deps.ai.respond({ instructions: Prompt.system, messages })
+    console.debug(chalk.gray('messages:', JSON.stringify(messages, null, 2)))
+    const response = await deps.ai.respond({ messages })
+    console.debug(chalk.gray('response:', response))
 
     const responseEntity = frame.createEntity()
     frame.addComponent(responseEntity, 'Message', {
@@ -63,8 +70,14 @@ export async function ResponseGenerationSystem(frame: Frame, deps: Deps, message
     frame.addComponent(responseEntity, 'TextContent', { text: response })
   } catch (error) {
     console.error('ResponseGenerationSystem error:', error)
-    frame.addComponent(messageEntity, 'ErrorComponent', {
-      message: 'Desculpe, tive algum problema ao gerar a resposta.',
+    const errorMessageEntity = frame.createEntity()
+    frame.addComponent(errorMessageEntity, 'Message', {
+      role: 'assistant',
+      type: 'text',
+      priority: ASSISTANT_PRIORITY,
+    })
+    frame.addComponent(errorMessageEntity, 'TextContent', {
+      text: `Desculpe, tive algum problema ao tentar te responder.`,
     })
   }
 }

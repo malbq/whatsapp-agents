@@ -1,9 +1,11 @@
 import chalk from 'chalk'
 import { Hono } from 'hono'
+import { contextStorage } from 'hono/context-storage'
+import { logger } from 'hono/logger'
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { createHmac } from 'node:crypto'
 import { agent } from './agent'
-import { MediaHashMismatchError } from './errors'
+import { FailedToPersistUserError, MediaHashMismatchError } from './errors'
 import { handleStatusUpdate } from './features/handleStatusUpdate'
 import { AIProvider } from './infra/ai'
 import { Whatsapp } from './infra/chatWhatsapp'
@@ -26,6 +28,8 @@ const deps: Deps = {
 }
 
 export const app = new Hono()
+app.use(logger())
+app.use(contextStorage())
 
 app.get('/', async (c) => {
   return c.text('OK')
@@ -51,14 +55,13 @@ app.post('/webhook', async (c) => {
       }
 
       if (!message) {
-        console.debug(chalk.yellow('Unknown notification:', body))
+        console.warn(chalk.yellow('Unknown notification:', body))
         return c.body('', 200)
       }
 
       console.debug(chalk.gray(body))
       // store only messages, not status updates
       deps.db.storeWebhookEvent(body)
-      console.debug(chalk.green(`${message.type} message`))
       if (message.type === 'unsupported') {
         return c.body('', 200)
       }
@@ -67,7 +70,7 @@ app.post('/webhook', async (c) => {
     })
     return c.body('', 200)
   } catch (error) {
-    if (error instanceof MediaHashMismatchError) {
+    if (error instanceof MediaHashMismatchError || error instanceof FailedToPersistUserError) {
       return c.body('', 200)
     }
     console.error('webhook endpoint')

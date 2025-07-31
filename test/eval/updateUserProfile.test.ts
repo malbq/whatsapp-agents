@@ -1,7 +1,7 @@
 import { describe, expect, setDefaultTimeout, test } from 'bun:test'
 import { AIProvider } from '../../src/infra/ai'
 
-setDefaultTimeout(15000)
+setDefaultTimeout(30000)
 
 describe.if(!!process.env.TEST_AI)('Update user profile', () => {
   test('should define user language', async () => {

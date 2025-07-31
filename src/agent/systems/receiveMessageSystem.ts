@@ -1,3 +1,4 @@
+import chalk from 'chalk'
 import type { IncomingMessage } from '../../infra/chat'
 import { USER_PRIORITY } from '../../utils/priorities'
 import { Frame } from '../frame'
@@ -7,8 +8,14 @@ export async function ReceiveMessageSystem(
   deps: Deps,
   incomingMessage: IncomingMessage
 ) {
-  deps.chat.acknowledgeProcessingMessage(incomingMessage.externalId)
-
+  console.debug(chalk.green('ReceiveMessageSystem'))
+  console.debug(
+    chalk.gray(
+      incomingMessage.userName,
+      incomingMessage.type,
+      incomingMessage.text ?? incomingMessage.mimeType
+    )
+  )
   const messageEntity = frame.createEntity()
   frame.addComponent(messageEntity, 'Message', {
     externalId: incomingMessage.externalId,

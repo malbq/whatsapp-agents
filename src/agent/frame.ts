@@ -1,7 +1,6 @@
 import { EntityNotFoundError } from '../errors'
 import type {
   DocumentContentComponent,
-  ErrorComponent,
   ImageContentComponent,
   MediaComponent,
   MessageComponent,
@@ -14,7 +13,6 @@ import type {
 export type EntityId = number
 export type ComponentType =
   | 'DocumentContent'
-  | 'ErrorComponent'
   | 'ImageContent'
   | 'Media'
   | 'Message'
@@ -25,7 +23,6 @@ export type ComponentType =
 
 export type ComponentMap = {
   DocumentContent: DocumentContentComponent
-  ErrorComponent: ErrorComponent
   ImageContent: ImageContentComponent
   Media: MediaComponent
   Message: MessageComponent

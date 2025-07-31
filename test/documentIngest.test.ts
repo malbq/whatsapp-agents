@@ -4,7 +4,7 @@ import { Frame } from '../src/agent/frame'
 import { documentIngest } from '../src/agent/systems/documentIngest'
 import { parsePdf } from '../src/utils/parsePdf'
 
-let deps: Deps
+let deps: TestDeps
 let frame: Frame
 
 const mockDocumentTranscription = 'This is a test document transcription'

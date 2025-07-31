@@ -1,5 +1,6 @@
 import { createClient, type Client } from '@libsql/client'
 import type { UserComponent } from '../agent/components'
+import { FailedToPersistUserError } from '../errors'
 import type { DB, RecentMessage, SimilarMessage } from './db'
 
 export namespace LibSql {
@@ -19,17 +20,22 @@ export namespace LibSql {
         })
       },
       async persistUser({ externalId, name }) {
-        const insertResult = await client.execute({
-          sql: `INSERT INTO
-          user (id, external_id, name)
-          VALUES(?, ?, ?)
-          ON CONFLICT(external_id) DO UPDATE SET name = excluded.name
-          RETURNING id, external_id, name, joined_at,profile`,
-          args: [Bun.randomUUIDv7(), externalId, name],
-        })
+        const insertResult = await client
+          .execute({
+            sql: `INSERT INTO
+            user (id, external_id, name)
+            VALUES(?, ?, ?)
+            ON CONFLICT(external_id) DO UPDATE SET name = excluded.name
+            RETURNING id, external_id, name, joined_at,profile`,
+            args: [Bun.randomUUIDv7(), externalId, name],
+          })
+          .catch((error) => {
+            console.error(error)
+            throw new FailedToPersistUserError()
+          })
 
         if (insertResult.rows.length === 0) {
-          throw new Error('Failed to create user')
+          throw new FailedToPersistUserError()
         }
 
         const newUser = insertResult.rows[0]!

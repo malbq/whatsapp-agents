@@ -1,6 +1,6 @@
-import { ComponentNotFoundError } from '../../errors'
+import { ComponentNotFoundError, IngestionError } from '../../errors'
 import * as Prompt from '../../prompts/prompt'
-import { SYSTEM_PRIORITY } from '../../utils/priorities'
+import { ASSISTANT_PRIORITY, SYSTEM_PRIORITY } from '../../utils/priorities'
 import type { EntityId, Frame } from '../frame'
 
 export async function audioIngest(
@@ -21,9 +21,18 @@ export async function audioIngest(
     frame.addComponent(systemMessageEntity, 'TextContent', {
       text: Prompt.audioTranscription(transcribed),
     })
-  } catch {
-    frame.addComponent(messageEntity, 'ErrorComponent', {
-      message: 'Desculpe, tive um problema ao transcrever o áudio.',
+  } catch (error) {
+    console.error('AudioIngest error:', error)
+    const errorMessageEntity = frame.createEntity()
+    frame.addComponent(errorMessageEntity, 'Message', {
+      role: 'assistant',
+      type: 'text',
+      priority: ASSISTANT_PRIORITY,
     })
+    frame.addComponent(errorMessageEntity, 'TextContent', {
+      text: `Desculpe, tive um problema ao transcrever o áudio.`,
+    })
+
+    throw new IngestionError('Failed to transcribe audio')
   }
 }

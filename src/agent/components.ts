@@ -70,7 +70,3 @@ export interface ReminderComponent {
   dueDate: Date
   sent: boolean
 }
-
-export interface ErrorComponent {
-  message: string
-}

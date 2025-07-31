@@ -2,32 +2,18 @@
 
 ## Current Focus
 
-- **ECS Architecture Implementation**: Successfully migrated from monolithic agent to Entity-Component-System architecture
-
-  - Implemented Frame system with component-based entities
-  - Created specialized systems for different concerns (ingestion, embedding, response generation, etc.)
-  - Improved separation of concerns and testability
-
-- **Multi-Modal Processing**: Fully implemented support for:
-
-  - Text messages with context retrieval
-  - Voice recordings with transcription
-  - Audio files with transcription
-  - Images with analysis and description
-  - Documents with transcription and storage
-
-- **Memory System**: Vector-based memory with similarity search
-
-  - Embeddings generation and storage
-  - Similar message retrieval
-  - Context assembly with deduplication
-  - User profile maintenance and updates
-
-- **Database Schema**: Updated to support new architecture
-  - User table with profile storage
-  - Message table with media storage keys
-  - Embedding table with vector support
-  - Raw incoming message storage
+- Add Usage Tracking: Track AI token usage and storage per user in DB; enforce free-tier (e.g., 10k tokens/day).
+- Data Privacy Features: Implement data export (query DB for user data) and deletion (cascade delete from user/message/embedding tables) commands, triggered via chat intents. Add privacy policy notice on first interaction.
+- Enhance Error Handling: Add retry logic for AI/transcription failures; ensure all systems bubble errors without crashing the agent.
+- Observability: Integrate structured logging (e.g., with Pino) for errors, AI usage, and key events; add basic metrics (e.g., Prometheus) for monitoring.
+- Security Audit: Validate all env vars (e.g., API tokens) are required and encrypted; add input sanitization in webhook parsing to prevent injection.
+- Backup Strategy: Set up automated DB backups (e.g., via cron) and media storage snapshots to prevent data loss.
+- Compliance Check: Review for GDPR basics (consent, data minimization); add user onboarding message explaining data usage.
+- Cost Monitoring: Set up alerts for AI provider usage thresholds (e.g., via OpenAI dashboard hooks).
+- Testing: Add e2e tests for error scenarios, privacy flows, and rate limits (extend agent.test.ts).
+- Recommended Option: Use platforms supporting Bun natively, like Railway or Render. Deploy as a Dockerized Bun app (Bun has built-in Docker support). This handles scaling, env vars, and integrates with Cloudflare for storage/vector.
+- Self-Hosted Alternative: Run on a VPS (e.g., DigitalOcean) with Bun's built-in server; use PM2 or systemd for process management, Caddy/Nginx for reverse proxy, and cron for backups.
+- Trade-offs: Avoid full serverless to prevent runtime changes, but add manual scaling/monitoring. Integrate Cloudflare directly via Bun's fetch for R2/Vectorize access. Start with Railway for quick setup, as it supports Bun out-of-box and auto-deploys from Git.
 
 ## Next
 
@@ -36,6 +22,7 @@
   - `search_file` and `retrieve_file` tools for file access
   - `create_reminder` and `cancel_reminder` tools
   - Tool execution system in agent workflow
+  - Transform profile update in a tool
 
 - **Scheduler System**: Implement reminder functionality
 

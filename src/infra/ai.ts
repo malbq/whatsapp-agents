@@ -4,28 +4,51 @@ import {
   generateText,
   experimental_transcribe as transcribe,
   type AssistantModelMessage,
+  type LanguageModelUsage,
   type SystemModelMessage,
   type TextPart,
+  type Tool,
   type UserModelMessage,
 } from 'ai'
 import chalk from 'chalk'
 import { EmbeddingsGenerationError } from '../errors'
-import imageAnalysisPrompt from '../prompts/imageAnalysis.txt'
 import * as Prompt from '../prompts/prompt'
+import { formatTokenUsage } from '../utils/formatTokenUsage'
 
-const TEXT_MODEL = 'gpt-4.1-2025-04-14'
-const IMAGE_ANALYSIS_MODEL = 'gpt-4.1-mini-2025-04-14'
-const AUDIO_TRANSCRIPTION_MODEL = 'whisper-1'
+const TEXT_MODEL =
+  process.env.TEXT_GENERATION_PROVIDER === 'google'
+    ? google('gemini-2.5-flash')
+    : openai('gpt-4.1-mini')
+
+const AUDIO_TRANSCRIPTION_MODEL =
+  process.env.AUDIO_TRANSCRIPTION_PROVIDER === 'google'
+    ? google('gemini-2.5-flash')
+    : openai.transcription('whisper-1')
+
+const IMAGE_ANALYSIS_MODEL =
+  process.env.IMAGE_ANALYSIS_PROVIDER === 'google'
+    ? google('gemini-2.5-flash')
+    : openai('gpt-4.1-mini-2025-04-14')
+
+const DOCUMENT_TRANSCRIPTION_MODEL = google('gemini-2.5-flash-lite')
 const EMBEDDING_MODEL = '@cf/baai/bge-small-en-v1.5'
-const DOCUMENT_TRANSCRIPTION_MODEL = 'gemini-2.5-flash-lite'
+const TEXT_GEN_MAX_OUTPUT_TOKENS = 512
+const TEXT_GEN_TEMP = 0.1
+const TRANSCRIPTION_GEN_TEMP = 0
+const UPDATE_USER_PROFILE_TEMP = 0
 
 export type AIMessage = SystemModelMessage | UserModelMessage | AssistantModelMessage
 
 export interface AI {
   respond: (params: { instructions?: string; messages: Array<AIMessage> }) => Promise<string>
   transcribeAudio: (params: { audio: ArrayBuffer }) => Promise<string>
-  analyzeImage: (params: { imageUrl: string; caption?: string }) => Promise<string>
+  analyzeImage: (params: {
+    instructions?: string
+    imageUrl: string
+    caption?: string
+  }) => Promise<string>
   transcribeDocument: (params: {
+    instructions?: string
     document: ArrayBuffer
     mimeType: string
     filename: string
@@ -35,90 +58,154 @@ export interface AI {
 }
 
 export const AIProvider: AI = {
-  respond: async ({ instructions, messages }) => {
+  respond: async ({ instructions = Prompt.system, messages }) => {
+    let tools: Record<string, Tool> = {}
+    switch (TEXT_MODEL.provider) {
+      case 'google.generative-ai':
+        tools = {
+          google_search: google.tools.googleSearch({}),
+        }
+        break
+      case 'openai':
+        tools = {
+          web_search_preview: openai.tools.webSearchPreview({}),
+        }
+        break
+      default:
+    }
     const response = await generateText({
-      model: openai(TEXT_MODEL),
-      maxOutputTokens: 512,
-      temperature: 0.1,
+      model: TEXT_MODEL,
+      temperature: TEXT_GEN_TEMP,
       system: instructions,
       messages,
+      tools,
     })
-    console.debug(chalk.yellow('LLM response'))
-    console.debug(chalk.gray('content', JSON.stringify(response.content)))
-    console.debug(chalk.gray('usage', JSON.stringify(response.usage)))
-    console.debug(chalk.gray('toolCalls', JSON.stringify(response.toolCalls)))
-    console.debug(chalk.gray('toolResults', JSON.stringify(response.toolResults)))
-    console.debug(chalk.gray('providerMetadata', JSON.stringify(response.providerMetadata)))
-    console.debug(chalk.gray('steps', JSON.stringify(response.steps)))
-    console.debug(chalk.gray('warnings', JSON.stringify(response.warnings)))
-
+    console.debug(chalk.gray(`LLM response ${TEXT_MODEL.provider}/${TEXT_MODEL.modelId}`))
+    if (
+      (response.providerMetadata?.google?.groundingMetadata as any | undefined)?.webSearchQueries
+    ) {
+      console.debug(
+        chalk.gray(
+          'google search:',
+          (response.providerMetadata?.google?.groundingMetadata as any)?.webSearchQueries
+        )
+      )
+    }
+    if (response.toolResults?.length) {
+      console.debug(chalk.gray('tools results:', JSON.stringify(response.toolResults)))
+    }
+    if (response.toolCalls?.length) {
+      console.debug(chalk.gray('tools calls:', JSON.stringify(response.toolCalls)))
+    }
+    console.debug(chalk.gray('usage:', formatTokenUsage(response.usage)))
+    console.debug(chalk.gray(response.text))
     return response.text
   },
   transcribeAudio: async ({ audio }) => {
-    const response = await transcribe({
-      model: openai.transcription(AUDIO_TRANSCRIPTION_MODEL),
-      providerOptions: {
-        openai: {
-          response_format: 'json',
-          temperature: 0,
-        },
-      },
-      audio,
-    })
-    console.debug(chalk.yellow('LLM transcription'))
+    let text = ''
+    let usage: LanguageModelUsage | undefined
+    switch (AUDIO_TRANSCRIPTION_MODEL.provider) {
+      case 'google.generative-ai':
+        {
+          const response = await generateText({
+            model: AUDIO_TRANSCRIPTION_MODEL as any,
+            temperature: TRANSCRIPTION_GEN_TEMP,
+            system: 'Generate a transcription of the audio file',
+            messages: [
+              {
+                role: 'user',
+                content: [
+                  {
+                    type: 'file',
+                    data: audio,
+                    mediaType: 'audio/ogg',
+                  },
+                ],
+              },
+            ],
+          })
+          text = response.text
+          usage = response.usage
+        }
+        break
+      case 'openai.transcription':
+        {
+          const response = await transcribe({
+            model: AUDIO_TRANSCRIPTION_MODEL as any,
+            providerOptions: {
+              openai: {
+                response_format: 'json',
+                temperature: TRANSCRIPTION_GEN_TEMP,
+              },
+            },
+            audio,
+          })
+          text = response.text
+        }
+        break
+      default:
+        throw new Error(`Unsupported provider: ${AUDIO_TRANSCRIPTION_MODEL.provider}`)
+    }
     console.debug(
-      chalk.gray({
-        text: JSON.stringify(response.text),
-        durationInSeconds: JSON.stringify(response.durationInSeconds),
-        providerMetadata: JSON.stringify(response.providerMetadata),
-        language: JSON.stringify(response.language),
-        segments: JSON.stringify(response.segments),
-        warnings: JSON.stringify(response.warnings),
-      })
+      chalk.gray(
+        `LLM transcription ${AUDIO_TRANSCRIPTION_MODEL.provider}/${AUDIO_TRANSCRIPTION_MODEL.modelId}`
+      ),
+      '\n',
+      chalk.gray('usage: ', usage ? formatTokenUsage(usage) : '-'),
+      '\n',
+      chalk.gray(text)
+    )
+    return text
+  },
+  analyzeImage: async ({ instructions = Prompt.analyzeImage, imageUrl, caption }) => {
+    const response = await generateText({
+      model: IMAGE_ANALYSIS_MODEL,
+      maxOutputTokens: TEXT_GEN_MAX_OUTPUT_TOKENS,
+      temperature: TEXT_GEN_TEMP,
+      system: instructions,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              image: imageUrl,
+            },
+            ...(caption
+              ? [
+                  {
+                    type: 'text',
+                    text: caption,
+                  } as TextPart,
+                ]
+              : []),
+          ],
+        },
+      ],
+    })
+    console.debug(
+      chalk.gray(
+        `LLM image analysis ${IMAGE_ANALYSIS_MODEL.provider}/${IMAGE_ANALYSIS_MODEL.modelId}`
+      ),
+      '\n',
+      chalk.gray('usage: ', formatTokenUsage(response.usage)),
+      '\n',
+      chalk.gray(response.text)
     )
     return response.text
   },
-  analyzeImage: async ({ imageUrl, caption }) => {
-    const imageInput: UserModelMessage = {
-      role: 'user',
-      content: [
-        {
-          type: 'image',
-          image: imageUrl,
-        },
-      ],
-    }
-    if (caption) {
-      ;(imageInput.content as Array<TextPart>).push({
-        type: 'text',
-        text: caption,
-      })
-    }
+  transcribeDocument: async ({
+    instructions = Prompt.trascribeDocument,
+    document,
+    mimeType,
+    filename,
+  }) => {
     const response = await generateText({
-      model: openai(IMAGE_ANALYSIS_MODEL),
-      maxOutputTokens: 500,
-      temperature: 0.1,
-      messages: [
-        {
-          role: 'system',
-          content: imageAnalysisPrompt,
-        },
-        imageInput,
-      ],
-    })
-    console.debug(chalk.gray('LLM image analysis:', JSON.stringify(response)))
-    return response.text
-  },
-  transcribeDocument: async ({ document, mimeType, filename }) => {
-    const response = await generateText({
-      model: google(DOCUMENT_TRANSCRIPTION_MODEL),
+      model: DOCUMENT_TRANSCRIPTION_MODEL,
       maxOutputTokens: 65536,
       temperature: 0,
+      system: instructions,
       messages: [
-        {
-          role: 'system',
-          content: Prompt.trascribeDocument,
-        },
         {
           role: 'user',
           content: [
@@ -132,21 +219,31 @@ export const AIProvider: AI = {
         },
       ],
     })
-    console.debug(chalk.yellow('LLM document transcription'))
-    console.debug(chalk.gray('usage: ', JSON.stringify(response.usage)))
-    console.debug(chalk.gray('text: ', JSON.stringify(response.text)))
+    console.debug(
+      chalk.gray(
+        `LLM document transcription ${DOCUMENT_TRANSCRIPTION_MODEL.provider}/${DOCUMENT_TRANSCRIPTION_MODEL.modelId}`
+      ),
+      '\n',
+      chalk.gray('usage: ', formatTokenUsage(response.usage)),
+      '\n',
+      chalk.gray(response.text)
+    )
     return response.text
   },
   updateUserProfile: async ({ profile, message }) => {
     const response = await generateText({
-      model: openai(TEXT_MODEL),
+      model: TEXT_MODEL,
       maxOutputTokens: 2000,
-      temperature: 0.1,
+      temperature: UPDATE_USER_PROFILE_TEMP,
       prompt: Prompt.updateUserProfile(profile, message),
     })
-    console.debug(chalk.yellow('LLM update user profile'))
-    console.debug(chalk.gray('usage: ', JSON.stringify(response.usage)))
-    console.debug(chalk.gray('text: ', JSON.stringify(response.text)))
+    console.debug(
+      chalk.gray(`LLM update user profile ${TEXT_MODEL.provider}/${TEXT_MODEL.modelId}`),
+      '\n',
+      chalk.gray('usage: ', formatTokenUsage(response.usage)),
+      '\n',
+      chalk.gray(response.text)
+    )
     return response.text
   },
   generateEmbeddings: async ({ text }) => {

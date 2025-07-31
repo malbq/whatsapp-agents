@@ -1,8 +1,7 @@
+import { generateObject } from 'ai'
 import chalk from 'chalk'
 import path from 'node:path'
-import { OpenAI } from 'openai'
 import { format, instructions, requiredContext } from '../../../src/prompts/intentClassification'
-const client = new OpenAI()
 
 const inputData = path.join(import.meta.dir, 'data.json')
 const report = path.join(import.meta.dir, 'report.csv')
@@ -17,14 +16,14 @@ let correct = 0
 let incorrect = 0
 const results: string[][] = await Promise.all(
   data.slice(0, 10).map(async (item) => {
-    const response = await client.responses.parse({
+    const response = await generateObject({
       model: 'gpt-4.1-mini-2025-04-14',
-      instructions,
-      text: { format },
-      input: item.input,
+      system: instructions,
+      schema: format,
+      prompt: item.input,
     })
     const classification = JSON.stringify(
-      response.output_parsed?.context.sort((a: string, b: string) => a.localeCompare(b)) ?? []
+      response.object.context.sort((a: string, b: string) => a.localeCompare(b)) ?? []
     )
 
     const expected = JSON.stringify(item.output.sort((a: string, b: string) => a.localeCompare(b)))
@@ -42,7 +41,7 @@ const results: string[][] = await Promise.all(
       isEqual ? chalk.green(classification) : chalk.red(`${classification} expected: ${expected}`)
     )
 
-    tokens += response.usage?.total_tokens ?? 0
+    tokens += response.usage?.totalTokens ?? 0
     return [item.input, classification, expected, isEqual ? '' : '❌']
   })
 )

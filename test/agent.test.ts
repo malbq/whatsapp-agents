@@ -26,7 +26,7 @@ const storagePath = `/tmp/agent-test-${Date.now()}`
 let db: DB
 let storage: Storage
 let dbClient: Client
-let deps: Deps
+let deps: TestDeps
 
 const imageAnalysisResult = 'image analysis result'
 const aiTextResponse = 'mock response'
@@ -125,7 +125,6 @@ describe('Smoke test: first interaction', () => {
     )
     expect(deps.chat.acknowledgeProcessingMessage).toHaveBeenCalled()
     expect(deps.ai.respond).toHaveBeenCalledWith({
-      instructions: Prompt.system,
       messages: [{ role: 'user', content: message.text }],
     })
     expect(deps.chat.sendTextMessage).toHaveBeenCalledWith({ text: aiTextResponse })
@@ -193,7 +192,6 @@ describe('Smoke test: first interaction', () => {
     expect(deps.chat.acknowledgeProcessingMessage).toHaveBeenCalled()
     expect(deps.ai.transcribeAudio).toHaveBeenCalledWith({ audio: message.mediaData })
     expect(deps.ai.respond).toHaveBeenCalledWith({
-      instructions: Prompt.system,
       messages: [{ role: 'user', content: audioTranscriptionResult }],
     })
     expect(deps.chat.sendTextMessage).toHaveBeenCalledWith({ text: aiTextResponse })
@@ -250,7 +248,6 @@ describe('Smoke test: first interaction', () => {
     expect(deps.chat.acknowledgeProcessingMessage).toHaveBeenCalled()
     expect(deps.ai.transcribeAudio).toHaveBeenCalledWith({ audio: message.mediaData })
     expect(deps.ai.respond).toHaveBeenCalledWith({
-      instructions: Prompt.system,
       messages: [
         {
           role: 'system',
@@ -325,7 +322,6 @@ describe('Smoke test: first interaction', () => {
       caption: message.text,
     })
     expect(deps.ai.respond.mock.calls[0]?.[0]).toEqual({
-      instructions: Prompt.system,
       messages: [
         { role: 'system', content: Prompt.imageDescription(imageAnalysisResult) },
         { role: 'user', content: message.text },
@@ -424,7 +420,6 @@ describe('Smoke test: first interaction', () => {
     })
 
     expect(deps.ai.respond.mock.calls[0]?.[0]).toEqual({
-      instructions: Prompt.system,
       messages: [
         { role: 'system', content: Prompt.imageDescription(imageAnalysisResult) },
         { role: 'system', content: Prompt.imageWithoutCaption },
@@ -522,7 +517,6 @@ describe('Smoke test: first interaction', () => {
     })
 
     expect(deps.ai.respond.mock.calls[0]?.[0]).toEqual({
-      instructions: Prompt.system,
       messages: [
         {
           role: 'system',
@@ -606,7 +600,6 @@ describe('Extra context: user profile', () => {
     await agent(deps, message)
 
     expect(deps.ai.respond.mock.calls[0]?.[0]).toEqual({
-      instructions: Prompt.system,
       messages: [
         { role: 'system', content: Prompt.userProfile(user.profile) },
         { role: 'user', content: message.text },
@@ -652,7 +645,6 @@ describe('Extra context: recent messages', () => {
         { role: 'user', content: message.text },
       ]
       expect(deps.ai.respond.mock.calls[i]?.[0]).toEqual({
-        instructions: Prompt.system,
         messages: expectedMessages,
       })
     }
@@ -860,7 +852,7 @@ describe('Extra context: similar messages', () => {
         -0.0648193359375, 0.11297607421875, 0.0006136894226074219, -0.0150909423828125,
         -0.0687255859375, -0.0335693359375, 0.06304931640625, -0.0599365234375, 0.026763916015625,
         0.039764404296875, -0.0190277099609375, -0.0234375, -0.1778564453125, 0.01422882080078125,
-        0.015960693359375, -0.0014963150024414062, 0.0102386474609375, -0.04168701171875,
+        0.015960693359375, -0.001496315002441406, 0.0102386474609375, -0.04168701171875,
         0.07159423828125, 0.04473876953125, 0.09356689453125, 0.0177764892578125,
         -0.0007224082946777344, -0.0458984375, -0.002361297607421875, 0.0096893310546875,
         0.03961181640625, 0.01383209228515625, 0.0288238525390625, -0.090576171875,
@@ -953,9 +945,9 @@ describe('Extra context: similar messages', () => {
         0.0122833251953125, 0.0243072509765625, 0.06500244140625, -0.062744140625,
         0.016448974609375, -0.06072998046875, -0.0150146484375, -0.0030231475830078125,
         0.030303955078125, 0.054290771484375, 0.039520263671875, 0.0185699462890625,
-        -0.01287841796875, -0.007480621337890625, 0.0013246536254882812, 0.04736328125, -0.1328125,
+        -0.01287841796875, -0.007480621337890625, 0.001324653625488281, 0.04736328125, -0.1328125,
         0.0299224853515625, -0.007190704345703125, -0.060882568359375, -0.01152801513671875,
-        0.0178985595703125, 0.03961181640625, -0.0121917724609375, 0.0012254714965820312,
+        0.0178985595703125, 0.03961181640625, -0.0121917724609375, 0.001225471496582031,
         0.0283966064453125, 0.03265380859375, 0.06640625, 0.0247955322265625, -0.01236724853515625,
         -0.041717529296875, -0.05584716796875, -0.0560302734375, -0.08154296875,
         -0.00693511962890625, -0.038299560546875, -0.0205078125, -0.00859832763671875,
@@ -1140,7 +1132,7 @@ describe('Extra context: similar messages', () => {
         -0.0648193359375, 0.11297607421875, 0.0006136894226074219, -0.0150909423828125,
         -0.0687255859375, -0.0335693359375, 0.06304931640625, -0.0599365234375, 0.026763916015625,
         0.039764404296875, -0.0190277099609375, -0.0234375, -0.1778564453125, 0.01422882080078125,
-        0.015960693359375, -0.0014963150024414062, 0.0102386474609375, -0.04168701171875,
+        0.015960693359375, -0.001496315002441406, 0.0102386474609375, -0.04168701171875,
         0.07159423828125, 0.04473876953125, 0.09356689453125, 0.0177764892578125,
         -0.0007224082946777344, -0.0458984375, -0.002361297607421875, 0.0096893310546875,
         0.03961181640625, 0.01383209228515625, 0.0288238525390625, -0.090576171875,
