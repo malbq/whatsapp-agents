@@ -62,7 +62,7 @@ beforeAll(async () => {
       respond: mock(async () => aiTextResponse),
       transcribeAudio: mock(async () => audioTranscriptionResult),
       transcribeDocument: mock(async () => documentTranscriptionResult),
-      updateUserProfile: mock(async () => updatedProfile),
+      improveUserProfile: mock(async () => updatedProfile),
       generateEmbeddings: mock(async ({ text }: { text: string[] }) =>
         text.map(() => mockEmbeddings)
       ),
@@ -129,14 +129,6 @@ describe('Smoke test: first interaction', () => {
     })
     expect(deps.chat.sendTextMessage).toHaveBeenCalledWith({ text: aiTextResponse })
     expect(deps.storage.store).not.toHaveBeenCalled()
-    expect(deps.ai.updateUserProfile).toHaveBeenCalledWith({
-      profile: '',
-      message: message.text,
-    })
-    expect(deps.db.updateUserProfile).toHaveBeenCalledWith({
-      userId: persistedUser.id,
-      profile: updatedProfile,
-    })
     expect(deps.ai.generateEmbeddings.mock.calls[0]?.[0]).toEqual({
       text: [message.text],
     })
@@ -169,6 +161,11 @@ describe('Smoke test: first interaction', () => {
         ],
       },
     ])
+    expect(deps.db.updateUserProfile.mock.calls[0]?.[0]).toEqual({
+      userId: persistedUser.id,
+      profile: updatedProfile,
+      messageId: (await deps.db.storeMessage.mock.results[0].value)?.[0],
+    })
   })
   test('Voice recording', async () => {
     const message: IncomingMessage = {
@@ -257,7 +254,7 @@ describe('Smoke test: first interaction', () => {
     })
     expect(deps.chat.sendTextMessage).toHaveBeenCalledWith({ text: aiTextResponse })
     expect(deps.storage.store).not.toHaveBeenCalled()
-    expect(deps.ai.updateUserProfile).not.toHaveBeenCalled()
+    expect(deps.ai.improveUserProfile).not.toHaveBeenCalled()
     expect(deps.db.updateUserProfile).not.toHaveBeenCalled()
     expect(deps.ai.generateEmbeddings.mock.calls[0]?.[0]).toEqual({
       text: [Prompt.audioTranscription(audioTranscriptionResult), aiTextResponse],
@@ -333,7 +330,7 @@ describe('Smoke test: first interaction', () => {
       data: message.mediaData,
       mimeType: message.mimeType,
     })
-    expect(deps.ai.updateUserProfile.mock.calls[0]?.[0]).toEqual({
+    expect(deps.ai.improveUserProfile.mock.calls[0]?.[0]).toEqual({
       profile: persistedUser.profile,
       message: message.text,
     })
@@ -383,6 +380,11 @@ describe('Smoke test: first interaction', () => {
         ],
       },
     ])
+    expect(deps.db.updateUserProfile.mock.calls[0]?.[0]).toEqual({
+      userId: persistedUser.id,
+      profile: updatedProfile,
+      messageId: (await deps.db.storeMessage.mock.results[0].value)?.[0],
+    })
   })
   test('Image without caption', async () => {
     const message: IncomingMessage = {
@@ -396,7 +398,7 @@ describe('Smoke test: first interaction', () => {
 
     const result = await agent(deps, message)
     expect(result).toBeUndefined()
-    expect(deps.ai.updateUserProfile).not.toHaveBeenCalled()
+    expect(deps.ai.improveUserProfile).not.toHaveBeenCalled()
     expect(deps.db.updateUserProfile).not.toHaveBeenCalled()
     expect(deps.chat.acknowledgeProcessingMessage).toHaveBeenCalled()
 
@@ -583,8 +585,12 @@ describe('Extra context: user profile', () => {
 
   beforeEach(async () => {
     await dbClient.execute(
-      `INSERT INTO user (id, external_id, name, profile) VALUES (?, ?, ?, ?);`,
+      `INSERT INTO user (id, external_id, name) VALUES (?, ?, ?);`,
       Object.values(user)
+    )
+    await dbClient.execute(
+      `INSERT INTO user_profile_version (id, user_id, profile) VALUES (?, ?, ?);`,
+      [Bun.randomUUIDv7(), user.id, user.profile]
     )
   })
 
@@ -617,9 +623,13 @@ describe('Extra context: recent messages', () => {
   }
 
   beforeEach(async () => {
-    dbClient.execute(
-      `INSERT INTO user (id, external_id, name, profile) VALUES (?, ?, ?, ?);`,
+    await dbClient.execute(
+      `INSERT INTO user (id, external_id, name) VALUES (?, ?, ?);`,
       Object.values(user)
+    )
+    await dbClient.execute(
+      `INSERT INTO user_profile_version (id, user_id, profile) VALUES (?, ?, ?);`,
+      [Bun.randomUUIDv7(), user.id, user.profile]
     )
   })
 
@@ -782,8 +792,12 @@ describe('Extra context: similar messages', () => {
 
   beforeEach(async () => {
     await dbClient.execute(
-      `INSERT INTO user (id, external_id, name, profile) VALUES (?, ?, ?, ?);`,
+      `INSERT INTO user (id, external_id, name) VALUES (?, ?, ?);`,
       Object.values(user)
+    )
+    await dbClient.execute(
+      `INSERT INTO user_profile_version (id, user_id, profile) VALUES (?, ?, ?);`,
+      [Bun.randomUUIDv7(), user.id, user.profile]
     )
   })
 

@@ -4,7 +4,7 @@ import { AIProvider } from '../../src/infra/ai'
 
 setDefaultTimeout(30_000)
 
-describe.if(!!process.env.TEST_AI)('Analyze image', () => {
+describe.if(!!import.meta.env.TEST_AI)('Analyze image', () => {
   test('should analyze storageFilesystem.input.jpg file', async () => {
     const imageFile = Bun.file(join(import.meta.dir, '../storageFilesystem.input.jpg'))
     const imageUrl = `data:image/jpeg;base64,${Buffer.from(await imageFile.bytes()).toString(

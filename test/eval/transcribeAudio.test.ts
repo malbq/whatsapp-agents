@@ -4,7 +4,7 @@ import { AIProvider } from '../../src/infra/ai'
 
 setDefaultTimeout(30_000)
 
-describe.if(!!process.env.TEST_AI)('Transcribe audio', () => {
+describe.if(!!import.meta.env.TEST_AI)('Transcribe audio', () => {
   test('should transcribe voice.ogg file', async () => {
     const audioFile = Bun.file(join(import.meta.dir, '../voice.ogg'))
     const audio = await audioFile.arrayBuffer()

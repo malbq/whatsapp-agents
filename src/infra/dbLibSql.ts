@@ -1,7 +1,10 @@
 import { createClient, type Client } from '@libsql/client'
+import { getLogger } from '@logtape/logtape'
 import type { UserComponent } from '../agent/components'
 import { FailedToPersistUserError } from '../errors'
 import type { DB, RecentMessage, SimilarMessage } from './db'
+
+const logger = getLogger(['app', 'infra', 'db'])
 
 export namespace LibSql {
   export const db = (client?: Client): DB => {
@@ -26,32 +29,56 @@ export namespace LibSql {
             user (id, external_id, name)
             VALUES(?, ?, ?)
             ON CONFLICT(external_id) DO UPDATE SET name = excluded.name
-            RETURNING id, external_id, name, joined_at,profile`,
+            RETURNING id, external_id, name, joined_at`,
             args: [Bun.randomUUIDv7(), externalId, name],
           })
           .catch((error) => {
-            console.error(error)
-            throw new FailedToPersistUserError()
+            throw new FailedToPersistUserError(error.message)
           })
 
         if (insertResult.rows.length === 0) {
-          throw new FailedToPersistUserError()
+          throw new FailedToPersistUserError('No user persisted')
         }
 
         const newUser = insertResult.rows[0]!
+
+        const profileResult = await client.execute({
+          sql: `SELECT upv.profile FROM user u
+          LEFT JOIN user_profile_version upv ON u.id = upv.user_id
+          WHERE u.id = ? 
+          ORDER BY upv.id DESC 
+          LIMIT 1`,
+          args: [newUser.id as string],
+        })
+
+        const profile = (profileResult.rows[0]?.profile as string) || ''
+
         return {
           id: newUser.id as UserComponent['id'],
           externalId: newUser.external_id as UserComponent['externalId'],
           name: newUser.name as UserComponent['name'],
           joinedAt: new Date(newUser.joined_at as string),
-          profile: newUser.profile as UserComponent['profile'],
+          profile,
         }
       },
       async storeMessage(messages) {
-        if (messages.length === 0) return
+        if (messages.length === 0) return []
+        logger.debug('Storing messages', {
+          messages: JSON.stringify(
+            messages.map((m) => ({
+              ...m,
+              content: m.content.map((c) => ({
+                ...c,
+                embedding: '...',
+              })),
+            }))
+          ),
+        })
 
+        const messageIds: string[] = []
         const statements = messages.flatMap((messageData) => {
           const id = Bun.randomUUIDv7()
+          messageIds.push(id)
           return [
             {
               sql: `INSERT INTO
@@ -76,6 +103,7 @@ export namespace LibSql {
         })
 
         await client.batch(statements)
+        return messageIds
       },
       async findRecentMessages({ userId }) {
         const MAX_RECENT_MESSAGES = parseInt(import.meta.env.MAX_RECENT_MESSAGES ?? '100')
@@ -135,10 +163,11 @@ export namespace LibSql {
           timestamp: new Date(row.timestamp as string),
         }))
       },
-      async updateUserProfile({ userId, profile }) {
+      async updateUserProfile({ userId, profile, messageId }) {
         await client.execute({
-          sql: `UPDATE user SET profile = ? WHERE id = ?`,
-          args: [profile, userId],
+          sql: `INSERT INTO user_profile_version (id, user_id, profile, message_id)
+          VALUES (?, ?, ?, ?)`,
+          args: [Bun.randomUUIDv7(), userId, profile, messageId ?? null],
         })
       },
     }

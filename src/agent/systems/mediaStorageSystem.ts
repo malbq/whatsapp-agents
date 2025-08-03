@@ -1,6 +1,9 @@
-import chalk from 'chalk'
+import { getLogger } from '@logtape/logtape'
 import { ComponentNotFoundError } from '../../errors'
+import { spreadError } from '../../utils/spreadError'
 import { Frame, type EntityId } from '../frame'
+
+const logger = getLogger(['app', 'agent', 'mediaStorage'])
 
 export async function MediaStorageSystem(frame: Frame, deps: Deps, messageEntity: EntityId) {
   try {
@@ -26,9 +29,8 @@ export async function MediaStorageSystem(frame: Frame, deps: Deps, messageEntity
       data: media.data,
       mimeType: media.mimeType,
     })
-    console.debug(chalk.green('MediaStorageSystem'))
-    console.debug(chalk.gray(`stored ${message.type} media at ${storageKey}`))
+    logger.info`Stored ${message.type} media at ${storageKey}`
   } catch (error) {
-    console.error('MediaStorageSystem error:', error)
+    logger.error('Media storage error', { ...spreadError(error) })
   }
 }

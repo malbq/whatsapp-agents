@@ -1,22 +1,22 @@
 import type { ComponentType, EntityId } from './agent/frame'
 
 export class FailedToPersistUserError extends Error {
-  constructor() {
-    super('Failed to persist user')
+  constructor(message: string) {
+    super(message)
     this.name = 'FailedToPersistUserError'
   }
 }
 
 export class MediaHashMismatchError extends Error {
-  constructor() {
-    super('Media SHA256 mismatch')
+  constructor(message: string) {
+    super(message)
     this.name = 'MediaHashMismatchError'
   }
 }
 
 export class FailedToDownloadMediaError extends Error {
-  constructor() {
-    super('Failed to download media')
+  constructor(message: string) {
+    super(message)
     this.name = 'FailedToDownloadMediaError'
   }
 }
@@ -46,5 +46,12 @@ export class IngestionError extends Error {
   constructor(message: string) {
     super(message)
     this.name = 'IngestionError'
+  }
+}
+
+export class ResponseDeliveryError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'ResponseDeliveryError'
   }
 }

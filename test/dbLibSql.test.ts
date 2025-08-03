@@ -94,7 +94,7 @@ describe('LibSql operations', () => {
     user (id, external_id, name)
     VALUES(?, ?, ?)
     ON CONFLICT(external_id) DO UPDATE SET name = excluded.name
-    RETURNING id, external_id, name, joined_at,profile`,
+    RETURNING id, external_id, name, joined_at`,
       args: ['1', '9876543210', 'Message Test User'],
     })
     await dbClient.executeMultiple(await Bun.file(join(import.meta.dirname, './memory.sql')).text())

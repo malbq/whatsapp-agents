@@ -1,4 +1,8 @@
+import { getLogger } from '@logtape/logtape'
 import { extractText, getDocumentProxy } from 'unpdf'
+import { spreadError } from './spreadError'
+
+const logger = getLogger(['app', 'utils', 'parsePdf'])
 
 export async function parsePdf(file: ArrayBuffer) {
   try {
@@ -6,7 +10,7 @@ export async function parsePdf(file: ArrayBuffer) {
     const { text } = await extractText(doc, { mergePages: true })
     return text
   } catch (error) {
-    console.error('parsePdf error', (error as Error).message)
+    logger.error('Error parsing PDF', { ...spreadError(error) })
     return ''
   }
 }

@@ -1,6 +1,6 @@
 import path from 'node:path'
 import data from '../../test/eval/intentClassification/data.json'
-import { generateEmbeddings } from './generateEmbeddings'
+import { generateEmbeddings } from './POCgenerateEmbeddings'
 
 export interface Vector {
   id: number

@@ -33,7 +33,7 @@ beforeAll(async () => {
       respond: mock(),
       transcribeAudio: mock(),
       transcribeDocument: mock(async () => mockDocumentTranscription),
-      updateUserProfile: mock(),
+      improveUserProfile: mock(),
       generateEmbeddings: mock(),
     },
     storage: {

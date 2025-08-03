@@ -12,6 +12,8 @@
     "@ai-sdk/google": "^2.0.0-beta.17",
     "@ai-sdk/openai": "^2.0.0-beta.14",
     "@libsql/client": "^0.15.10",
+    "@logtape/logtape": "^1.0.4",
+    "@logtape/otel": "^1.0.4",
     "ai": "^5.0.0-beta.32",
     "compromise": "^14.14.4",
     "hono": "^4.8.5",

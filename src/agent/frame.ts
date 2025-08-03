@@ -4,6 +4,7 @@ import type {
   ImageContentComponent,
   MediaComponent,
   MessageComponent,
+  MessageIdComponent,
   StoredMediaComponent,
   TextContentComponent,
   UserComponent,
@@ -16,6 +17,7 @@ export type ComponentType =
   | 'ImageContent'
   | 'Media'
   | 'Message'
+  | 'MessageId'
   | 'StoredMedia'
   | 'TextContent'
   | 'User'
@@ -26,6 +28,7 @@ export type ComponentMap = {
   ImageContent: ImageContentComponent
   Media: MediaComponent
   Message: MessageComponent
+  MessageId: MessageIdComponent
   StoredMedia: StoredMediaComponent
   TextContent: TextContentComponent
   User: UserComponent

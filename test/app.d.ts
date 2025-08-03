@@ -34,9 +34,9 @@ declare global {
         ReturnType<AI['transcribeDocument']>,
         Parameters<AI['transcribeDocument']>
       >
-      updateUserProfile: jest.Mock<
-        ReturnType<AI['updateUserProfile']>,
-        Parameters<AI['updateUserProfile']>
+      improveUserProfile: jest.Mock<
+        ReturnType<AI['improveUserProfile']>,
+        Parameters<AI['improveUserProfile']>
       >
       generateEmbeddings: jest.Mock<
         ReturnType<AI['generateEmbeddings']>,

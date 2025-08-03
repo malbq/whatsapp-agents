@@ -1,7 +1,11 @@
+import { getLogger } from '@logtape/logtape'
 import { ComponentNotFoundError, IngestionError } from '../../errors'
 import * as Prompt from '../../prompts/prompt'
 import { ASSISTANT_PRIORITY, SYSTEM_PRIORITY } from '../../utils/priorities'
+import { spreadError } from '../../utils/spreadError'
 import type { EntityId, Frame } from '../frame'
+
+const logger = getLogger(['app', 'agent', 'ingestion', 'image'])
 
 export async function imageIngest(
   frame: Frame,
@@ -42,7 +46,7 @@ export async function imageIngest(
       })
     }
   } catch (error) {
-    console.error('ImageIngest error:', error)
+    logger.error('Image ingestion error', { ...spreadError(error) })
     const errorMessageEntity = frame.createEntity()
     frame.addComponent(errorMessageEntity, 'Message', {
       role: 'assistant',

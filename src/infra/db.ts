@@ -27,8 +27,12 @@ export type SimilarMessage = {
 export interface DB {
   storeWebhookEvent: (payload: string) => Promise<void>
   persistUser: (params: { externalId: string; name: string }) => Promise<UserComponent>
-  updateUserProfile: (params: { userId: string; profile: string }) => Promise<void>
-  storeMessage: (messages: Array<DbMessageInput>) => Promise<void>
+  updateUserProfile: (params: {
+    userId: string
+    profile: string
+    messageId?: string
+  }) => Promise<void>
+  storeMessage: (messages: Array<DbMessageInput>) => Promise<Array<string>>
   findRecentMessages: (params: { userId: string }) => Promise<Array<RecentMessage>>
   findSimilarMessages: (params: {
     userId: string

@@ -5,7 +5,7 @@ import { parsePdf } from '../../src/utils/parsePdf'
 
 setDefaultTimeout(30_000)
 
-describe.if(!!process.env.TEST_AI)('Transcribe document', () => {
+describe.if(!!import.meta.env.TEST_AI)('Transcribe document', () => {
   test('should transcribe well-formed PDF document and compare with extracted content', async () => {
     const pdfBuffer = await Bun.file(join(import.meta.dirname, '../bun.pdf')).arrayBuffer()
 

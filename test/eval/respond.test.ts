@@ -3,7 +3,7 @@ import { AIProvider } from '../../src/infra/ai'
 
 setDefaultTimeout(30_000)
 
-describe.if(!!process.env.TEST_AI)('AI Respond', () => {
+describe.if(!!import.meta.env.TEST_AI)('AI Respond', () => {
   test('should handle WhatsApp-style short messages', async () => {
     const response = await AIProvider.respond({
       messages: [

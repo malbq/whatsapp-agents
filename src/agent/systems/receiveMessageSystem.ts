@@ -1,21 +1,14 @@
-import chalk from 'chalk'
+import { getLogger } from '@logtape/logtape'
 import type { IncomingMessage } from '../../infra/chat'
 import { USER_PRIORITY } from '../../utils/priorities'
 import { Frame } from '../frame'
 
-export async function ReceiveMessageSystem(
-  frame: Frame,
-  deps: Deps,
-  incomingMessage: IncomingMessage
-) {
-  console.debug(chalk.green('ReceiveMessageSystem'))
-  console.debug(
-    chalk.gray(
-      incomingMessage.userName,
-      incomingMessage.type,
-      incomingMessage.text ?? incomingMessage.mimeType
-    )
-  )
+const logger = getLogger(['app', 'agent', 'receiveMessage'])
+
+export function ReceiveMessageSystem(frame: Frame, incomingMessage: IncomingMessage) {
+  logger.info('Incoming {type} message from {userName}@{externalId}', {
+    ...incomingMessage,
+  })
   const messageEntity = frame.createEntity()
   frame.addComponent(messageEntity, 'Message', {
     externalId: incomingMessage.externalId,

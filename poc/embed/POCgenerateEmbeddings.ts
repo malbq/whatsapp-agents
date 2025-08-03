@@ -13,9 +13,11 @@ interface EmbeddingsOutput {
 }
 export async function generateEmbeddings(text: string | string[]) {
   const response = await fetch(
-    `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ACCOUNT_ID}/ai/run/${model}`,
+    `https://api.cloudflare.com/client/v4/accounts/${
+      import.meta.env.CF_ACCOUNT_ID
+    }/ai/run/${model}`,
     {
-      headers: { Authorization: `Bearer ${process.env.CF_API_TOKEN}` },
+      headers: { Authorization: `Bearer ${import.meta.env.CF_API_TOKEN}` },
       method: 'POST',
       body: JSON.stringify({ text }),
     }

@@ -9,6 +9,10 @@ export interface MessageComponent {
   priority: number
 }
 
+export interface MessageIdComponent {
+  id: string
+}
+
 export interface TextContentComponent {
   text: string
 }

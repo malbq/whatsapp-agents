@@ -1,5 +1,5 @@
-import { type Vector } from './createVectorStore'
-import { generateEmbeddings } from './generateEmbeddings'
+import { type Vector } from './POCcreateVectorStore'
+import { generateEmbeddings } from './POCgenerateEmbeddings'
 import storeJson from './store.json'
 const store = storeJson as Vector[]
 

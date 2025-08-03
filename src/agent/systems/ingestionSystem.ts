@@ -1,7 +1,7 @@
-import { ComponentNotFoundError } from '../../errors'
+import { getLogger } from '@logtape/logtape'
+import { ComponentNotFoundError, IngestionError } from '../../errors'
 import type { IncomingMessage } from '../../infra/chat'
 import type { ChunkData } from '../../infra/db'
-import { ASSISTANT_PRIORITY } from '../../utils/priorities'
 import { splitIntoChunks } from '../../utils/splitIntoChunks'
 import type { EntityId, Frame } from '../frame'
 import { audioIngest } from './audioIngest'
@@ -9,6 +9,8 @@ import { documentIngest } from './documentIngest'
 import { imageIngest } from './imageIngest'
 import { textIngest } from './textIngest'
 import { voiceIngest } from './voiceIngest'
+
+const logger = getLogger(['app', 'agent', 'ingestion'])
 
 export async function IngestionSystem(
   frame: Frame,
@@ -41,40 +43,20 @@ export async function IngestionSystem(
       break
 
     default:
-      const unsupportedMessageEntity = frame.createEntity()
-      frame.addComponent(unsupportedMessageEntity, 'Message', {
-        role: 'assistant',
-        type: 'text',
-        priority: ASSISTANT_PRIORITY,
-      })
-      frame.addComponent(unsupportedMessageEntity, 'TextContent', {
-        text: `Desculpe, ainda não consigo entender este tipo de mensagem.`,
-      })
-      break
+      logger.error(`Unsupported message type ${message.type}`)
+      throw new IngestionError('Desculpe, ainda não consigo entender este tipo de mensagem.')
   }
 
-  try {
-    const textContent = frame.getComponent(messageEntity, 'TextContent')
-    if (textContent) {
-      const chunks = await splitIntoChunks(textContent.text)
-      const embeddings = await deps.ai.generateEmbeddings({ text: chunks })
-      const chunkData = chunks.map<ChunkData>((content, i) => ({
-        content,
-        embedding: embeddings[i]!,
-      }))
-      frame.addComponent(messageEntity, 'VectorEmbedding', { chunks: chunkData })
-    }
-  } catch (error) {
-    console.error('IngestionSystem error:', error)
-    const errorMessageEntity = frame.createEntity()
-    frame.addComponent(errorMessageEntity, 'Message', {
-      role: 'assistant',
-      type: 'text',
-      priority: ASSISTANT_PRIORITY,
-    })
-    frame.addComponent(errorMessageEntity, 'TextContent', {
-      text: `Desculpe, tive algum problema ao processar sua mensagem.`,
-    })
+  const textContent = frame.getComponent(messageEntity, 'TextContent')
+  if (textContent) {
+    const chunks = await splitIntoChunks(textContent.text)
+    const embeddings = await deps.ai.generateEmbeddings({ text: chunks })
+    logger.info`Input embeddings generated for ${chunks.length} chunks`
+    const chunkData = chunks.map<ChunkData>((content, i) => ({
+      content,
+      embedding: embeddings[i]!,
+    }))
+    frame.addComponent(messageEntity, 'VectorEmbedding', { chunks: chunkData })
   }
 
   return messageEntity

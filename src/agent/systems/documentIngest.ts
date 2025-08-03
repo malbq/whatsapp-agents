@@ -1,8 +1,12 @@
+import { getLogger } from '@logtape/logtape'
 import { ComponentNotFoundError, IngestionError } from '../../errors'
 import * as Prompt from '../../prompts/prompt'
 import { parsePdf } from '../../utils/parsePdf'
 import { ASSISTANT_PRIORITY, SYSTEM_PRIORITY } from '../../utils/priorities'
+import { spreadError } from '../../utils/spreadError'
 import type { EntityId, Frame } from '../frame'
+
+const logger = getLogger(['app', 'agent', 'ingestion', 'document'])
 
 export async function documentIngest(
   frame: Frame,
@@ -24,7 +28,7 @@ export async function documentIngest(
       text: Prompt.documentDescription(description, filename),
     })
   } catch (error) {
-    console.error('DocumentIngest error:', error)
+    logger.error('Document ingestion error', { ...spreadError(error) })
     const errorMessageEntity = frame.createEntity()
     frame.addComponent(errorMessageEntity, 'Message', {
       role: 'assistant',

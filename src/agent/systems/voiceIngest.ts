@@ -1,6 +1,10 @@
+import { getLogger } from '@logtape/logtape'
 import { ComponentNotFoundError, IngestionError } from '../../errors'
 import { ASSISTANT_PRIORITY } from '../../utils/priorities'
+import { spreadError } from '../../utils/spreadError'
 import type { EntityId, Frame } from '../frame'
+
+const logger = getLogger(['app', 'agent', 'ingestion', 'voice'])
 
 export async function voiceIngest(
   frame: Frame,
@@ -13,7 +17,7 @@ export async function voiceIngest(
     const transcribed = await deps.ai.transcribeAudio({ audio: media.data })
     frame.addComponent(messageEntity, 'TextContent', { text: transcribed })
   } catch (error) {
-    console.error('VoiceIngest error:', error)
+    logger.error('Voice ingestion error', { ...spreadError(error) })
     const errorMessageEntity = frame.createEntity()
     frame.addComponent(errorMessageEntity, 'Message', {
       role: 'assistant',

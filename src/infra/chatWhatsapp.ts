@@ -1,18 +1,20 @@
-import chalk from 'chalk'
+import { getLogger } from '@logtape/logtape'
 import { createHash } from 'node:crypto'
-import { FailedToDownloadMediaError, MediaHashMismatchError } from '../errors'
-import type { Store } from '../index'
+import {
+  FailedToDownloadMediaError,
+  MediaHashMismatchError,
+  ResponseDeliveryError,
+} from '../errors'
+import { getContext } from '../index'
 import type { Chat, IncomingMessage } from './chat'
 
-const { META_API_TOKEN, WA_API_VERSION } = process.env
+const { META_API_TOKEN, WA_API_VERSION } = import.meta.env
+
+const logger = getLogger(['app', 'infra', 'chat'])
 
 export namespace Whatsapp {
-  export const chat = (store: Store): Chat => ({
+  export const chat: Chat = {
     parseNotification: async (body) => {
-      if (!store.getStore()) {
-        throw new Error('Store not found')
-      }
-
       const change = (body as Notification).entry?.[0]?.changes?.[0]
       if (!change) return {}
 
@@ -23,8 +25,8 @@ export namespace Whatsapp {
       const waMessage = change.value.messages?.[0]
       if (!contact || !waMessage) return {}
 
-      store.getStore()?.set('businessPhoneNumberId', change.value.metadata.phone_number_id)
-      store.getStore()?.set('userWhatsappId', contact.wa_id)
+      getContext().set('businessPhoneNumberId', change.value.metadata.phone_number_id)
+      getContext().set('userWhatsappId', contact.wa_id)
 
       const message: Pick<IncomingMessage, 'userExternalId' | 'userName' | 'externalId'> = {
         userExternalId: contact.wa_id,
@@ -81,10 +83,11 @@ export namespace Whatsapp {
     },
 
     acknowledgeProcessingMessage: async (messageId) => {
-      const businessPhoneNumberId = store.getStore()?.get('businessPhoneNumberId')
+      // const businessPhoneNumberId = store.getStore()?.get('businessPhoneNumberId')
+      const businessPhoneNumberId = getContext().var.businessPhoneNumberId
 
       if (!businessPhoneNumberId) {
-        console.error('Business phone number ID not found')
+        logger.error`Business phone number ID not found`
         return
       }
 
@@ -116,23 +119,24 @@ export namespace Whatsapp {
         })) as AcknowledgeMessageResponse
 
       if (response.success) {
-        console.debug(chalk.gray('Message acknowledged', messageId))
+        logger.info`Message acknowledged: ${messageId}`
         return
       }
 
-      console.error(`Failed to acknowledge message ${messageId}`)
-      response.error?.message && console.error(response.error?.message)
-      response.error?.code && console.error(response.error?.code)
-      response.error?.type && console.error(response.error?.type)
-      response.error?.error_data?.details && console.error(response.error?.error_data?.details)
+      logger.error('Failed to acknowledge message: {code} {type} {message}', {
+        message: response.error?.message,
+        code: response.error?.code,
+        type: response.error?.type,
+        details: response.error?.error_data?.details,
+      })
     },
 
     sendTextMessage: async ({ text, replyingTo: replyToMessage }) => {
-      const businessPhoneNumberId = store.getStore()?.get('businessPhoneNumberId')
-      const userWhatsappId = store.getStore()?.get('userWhatsappId')
+      const businessPhoneNumberId = getContext().var.businessPhoneNumberId
+      const userWhatsappId = getContext().var.userWhatsappId
 
       if (!businessPhoneNumberId || !userWhatsappId) {
-        throw new Error('Business number or user WhatsApp ID not found')
+        throw new ResponseDeliveryError('Business number or user WhatsApp ID not found')
       }
 
       const requestBody: OutgoingTextMessage = {
@@ -147,7 +151,7 @@ export namespace Whatsapp {
         }
       }
 
-      const response = (await fetch(
+      const httpResponse = await fetch(
         `https://graph.facebook.com/${WA_API_VERSION}/${businessPhoneNumberId}/messages`,
         {
           method: 'POST',
@@ -157,13 +161,29 @@ export namespace Whatsapp {
           },
           body: JSON.stringify(requestBody),
         }
-      ).then((response) => response.json())) as OutgoingMessageResponse
-      if (!response.messages?.[0]?.id) {
-        throw new Error('Failed to send message')
+      )
+
+      if (!httpResponse.ok) {
+        logger.error('Failed to send message: {status} {statusText}', {
+          status: httpResponse.status,
+          statusText: httpResponse.statusText,
+          body: await httpResponse.text(),
+        })
+        throw new ResponseDeliveryError('Failed to send message')
       }
+
+      const response = (await httpResponse.json()) as OutgoingMessageResponse
+
+      if (!response.messages?.[0]?.id) {
+        logger.error('Send message request succeeded but no message ID was returned', {
+          ...response,
+        })
+        throw new ResponseDeliveryError('Failed to send message')
+      }
+
       return response.messages[0].id
     },
-  })
+  }
 
   async function fetchReceivedMedia(mediaId: string, sha256: string) {
     const init: RequestInit = {
@@ -175,22 +195,28 @@ export namespace Whatsapp {
       `https://graph.facebook.com/${WA_API_VERSION}/${mediaId}/`,
       init
     ).then((response) => response.json())) as MediaUrlResponse
-    console.debug(chalk.gray('Download media response:', JSON.stringify(urlData)))
+    logger.info`Media URL: ${urlData.url}`
 
     const mediaResponse = await fetch(urlData.url, init)
 
     if (!mediaResponse.body) {
-      console.error(
-        `Failed to download media\nURL: ${urlData.url}\nStatus: ${mediaResponse.status}\nStatus Text: ${mediaResponse.statusText}`
-      )
-      throw new FailedToDownloadMediaError()
+      logger.error('Failed to download media from {url}: {status} {statusText}', {
+        url: urlData.url,
+        status: mediaResponse.status,
+        statusText: mediaResponse.statusText,
+        body: await mediaResponse.text(),
+      })
+      throw new FailedToDownloadMediaError('Failed to download media')
     }
 
     const media = await mediaResponse.arrayBuffer()
     const computed = createHash('sha256').update(new Uint8Array(media)).digest('base64')
     if (computed !== sha256) {
-      console.error(`Media SHA256 mismatch\nreceived: ${sha256}\ncomputed: ${computed}`)
-      throw new MediaHashMismatchError()
+      logger.error('Media SHA256 mismatch', {
+        received: sha256,
+        computed,
+      })
+      throw new MediaHashMismatchError('Media SHA256 mismatch')
     }
     return media
   }

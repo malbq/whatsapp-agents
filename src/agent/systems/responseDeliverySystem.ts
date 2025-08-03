@@ -1,5 +1,7 @@
-import chalk from 'chalk'
+import { getLogger } from '@logtape/logtape'
 import type { Frame } from '../frame'
+
+const logger = getLogger(['app', 'agent', 'responseDelivery'])
 
 export async function ResponseDeliverySystem(frame: Frame, deps: Deps) {
   let text = ''
@@ -13,7 +15,7 @@ export async function ResponseDeliverySystem(frame: Frame, deps: Deps) {
   }
 
   if (responseEntities.length > 1) {
-    console.warn('Multiple assistant responses found')
+    logger.warn('Multiple assistant responses found')
   }
   const textContent = frame.getComponent(responseEntities[0]!, 'TextContent')!
   text = textContent.text
@@ -24,6 +26,5 @@ export async function ResponseDeliverySystem(frame: Frame, deps: Deps) {
     ...response,
     externalId,
   })
-  console.debug(chalk.green('ResponseDeliverySystem'))
-  console.debug(chalk.gray('sent text:', text))
+  logger.info`Sent text response: ${text}`
 }

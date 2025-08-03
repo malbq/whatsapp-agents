@@ -1,6 +1,9 @@
-import chalk from 'chalk'
+import { getLogger } from '@logtape/logtape'
 import { ComponentNotFoundError } from '../../errors'
+import { spreadError } from '../../utils/spreadError'
 import type { EntityId, Frame } from '../frame'
+
+const logger = getLogger(['app', 'agent', 'improveUserProfile'])
 
 export async function ImproveUserProfileSystem(frame: Frame, deps: Deps, messageEntity: EntityId) {
   try {
@@ -11,17 +14,24 @@ export async function ImproveUserProfileSystem(frame: Frame, deps: Deps, message
     const textContent = frame.getComponent(messageEntity, 'TextContent')
     if (!textContent || message.type === 'audio') return
 
-    const improvedProfile = await deps.ai.updateUserProfile({
+    const messageId = frame.getComponent(messageEntity, 'MessageId')
+    if (!messageId) {
+      logger.warn('Message ID not found, skipping profile update')
+      return
+    }
+    const improvedProfile = await deps.ai.improveUserProfile({
       profile: user.profile,
       message: textContent.text,
     })
     if (improvedProfile.length > 0) {
-      await deps.db.updateUserProfile({ userId: user.id, profile: improvedProfile })
+      await deps.db.updateUserProfile({
+        userId: user.id,
+        profile: improvedProfile,
+        messageId: messageId.id,
+      })
     }
-    console.debug(chalk.green('ImproveUserProfileSystem'))
-    console.debug(chalk.gray('current profile:', user.profile))
-    console.debug(chalk.gray('improved profile:', improvedProfile))
+    logger.info('Profile update', { current: user.profile, improved: improvedProfile })
   } catch (error) {
-    console.error('ImproveUserProfileSystem error:', error)
+    logger.error('Profile update error', { ...spreadError(error) })
   }
 }

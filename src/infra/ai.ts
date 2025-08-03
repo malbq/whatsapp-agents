@@ -1,5 +1,6 @@
 import { google } from '@ai-sdk/google'
 import { openai } from '@ai-sdk/openai'
+import { getLogger } from '@logtape/logtape'
 import {
   generateText,
   experimental_transcribe as transcribe,
@@ -10,23 +11,24 @@ import {
   type Tool,
   type UserModelMessage,
 } from 'ai'
-import chalk from 'chalk'
 import { EmbeddingsGenerationError } from '../errors'
 import * as Prompt from '../prompts/prompt'
 import { formatTokenUsage } from '../utils/formatTokenUsage'
 
+const logger = getLogger(['app', 'infra', 'ai'])
+
 const TEXT_MODEL =
-  process.env.TEXT_GENERATION_PROVIDER === 'google'
+  import.meta.env.TEXT_GENERATION_PROVIDER === 'google'
     ? google('gemini-2.5-flash')
     : openai('gpt-4.1-mini')
 
 const AUDIO_TRANSCRIPTION_MODEL =
-  process.env.AUDIO_TRANSCRIPTION_PROVIDER === 'google'
+  import.meta.env.AUDIO_TRANSCRIPTION_PROVIDER === 'google'
     ? google('gemini-2.5-flash')
     : openai.transcription('whisper-1')
 
 const IMAGE_ANALYSIS_MODEL =
-  process.env.IMAGE_ANALYSIS_PROVIDER === 'google'
+  import.meta.env.IMAGE_ANALYSIS_PROVIDER === 'google'
     ? google('gemini-2.5-flash')
     : openai('gpt-4.1-mini-2025-04-14')
 
@@ -53,7 +55,7 @@ export interface AI {
     mimeType: string
     filename: string
   }) => Promise<string>
-  updateUserProfile: (params: { profile: string; message: string }) => Promise<string>
+  improveUserProfile: (params: { profile: string; message: string }) => Promise<string>
   generateEmbeddings: (params: { text: string[] }) => Promise<number[][]>
 }
 
@@ -80,25 +82,28 @@ export const AIProvider: AI = {
       messages,
       tools,
     })
-    console.debug(chalk.gray(`LLM response ${TEXT_MODEL.provider}/${TEXT_MODEL.modelId}`))
+    logger.debug('Text generation {provider}/{model}', {
+      provider: TEXT_MODEL.provider,
+      model: TEXT_MODEL.modelId,
+      system: instructions,
+      prompt: messages.map((m) => `${m.role}: ${m.content}`).join('\n'),
+      text: response.text,
+      usage: formatTokenUsage(response.usage),
+    })
     if (
       (response.providerMetadata?.google?.groundingMetadata as any | undefined)?.webSearchQueries
     ) {
-      console.debug(
-        chalk.gray(
-          'google search:',
-          (response.providerMetadata?.google?.groundingMetadata as any)?.webSearchQueries
-        )
+      logger.debug(
+        'Google search {*}',
+        (response.providerMetadata?.google?.groundingMetadata as any)?.webSearchQueries
       )
     }
     if (response.toolResults?.length) {
-      console.debug(chalk.gray('tools results:', JSON.stringify(response.toolResults)))
+      logger.debug('Tools results', { ...response.toolResults })
     }
     if (response.toolCalls?.length) {
-      console.debug(chalk.gray('tools calls:', JSON.stringify(response.toolCalls)))
+      logger.debug('Tools calls', { ...response.toolCalls })
     }
-    console.debug(chalk.gray('usage:', formatTokenUsage(response.usage)))
-    console.debug(chalk.gray(response.text))
     return response.text
   },
   transcribeAudio: async ({ audio }) => {
@@ -146,15 +151,12 @@ export const AIProvider: AI = {
       default:
         throw new Error(`Unsupported provider: ${AUDIO_TRANSCRIPTION_MODEL.provider}`)
     }
-    console.debug(
-      chalk.gray(
-        `LLM transcription ${AUDIO_TRANSCRIPTION_MODEL.provider}/${AUDIO_TRANSCRIPTION_MODEL.modelId}`
-      ),
-      '\n',
-      chalk.gray('usage: ', usage ? formatTokenUsage(usage) : '-'),
-      '\n',
-      chalk.gray(text)
-    )
+    logger.debug('Audio transcription {provider}/{model}', {
+      provider: AUDIO_TRANSCRIPTION_MODEL.provider,
+      model: AUDIO_TRANSCRIPTION_MODEL.modelId,
+      text,
+      usage: formatTokenUsage(usage),
+    })
     return text
   },
   analyzeImage: async ({ instructions = Prompt.analyzeImage, imageUrl, caption }) => {
@@ -183,15 +185,12 @@ export const AIProvider: AI = {
         },
       ],
     })
-    console.debug(
-      chalk.gray(
-        `LLM image analysis ${IMAGE_ANALYSIS_MODEL.provider}/${IMAGE_ANALYSIS_MODEL.modelId}`
-      ),
-      '\n',
-      chalk.gray('usage: ', formatTokenUsage(response.usage)),
-      '\n',
-      chalk.gray(response.text)
-    )
+    logger.debug('Image analysis {provider}/{model}', {
+      provider: IMAGE_ANALYSIS_MODEL.provider,
+      model: IMAGE_ANALYSIS_MODEL.modelId,
+      text: response.text,
+      usage: formatTokenUsage(response.usage),
+    })
     return response.text
   },
   transcribeDocument: async ({
@@ -219,38 +218,36 @@ export const AIProvider: AI = {
         },
       ],
     })
-    console.debug(
-      chalk.gray(
-        `LLM document transcription ${DOCUMENT_TRANSCRIPTION_MODEL.provider}/${DOCUMENT_TRANSCRIPTION_MODEL.modelId}`
-      ),
-      '\n',
-      chalk.gray('usage: ', formatTokenUsage(response.usage)),
-      '\n',
-      chalk.gray(response.text)
-    )
+    logger.debug('Document transcription {provider}/{model}', {
+      provider: DOCUMENT_TRANSCRIPTION_MODEL.provider,
+      model: DOCUMENT_TRANSCRIPTION_MODEL.modelId,
+      text: response.text,
+      usage: formatTokenUsage(response.usage),
+    })
     return response.text
   },
-  updateUserProfile: async ({ profile, message }) => {
+  improveUserProfile: async ({ profile, message }) => {
     const response = await generateText({
       model: TEXT_MODEL,
       maxOutputTokens: 2000,
       temperature: UPDATE_USER_PROFILE_TEMP,
       prompt: Prompt.updateUserProfile(profile, message),
     })
-    console.debug(
-      chalk.gray(`LLM update user profile ${TEXT_MODEL.provider}/${TEXT_MODEL.modelId}`),
-      '\n',
-      chalk.gray('usage: ', formatTokenUsage(response.usage)),
-      '\n',
-      chalk.gray(response.text)
-    )
+    logger.debug('Update user profile {provider}/{model}', {
+      provider: TEXT_MODEL.provider,
+      model: TEXT_MODEL.modelId,
+      text: response.text,
+      usage: formatTokenUsage(response.usage),
+    })
     return response.text
   },
   generateEmbeddings: async ({ text }) => {
     const httpResponse = await fetch(
-      `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ACCOUNT_ID}/ai/run/${EMBEDDING_MODEL}`,
+      `https://api.cloudflare.com/client/v4/accounts/${
+        import.meta.env.CF_ACCOUNT_ID
+      }/ai/run/${EMBEDDING_MODEL}`,
       {
-        headers: { Authorization: `Bearer ${process.env.CF_API_TOKEN}` },
+        headers: { Authorization: `Bearer ${import.meta.env.CF_API_TOKEN}` },
         method: 'POST',
         body: JSON.stringify({ text }),
       }
@@ -258,7 +255,11 @@ export const AIProvider: AI = {
 
     if (!httpResponse.ok) {
       throw new EmbeddingsGenerationError(
-        `Embeddings API request failed: ${httpResponse.status} ${httpResponse.statusText}`
+        `Embeddings API request failedn${JSON.stringify({
+          status: httpResponse.status,
+          statusText: httpResponse.statusText,
+          body: await httpResponse.text(),
+        })}`
       )
     }
 
@@ -266,14 +267,19 @@ export const AIProvider: AI = {
 
     if (!response.success) {
       throw new EmbeddingsGenerationError(
-        `Embeddings generation failed: ${response.error.join(', ')}`
+        `Embeddings generation failed\n${response.error.join(', ')}`
       )
     }
 
     if (!response.result?.data) {
-      throw new EmbeddingsGenerationError('Invalid embeddings response: missing result data')
+      throw new EmbeddingsGenerationError('Invalid embeddings response\nmissing result data')
     }
 
+    logger.debug('Embeddings generation {model}', {
+      model: EMBEDDING_MODEL,
+      shape: response.result.shape,
+      pooling: response.result.pooling,
+    })
     return response.result.data
   },
 }
