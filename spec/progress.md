@@ -2,14 +2,9 @@
 
 ## Current Focus
 
-- Add Usage Tracking: Track AI token usage and storage per user in DB; enforce free-tier (e.g., 10k tokens/day).
-- Data Privacy Features: Implement data export (query DB for user data) and deletion (cascade delete from user/message/embedding tables) commands, triggered via chat intents. Add privacy policy notice on first interaction.
-- Security Audit: Validate all env vars (e.g., API tokens) are required and encrypted; add input sanitization in webhook parsing to prevent injection.
 - Backup Strategy: Set up automated DB backups (e.g., via cron) and media storage snapshots to prevent data loss.
-- Compliance Check: Review for GDPR basics (consent, data minimization); add user onboarding message explaining data usage.
 - Cost Monitoring: Set up alerts for AI provider usage thresholds (e.g., via OpenAI dashboard hooks).
 - Testing: Add e2e tests for error scenarios, privacy flows, and rate limits (extend agent.test.ts).
-- Self-Hosted Alternative: Run on a VPS (e.g., DigitalOcean) with Bun's built-in server; use PM2 or systemd for process management, Caddy/Nginx for reverse proxy, and cron for backups.
 
 ## Next
 
@@ -28,7 +23,6 @@
 
 - **User Management**: Complete user profile system
 
-  - Profile improvement based on interactions
   - Subscription plan management
   - Usage tracking and limits
 

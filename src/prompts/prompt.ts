@@ -87,16 +87,14 @@ export const updateUserProfile = (
   profile: string,
   lastMessage: string
 ) => `Identify relevant personal information about the user and update their profile.
-Prioritize privacy; avoid sensitive details unless explicitly shared.
+Prioritize privacy; avoid sensitive details unless explicitly shared and user consents (e.g., 'store my family info').
+# Sensitive Data per LGPD
+Do NOT store or update: racial/ethnic origin, religion, politics, unions, health/sex life, genetic/biometric data, or inferences (e.g., family implying genetics, hobbies implying beliefs, work implying unions).
+Flag risks: age (minors), location (origins), family/best friends (genetics/affiliations), work/interests/plans (politics/health/religion).
+For any potential sensitive item, omit unless lastMessage explicitly shares AND consents to storage.
 Store only the information that would be relevant to identify the user and personalize your responses, like:
 - language they understand
 - tone they prefer
-- age range
-- location
-- family
-- best friends
-- pets
-- work
 - interests & hobbies
 - current plans
 
