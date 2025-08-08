@@ -1,11 +1,5 @@
 # Progress
 
-## Current Focus
-
-- Backup Strategy: Set up automated DB backups (e.g., via cron) and media storage snapshots to prevent data loss.
-- Cost Monitoring: Set up alerts for AI provider usage thresholds (e.g., via OpenAI dashboard hooks).
-- Testing: Add e2e tests for error scenarios, privacy flows, and rate limits (extend agent.test.ts).
-
 ## Next
 
 - **Tool Integration**: Implement tools
@@ -28,14 +22,17 @@
 
 - **Privacy & Compliance**: Data management features
 
+  - Privacy controls and onboarding through WhatsApp custom messages
+  - Privacy policy notice and TOS acceptance in first interaction
   - Data export functionality
   - Data deletion for GDPR compliance
-  - Privacy controls and onboarding
+  - Data redacting in logs and error messages
 
 - **Performance & Reliability**: System improvements
-  - Rate limiting and retry mechanisms
+
+  - E2E tests for error scenarios, privacy flows, and rate limits
+  - Retry mechanisms
   - Improved error handling
-  - TTS: Answer with audio message
 
 ## Open Questions
 
@@ -53,6 +50,13 @@
   - Token budget management for large contexts
   - Embedding generation optimization
   - Database query optimization for vector search
+
+## Future (after MVP)
+
+- TTS: Answer with audio message
+- Cost Monitoring: Set up alerts for AI provider usage thresholds (e.g., via OpenAI dashboard hooks)
+- Automated DB backups
+- Media storage snapshots
 
 ## Learnings & Insights
 
