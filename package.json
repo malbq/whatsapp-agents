@@ -4,7 +4,8 @@
   "packageManager": "bun",
   "scripts": {
     "dev": "bun --hot --no-clear-screen run src/index.ts",
-    "typecheck": "tsc --noEmit",
+    "start": "bun run src/index.ts",
+    "typecheck": "tsc",
     "db:init": "bun run src/infra/dbSetup/init.ts",
     "lint": "oxlint --fix"
   },

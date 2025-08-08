@@ -6,9 +6,10 @@ Update the spec files in the `spec/` directory to reflect the current state of t
 AVOID removing content from spec files because they may have been added by users.
 The Spec consists of core files and optional context files, all in Markdown format.
 YOU MUST review every spec file, even if some don't require updates.
-Focus particularly on `progress.md` as it tracks current state.
 Use `git diff` to review changes.
 DO NOT delete content from spec files unless it is explicitly stated to do so.
+Focus particularly on `progress.md` as it tracks current state.
+NEVER remove content from **Learnings & Insights** section in `progress.md`.
 
 ```mermaid
 flowchart TD

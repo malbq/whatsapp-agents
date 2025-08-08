@@ -20,5 +20,7 @@
     "jsx": "react-jsx",
     "jsxImportSource": "hono/jsx",
     "resolveJsonModule": true
-  }
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "poc"]
 }
