@@ -11,7 +11,7 @@ export interface DbMessageInput {
   userId: string
   role: MessageRole
   type: MessageType
-  mediaStorageKey?: string
+  storageKey?: string
   content: Array<ChunkData>
 }
 
@@ -21,6 +21,14 @@ export type SimilarMessage = {
   role: MessageRole
   type: MessageType
   content: string
+  timestamp: Date
+}
+
+export interface FileSearchResult {
+  messageId: string
+  storageKey: string
+  score: number
+  snippet: string
   timestamp: Date
 }
 
@@ -39,4 +47,8 @@ export interface DB {
     queryEmbedding: Array<number>
     excludeIds?: Array<string>
   }) => Promise<Array<SimilarMessage>>
+  searchFiles: (params: {
+    userId: string
+    queryEmbedding: Array<number>
+  }) => Promise<Array<FileSearchResult>>
 }

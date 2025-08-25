@@ -1,8 +1,9 @@
-import { EntityNotFoundError } from '../errors'
+import { ComponentNotFoundError, EntityNotFoundError } from '../errors'
 import type {
   DocumentContentComponent,
   ImageContentComponent,
   MediaComponent,
+  MediaMetadataComponent,
   MessageComponent,
   MessageIdComponent,
   StoredMediaComponent,
@@ -16,6 +17,7 @@ export type ComponentType =
   | 'DocumentContent'
   | 'ImageContent'
   | 'Media'
+  | 'MediaMetadata'
   | 'Message'
   | 'MessageId'
   | 'StoredMedia'
@@ -27,6 +29,7 @@ export type ComponentMap = {
   DocumentContent: DocumentContentComponent
   ImageContent: ImageContentComponent
   Media: MediaComponent
+  MediaMetadata: MediaMetadataComponent
   Message: MessageComponent
   MessageId: MessageIdComponent
   StoredMedia: StoredMediaComponent
@@ -65,6 +68,17 @@ export class Frame {
     }
     if (!(type in components)) {
       return
+    }
+    return components[type] as ComponentMap[K]
+  }
+
+  getRequiredComponent<K extends ComponentType>(entity: EntityId, type: K): ComponentMap[K] {
+    const components = this.entities.get(entity)
+    if (!components) {
+      throw new EntityNotFoundError(entity)
+    }
+    if (!(type in components)) {
+      throw new ComponentNotFoundError(entity, type)
     }
     return components[type] as ComponentMap[K]
   }

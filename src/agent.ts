@@ -1,4 +1,4 @@
-import { getLogger } from '@logtape/logtape'
+import { getLogger, withContext } from '@logtape/logtape'
 import { Frame } from './agent/frame'
 import { EmbeddingSystem } from './agent/systems/embeddingSystem'
 import { ImproveUserProfileSystem } from './agent/systems/improveUserProfileSystem'
@@ -25,46 +25,47 @@ export async function agent(deps: Deps, message: IncomingMessage): Promise<void>
       name: message.userName,
     })
   } catch (error) {
-    logger.error('Error persisting user', { ...spreadError(error) })
+    logger.error('Error persisting user {message}', spreadError(error))
     // we can't do anything without a user
+    deps.chat.sendTextMessage({
+      text: 'Desculpe, tive um problema e não consigo te responder agora.',
+    })
     return
   }
 
-  const messageEntity = ReceiveMessageSystem(frame, message)
-  try {
-    await IngestionSystem(frame, deps, messageEntity, message)
-    deps.chat.acknowledgeProcessingMessage(message.externalId)
-    await ResponseGenerationSystem(frame, deps, messageEntity)
-    // ⤷ TODO: ToolExecutionSystem
-    //   ⤷ TODO: SearchFileSystem
-    //   ⤷ TODO: RetrieveFileSystem
-    //   ⤷ TODO: CreateReminderSystem
-    //   ⤷ TODO: CancelReminderSystem
-  } catch (error) {
-    logger.error('Ingestion error', { ...spreadError(error) })
-    const errorMessageEntity = frame.createEntity()
-    frame.addComponent(errorMessageEntity, 'Message', {
-      role: 'assistant',
-      type: 'text',
-      priority: ASSISTANT_PRIORITY,
-    })
-    frame.addComponent(errorMessageEntity, 'TextContent', {
-      text:
-        error instanceof IngestionError
-          ? error.message
-          : 'Desculpe, tive um problema ao processar sua mensagem.',
-    })
-  }
-  await ResponseDeliverySystem(frame, deps)
+  withContext({ userId: frame.getComponent(frame.USER_ENTITY_ID, 'User')!.id }, async () => {
+    const messageEntity = ReceiveMessageSystem(frame, message)
+    try {
+      await IngestionSystem(frame, deps, messageEntity, message)
+      deps.chat.acknowledgeProcessingMessage(message.externalId)
+      await ResponseGenerationSystem(frame, deps, messageEntity)
+      // await RetrieveFileSystem(frame, deps)
+    } catch (error) {
+      logger.error('Ingestion error', { ...spreadError(error) })
+      const errorMessageEntity = frame.createEntity()
+      frame.addComponent(errorMessageEntity, 'Message', {
+        role: 'assistant',
+        type: 'text',
+        priority: ASSISTANT_PRIORITY,
+      })
+      frame.addComponent(errorMessageEntity, 'TextContent', {
+        text:
+          error instanceof IngestionError
+            ? error.message
+            : 'Desculpe, tive um problema ao processar sua mensagem.',
+      })
+    }
+    await ResponseDeliverySystem(frame, deps)
 
-  try {
-    await Promise.all([
-      MediaStorageSystem(frame, deps, messageEntity),
-      EmbeddingSystem(frame, deps),
-    ])
-    await StoreMessageExchangeSystem(frame, deps)
-    ImproveUserProfileSystem(frame, deps, messageEntity)
-  } catch (error) {
-    logger.error("Error after agent's response", { ...spreadError(error) })
-  }
+    try {
+      await Promise.all([
+        MediaStorageSystem(frame, deps, messageEntity),
+        EmbeddingSystem(frame, deps),
+      ])
+      await StoreMessageExchangeSystem(frame, deps)
+      ImproveUserProfileSystem(frame, deps, messageEntity)
+    } catch (error) {
+      logger.error("Error after agent's response", { ...spreadError(error) })
+    }
+  })
 }

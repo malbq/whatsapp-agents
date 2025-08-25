@@ -34,22 +34,12 @@ You're ONLY allowed to avoid reading the spec if you're asked something quick an
    - Component relationships (using flowchart diagrams)
    - Critical implementation paths (with sequence diagrams if necessary)
 
-4. spec/techContext.md
-
-   - Main Language used in the project
-   - Development & Production Runtimes
-   - External Services
-   - Technical constraints
-   - Other tools used in the project
-
 ```mermaid
 flowchart TD
    PB[projectbrief.md]
    S[systemPatterns.md]
-   T[techContext.md]
    PR[progress.md]
    PB --> S --> PR
-   PB --> T --> PR
 ```
 
 ## Additional Context

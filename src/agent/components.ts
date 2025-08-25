@@ -63,14 +63,13 @@ export interface ScheduledRemindersComponent {
   reminders: any[]
 }
 
-export interface ToolCallComponent {
-  name: string
-  args: any
-  result?: any
-}
-
 export interface ReminderComponent {
   content: string
   dueDate: Date
   sent: boolean
+}
+
+export interface MediaMetadataComponent {
+  filename?: string
+  description?: string
 }

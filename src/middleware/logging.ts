@@ -16,7 +16,7 @@ export async function loggingMiddleware(c: Context, next: Next) {
       logger.debug('Request {requestId}', {
         method: c.req.method,
         path: c.req.path,
-        headers: c.req.header(),
+        headers: JSON.stringify(c.req.header()),
       })
 
       try {

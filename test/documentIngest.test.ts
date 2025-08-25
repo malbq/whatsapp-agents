@@ -22,11 +22,15 @@ beforeAll(async () => {
       storeMessage: mock(),
       storeWebhookEvent: mock(),
       findSimilarMessages: mock(),
+      searchFiles: mock(),
+      getFileMetadata: mock(),
     },
     chat: {
       parseNotification: mock(),
       acknowledgeProcessingMessage: mock(),
       sendTextMessage: mock(),
+      sendImageMessage: mock(),
+      sendDocumentMessage: mock(),
     },
     ai: {
       analyzeImage: mock(),

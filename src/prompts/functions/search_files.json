@@ -1,0 +1,27 @@
+{
+  "strict": true,
+  "type": "function",
+  "name": "search_files",
+  "description": "Search for files based on content similarity. Use this when the user asks about documents, files, or specific information that might be stored in uploaded files.",
+  "parameters": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "query": {
+        "type": "string",
+        "description": "The search query to find relevant files based on their content."
+      },
+      "top_k": {
+        "type": "integer",
+        "description": "The maximum number of files to return (default: 5, max: 10).",
+        "minimum": 1,
+        "maximum": 10
+      },
+      "mime_type_filter": {
+        "type": "string",
+        "description": "Optional filter to search only files of specific MIME type (e.g., 'application/pdf', 'text/plain')."
+      }
+    },
+    "required": ["query"]
+  }
+}

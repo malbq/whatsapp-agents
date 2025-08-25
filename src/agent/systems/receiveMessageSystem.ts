@@ -6,9 +6,12 @@ import { Frame } from '../frame'
 const logger = getLogger(['app', 'agent', 'receiveMessage'])
 
 export function ReceiveMessageSystem(frame: Frame, incomingMessage: IncomingMessage) {
-  logger.info('Incoming {type} message from {userName}@{externalId}', {
-    ...incomingMessage,
-  })
+  logger.info(
+    `Incoming ${incomingMessage.type} message from ${incomingMessage.userName} (${incomingMessage.userExternalId})`,
+    {
+      ...incomingMessage,
+    }
+  )
   const messageEntity = frame.createEntity()
   frame.addComponent(messageEntity, 'Message', {
     externalId: incomingMessage.externalId,

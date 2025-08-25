@@ -8,7 +8,7 @@ export async function UserSystem(
   deps: Deps,
   incomingUser: { externalId: string; name: string }
 ): Promise<EntityId> {
-  logger.info('Incoming user {name}@{externalId}', incomingUser)
+  logger.info(`Incoming user ${incomingUser.name} (${incomingUser.externalId})`, incomingUser)
   const user = await deps.db.persistUser(incomingUser)
   frame.addComponent(frame.USER_ENTITY_ID, 'User', user)
   return frame.USER_ENTITY_ID

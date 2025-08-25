@@ -7,13 +7,11 @@
     "type": "object",
     "additionalProperties": false,
     "properties": {
-      "file_id": {
+      "mediaStorageKey": {
         "type": "string",
-        "description": "The id of the file to retrieve."
+        "description": "The storage key of the file to retrieve."
       }
     },
-    "required": [
-      "file_id"
-    ]
+    "required": ["mediaStorageKey"]
   }
 }

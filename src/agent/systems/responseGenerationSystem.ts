@@ -1,5 +1,4 @@
 import { getLogger } from '@logtape/logtape'
-import { ComponentNotFoundError } from '../../errors'
 import type { AIMessage } from '../../infra/ai'
 import * as Prompt from '../../prompts/prompt'
 import { ASSISTANT_PRIORITY } from '../../utils/priorities'
@@ -9,8 +8,7 @@ import type { EntityId, Frame } from '../frame'
 const logger = getLogger(['app', 'agent', 'responseGeneration'])
 
 export async function ResponseGenerationSystem(frame: Frame, deps: Deps, messageEntity: EntityId) {
-  const userComponent = frame.getComponent(frame.USER_ENTITY_ID, 'User')
-  if (!userComponent) throw new ComponentNotFoundError(frame.USER_ENTITY_ID, 'User')
+  const userComponent = frame.getRequiredComponent(frame.USER_ENTITY_ID, 'User')
 
   const recentMessages = await deps.db.findRecentMessages({ userId: userComponent.id })
   const vectorEmbedding = frame.getComponent(messageEntity, 'VectorEmbedding')
@@ -19,7 +17,7 @@ export async function ResponseGenerationSystem(frame: Frame, deps: Deps, message
         userId: userComponent.id,
         // FIXME: find better strategy to search when input has multiple chunks
         // Whatsapp messages will probably always be less than 2000 characters
-        // so they will never have multiple chunks
+        // so they will hardly have multiple chunks
         queryEmbedding: vectorEmbedding.chunks[0]!.embedding,
         excludeIds: recentMessages.map((message) => message.id),
       })
@@ -59,14 +57,22 @@ export async function ResponseGenerationSystem(frame: Frame, deps: Deps, message
     })
 
   try {
-    const response = await deps.ai.respond({ messages })
+    const response = await deps.ai.respond({
+      messages,
+      userMessageEmbedding: vectorEmbedding?.chunks[0]?.embedding,
+    })
+
+    // Create response text entity
     const responseEntity = frame.createEntity()
     frame.addComponent(responseEntity, 'Message', {
       role: 'assistant',
       type: 'text',
       priority: ASSISTANT_PRIORITY,
     })
-    frame.addComponent(responseEntity, 'TextContent', { text: response })
+    frame.addComponent(responseEntity, 'TextContent', { text: response.text })
+    // if (response.storageKey) {
+    //   frame.addComponent(responseEntity, '', { key: response.storageKey })
+    // }
   } catch (error) {
     logger.error('Response generation error', { ...spreadError(error) })
     const errorMessageEntity = frame.createEntity()

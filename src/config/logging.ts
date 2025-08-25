@@ -1,6 +1,6 @@
 import { ansiColorFormatter, configure, getConsoleSink, type LogLevel } from '@logtape/logtape'
-import { getOpenTelemetrySink } from '@logtape/otel'
 import { AsyncLocalStorage } from 'node:async_hooks'
+import { getLokiSink } from './lokiSink'
 
 export async function configureLogging() {
   const isProduction = import.meta.env.NODE_ENV === 'production'
@@ -10,13 +10,16 @@ export async function configureLogging() {
     console: getConsoleSink({
       formatter: ansiColorFormatter,
     }),
-    otel: getOpenTelemetrySink({
-      serviceName: 'zapid',
+    loki: getLokiSink({
+      staticLabels: {
+        service_name: 'zapid',
+      },
+      labelKeys: ['requestId', 'userId'],
     }),
   }
 
   const logLevel: LogLevel = isProduction ? 'info' : 'debug'
-  const activeSinks = isProduction ? ['otel'] : isTest ? ['console'] : ['console', 'otel']
+  const activeSinks = isProduction ? ['loki'] : isTest ? ['console'] : ['console', 'loki']
 
   await configure({
     sinks,

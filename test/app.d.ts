@@ -18,6 +18,14 @@ declare global {
         ReturnType<Chat['sendTextMessage']>,
         Parameters<Chat['sendTextMessage']>
       >
+      sendImageMessage: jest.Mock<
+        ReturnType<Chat['sendImageMessage']>,
+        Parameters<Chat['sendImageMessage']>
+      >
+      sendDocumentMessage: jest.Mock<
+        ReturnType<Chat['sendDocumentMessage']>,
+        Parameters<Chat['sendDocumentMessage']>
+      >
     }
     storage: {
       store: jest.Mock<ReturnType<Storage['store']>, Parameters<Storage['store']>>
@@ -62,6 +70,7 @@ declare global {
         ReturnType<DB['findSimilarMessages']>,
         Parameters<DB['findSimilarMessages']>
       >
+      searchFiles: jest.Mock<ReturnType<DB['searchFiles']>, Parameters<DB['searchFiles']>>
     }
   }
 }

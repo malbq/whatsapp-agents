@@ -12,6 +12,9 @@ const { META_API_TOKEN, WA_API_VERSION } = import.meta.env
 
 const logger = getLogger(['app', 'infra', 'chat'])
 
+function test() {}
+test()
+
 export namespace Whatsapp {
   export const chat: Chat = {
     parseNotification: async (body) => {
@@ -83,7 +86,6 @@ export namespace Whatsapp {
     },
 
     acknowledgeProcessingMessage: async (messageId) => {
-      // const businessPhoneNumberId = store.getStore()?.get('businessPhoneNumberId')
       const businessPhoneNumberId = getContext().var.businessPhoneNumberId
 
       if (!businessPhoneNumberId) {
@@ -143,12 +145,7 @@ export namespace Whatsapp {
         messaging_product: 'whatsapp',
         to: userWhatsappId,
         text: { body: text },
-      }
-
-      if (replyToMessage) {
-        requestBody.context = {
-          message_id: replyToMessage,
-        }
+        ...(replyToMessage && { context: { message_id: replyToMessage } }),
       }
 
       const httpResponse = await fetch(
@@ -182,6 +179,174 @@ export namespace Whatsapp {
       }
 
       return response.messages[0].id
+    },
+    sendImageMessage: async ({ data, caption, replyingTo: replyToMessage }) => {
+      const businessPhoneNumberId = getContext().get('businessPhoneNumberId')
+      const to = getContext().get('userWhatsappId')
+
+      if (!businessPhoneNumberId || !to) {
+        logger.error('Missing context for sending image message')
+        throw new ResponseDeliveryError('Missing context for sending message')
+      }
+
+      // First upload the image to Facebook
+      const formData = new FormData()
+      formData.append('file', new Blob([data]), 'image.jpg')
+      formData.append('type', 'image/jpeg')
+      formData.append('messaging_product', 'whatsapp')
+
+      const uploadResponse = await fetch(
+        `https://graph.facebook.com/${WA_API_VERSION}/${businessPhoneNumberId}/media`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${META_API_TOKEN}`,
+          },
+          body: formData,
+        }
+      )
+
+      if (!uploadResponse.ok) {
+        logger.error('Failed to upload image: {status} {statusText}', {
+          status: uploadResponse.status,
+          statusText: uploadResponse.statusText,
+          body: await uploadResponse.text(),
+        })
+        throw new ResponseDeliveryError('Failed to upload image')
+      }
+
+      const uploadResult = (await uploadResponse.json()) as { id: string }
+      const mediaId = uploadResult.id
+
+      // Now send the image message
+      const message = {
+        messaging_product: 'whatsapp' as const,
+        to,
+        type: 'image',
+        image: {
+          id: mediaId,
+          caption: caption || undefined,
+        },
+        ...(replyToMessage && { context: { message_id: replyToMessage } }),
+      }
+
+      const response = await fetch(
+        `https://graph.facebook.com/${WA_API_VERSION}/${businessPhoneNumberId}/messages`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${META_API_TOKEN}`,
+          },
+          body: JSON.stringify(message),
+        }
+      )
+
+      logger.debug('Image message API response {status}', { status: response.status })
+
+      if (!response.ok) {
+        logger.error('Failed to send image message: {status} {statusText}', {
+          status: response.status,
+          statusText: response.statusText,
+          body: await response.text(),
+        })
+        throw new ResponseDeliveryError('Failed to send image message')
+      }
+
+      const messageResponse = (await response.json()) as OutgoingMessageResponse
+      if (!messageResponse.messages?.[0]?.id) {
+        logger.error('Send image message request succeeded but no message ID was returned', {
+          response: messageResponse,
+        })
+        throw new ResponseDeliveryError('Failed to send image message')
+      }
+
+      return messageResponse.messages[0].id
+    },
+
+    sendDocumentMessage: async ({ data, filename, caption, replyingTo: replyToMessage }) => {
+      const businessPhoneNumberId = getContext().get('businessPhoneNumberId')
+      const to = getContext().get('userWhatsappId')
+
+      if (!businessPhoneNumberId || !to) {
+        logger.error('Missing context for sending document message')
+        throw new ResponseDeliveryError('Missing context for sending message')
+      }
+
+      // First upload the document to Facebook
+      const formData = new FormData()
+      formData.append('file', new Blob([data]), filename)
+      formData.append('type', 'application/octet-stream')
+      formData.append('messaging_product', 'whatsapp')
+
+      const uploadResponse = await fetch(
+        `https://graph.facebook.com/${WA_API_VERSION}/${businessPhoneNumberId}/media`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${META_API_TOKEN}`,
+          },
+          body: formData,
+        }
+      )
+
+      if (!uploadResponse.ok) {
+        logger.error('Failed to upload document: {status} {statusText}', {
+          status: uploadResponse.status,
+          statusText: uploadResponse.statusText,
+          body: await uploadResponse.text(),
+        })
+        throw new ResponseDeliveryError('Failed to upload document')
+      }
+
+      const uploadResult = (await uploadResponse.json()) as { id: string }
+      const mediaId = uploadResult.id
+
+      // Now send the document message
+      const message = {
+        messaging_product: 'whatsapp' as const,
+        to,
+        type: 'document',
+        document: {
+          id: mediaId,
+          filename,
+          caption: caption || undefined,
+        },
+        ...(replyToMessage && { context: { message_id: replyToMessage } }),
+      }
+
+      const response = await fetch(
+        `https://graph.facebook.com/${WA_API_VERSION}/${businessPhoneNumberId}/messages`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${META_API_TOKEN}`,
+          },
+          body: JSON.stringify(message),
+        }
+      )
+
+      logger.debug('Document message API response {status}', { status: response.status })
+
+      if (!response.ok) {
+        logger.error('Failed to send document message: {status} {statusText}', {
+          status: response.status,
+          statusText: response.statusText,
+          body: await response.text(),
+        })
+        throw new ResponseDeliveryError('Failed to send document message')
+      }
+
+      const messageResponse = (await response.json()) as OutgoingMessageResponse
+      if (!messageResponse.messages?.[0]?.id) {
+        logger.error('Send document message request succeeded but no message ID was returned', {
+          response: messageResponse,
+        })
+        throw new ResponseDeliveryError('Failed to send document message')
+      }
+
+      return messageResponse.messages[0].id
     },
   }
 

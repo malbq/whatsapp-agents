@@ -26,6 +26,9 @@ declare global {
     TEXT_GENERATION_PROVIDER: string
     AUDIO_TRANSCRIPTION_PROVIDER: string
     IMAGE_ANALYSIS_PROVIDER: string
+    LOKI_PUSH_URL?: string
+    LOKI_MAX_BATCH_BYTES?: number
+    LOKI_FLUSH_INTERVAL_MS?: number
     TEST_AI?: string
   }
 }

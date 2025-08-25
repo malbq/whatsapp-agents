@@ -2,7 +2,7 @@ import { createClient, type Client } from '@libsql/client'
 import { getLogger } from '@logtape/logtape'
 import type { UserComponent } from '../agent/components'
 import { FailedToPersistUserError } from '../errors'
-import type { DB, RecentMessage, SimilarMessage } from './db'
+import type { DB, FileSearchResult, RecentMessage, SimilarMessage } from './db'
 
 const logger = getLogger(['app', 'infra', 'db'])
 
@@ -37,6 +37,7 @@ export namespace LibSql {
           })
 
         if (insertResult.rows.length === 0) {
+          console.log('Failed to persist user: no result')
           throw new FailedToPersistUserError('No user persisted')
         }
 
@@ -90,7 +91,7 @@ export namespace LibSql {
                 messageData.userId,
                 messageData.role,
                 messageData.type,
-                messageData.mediaStorageKey ?? null,
+                messageData.storageKey ?? null,
               ],
             },
             ...messageData.content.map((chunk, sequence) => ({
@@ -170,6 +171,95 @@ export namespace LibSql {
           args: [Bun.randomUUIDv7(), userId, profile, messageId ?? null],
         })
       },
+
+      async searchFiles({ userId, queryEmbedding }) {
+        const SIMILARITY_THRESHOLD = parseFloat(import.meta.env.FILE_SIMILARITY_THRESHOLD ?? '0.50')
+        const MAX_FILES = 10
+        const queryEmbeddingString = JSON.stringify(queryEmbedding)
+
+        const result = await client.execute({
+          sql: `
+            SELECT 
+              m.id as message_id,
+              m.media_storage_key as storage_key,
+              m.timestamp,
+              e.content,
+              vector_distance_cos(e.embedding, vector32(?)) as distance
+            FROM message m
+            JOIN embedding e ON m.id = e.message_id
+            WHERE m.user_id = ? 
+            AND m.media_storage_key IS NOT NULL
+            AND distance < ?
+            ORDER BY distance ASC
+            LIMIT 50`,
+          args: [queryEmbeddingString, userId, SIMILARITY_THRESHOLD],
+        })
+
+        const fileGroups = new Map<
+          string,
+          {
+            messageId: string
+            storageKey: string
+            timestamp: Date
+            chunks: Array<{ content: string; distance: number }>
+          }
+        >()
+
+        result.rows.forEach((row) => {
+          const messageId = row.message_id as string
+
+          if (!fileGroups.has(messageId)) {
+            fileGroups.set(messageId, {
+              storageKey: row.storage_key as string,
+              messageId: row.message_id as string,
+              timestamp: new Date(row.timestamp as string),
+              chunks: [],
+            })
+          }
+
+          fileGroups.get(messageId)!.chunks.push({
+            content: row.content as string,
+            distance: row.distance as number,
+          })
+        })
+
+        // Calculate average scores and prepare results
+        const fileResults: FileSearchResult[] = Array.from(fileGroups.values())
+          .map((group) => {
+            const score =
+              1 - group.chunks.reduce((sum, chunk) => sum + chunk.distance, 0) / group.chunks.length
+            const rawSnippet = group.chunks
+              .sort((a, b) => a.distance - b.distance)
+              .slice(0, 3)
+              .map((chunk) => chunk.content)
+              .join('\n\n')
+
+            const snippet = sanitizeSnippet(rawSnippet)
+
+            return {
+              messageId: group.messageId,
+              storageKey: group.storageKey,
+              timestamp: group.timestamp,
+              score,
+              snippet,
+            }
+          })
+          .sort((a, b) => b.score - a.score)
+          .slice(0, MAX_FILES)
+
+        return fileResults
+      },
     }
+  }
+
+  function sanitizeSnippet(text: string): string {
+    // Redact email addresses
+    text = text.replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, '[EMAIL]')
+
+    // Redact potential credit card numbers (simple regex for common patterns)
+    text = text.replace(/\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b/g, '[CARD]')
+    text = text.replace(/\b\d{13,19}\b/g, '[CARD]')
+
+    return text
   }
 }

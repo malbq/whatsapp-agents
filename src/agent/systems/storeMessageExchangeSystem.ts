@@ -21,7 +21,7 @@ export async function StoreMessageExchangeSystem(frame: Frame, deps: Deps): Prom
       role: message.role,
       type: message.type,
       content: vectorEmbedding.chunks,
-      mediaStorageKey: storedMedia?.storageKey,
+      storageKey: storedMedia?.storageKey,
     }))
 
   const messageIds = await deps.db.storeMessage(messages)

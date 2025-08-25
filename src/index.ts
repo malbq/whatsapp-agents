@@ -18,17 +18,19 @@ await configureLogging()
 
 const logger = getLogger(['app'])
 
+const db = LibSql.db()
 const deps: Deps = {
-  chat: Whatsapp.chat,
+  db,
   storage: FilesystemStorage.storage(),
-  ai: AIProvider,
-  db: LibSql.db(),
+  chat: Whatsapp.chat,
+  ai: AIProvider(db),
 }
 
 type Env = {
   Variables: {
-    businessPhoneNumberId: string
-    userWhatsappId: string
+    businessPhoneNumberId?: string
+    userWhatsappId?: string
+    userId?: string
   }
 }
 export const getContext = () => getContextHono<Env>()

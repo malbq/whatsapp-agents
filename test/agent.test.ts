@@ -51,11 +51,14 @@ beforeAll(async () => {
       storeMessage: mock(db.storeMessage),
       storeWebhookEvent: mock(db.storeWebhookEvent),
       findSimilarMessages: mock(db.findSimilarMessages),
+      searchFiles: mock(db.searchFiles),
     },
     chat: {
       parseNotification: mock(),
       acknowledgeProcessingMessage: mock(),
       sendTextMessage: mock(async () => `${messageExternalId++}`),
+      sendImageMessage: mock(async () => `${messageExternalId++}`),
+      sendDocumentMessage: mock(async () => `${messageExternalId++}`),
     },
     ai: {
       analyzeImage: mock(async () => imageAnalysisResult),
@@ -124,7 +127,7 @@ describe('Smoke test: first interaction', () => {
       })
     )
     expect(deps.chat.acknowledgeProcessingMessage).toHaveBeenCalled()
-    expect(deps.ai.respond).toHaveBeenCalledWith({
+    expect(deps.ai.respond.calls[0]?.[0]).toEqual({
       messages: [{ role: 'user', content: message.text }],
     })
     expect(deps.chat.sendTextMessage).toHaveBeenCalledWith({ text: aiTextResponse })

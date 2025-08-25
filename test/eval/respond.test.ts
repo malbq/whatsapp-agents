@@ -14,9 +14,9 @@ describe.if(!!import.meta.env.TEST_AI)('AI Respond', () => {
       ],
     })
 
-    expect(response).toBeTypeOf('string')
-    expect(response.length).toBeGreaterThan(0)
-    expect(response.length).toBeLessThan(2000)
+    expect(response.text).toBeTypeOf('string')
+    expect(response.text.length).toBeGreaterThan(0)
+    expect(response.text.length).toBeLessThan(2000)
   })
 
   test('should use all provided context to answer', async () => {
@@ -34,7 +34,7 @@ describe.if(!!import.meta.env.TEST_AI)('AI Respond', () => {
     })
 
     expect(response).toBeTypeOf('string')
-    expect(response.length).toBeGreaterThan(0)
+    expect(response.text.length).toBeGreaterThan(0)
   })
 
   test('should respond in English when user communicates in English', async () => {
@@ -52,7 +52,7 @@ describe.if(!!import.meta.env.TEST_AI)('AI Respond', () => {
     })
 
     expect(response).toBeTypeOf('string')
-    expect(response.length).toBeGreaterThan(0)
+    expect(response.text.length).toBeGreaterThan(0)
   })
 
   test('should answer questions accurately', async () => {
@@ -66,6 +66,6 @@ describe.if(!!import.meta.env.TEST_AI)('AI Respond', () => {
     })
 
     expect(response).toBeTypeOf('string')
-    expect(response.length).toBeGreaterThan(0)
+    expect(response.text.length).toBeGreaterThan(0)
   })
 })

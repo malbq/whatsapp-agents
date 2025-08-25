@@ -1,14 +1,16 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { validateEnvVars } from '../src/utils/validateEnv'
 
-const originalEnv = Object.assign({}, import.meta.env)
+// cast to a mutable record so delete is allowed (avoids TS2790)
+const env = import.meta.env as unknown as Record<string, any>
+const originalEnv = Object.assign({}, env)
 
 beforeEach(() => {
-  Object.assign(import.meta.env, originalEnv)
+  Object.assign(env, originalEnv)
 })
 
 afterEach(() => {
-  Object.assign(import.meta.env, originalEnv)
+  Object.assign(env, originalEnv)
 })
 
 describe('validateEnv', () => {
@@ -17,16 +19,16 @@ describe('validateEnv', () => {
   })
 
   test('throws error when WEBHOOK_VERIFY_TOKEN is missing', () => {
-    delete import.meta.env.WEBHOOK_VERIFY_TOKEN
+    delete env.WEBHOOK_VERIFY_TOKEN
     expect(() => validateEnvVars()).toThrow(
       'Missing required environment variables: WEBHOOK_VERIFY_TOKEN'
     )
   })
 
   test('throws error when multiple variables are missing', () => {
-    delete import.meta.env.OPENAI_API_KEY
-    delete import.meta.env.GOOGLE_GENERATIVE_AI_API_KEY
-    delete import.meta.env.CF_ACCOUNT_ID
+    delete env.OPENAI_API_KEY
+    delete env.GOOGLE_GENERATIVE_AI_API_KEY
+    delete env.CF_ACCOUNT_ID
     expect(() => validateEnvVars()).toThrow(
       'Missing required environment variables: OPENAI_API_KEY, GOOGLE_GENERATIVE_AI_API_KEY, CF_ACCOUNT_ID'
     )
