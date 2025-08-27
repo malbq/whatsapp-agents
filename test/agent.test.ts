@@ -525,7 +525,7 @@ describe('Smoke test: first interaction', () => {
       messages: [
         {
           role: 'system',
-          content: Prompt.documentDescription(
+          content: Prompt.documentTranscription(
             documentTranscriptionResult,
             message.documentFilename!
           ),
@@ -541,7 +541,7 @@ describe('Smoke test: first interaction', () => {
 
     expect(deps.ai.generateEmbeddings.mock.calls[0]?.[0]).toEqual({
       text: [
-        Prompt.documentDescription(documentTranscriptionResult, message.documentFilename!),
+        Prompt.documentTranscription(documentTranscriptionResult, message.documentFilename!),
         aiTextResponse,
       ],
     })
@@ -553,7 +553,7 @@ describe('Smoke test: first interaction', () => {
         mediaStorageKey: expect.stringMatching(new RegExp(`^${persistedUser.id}/.*`)),
         content: [
           {
-            content: Prompt.documentDescription(
+            content: Prompt.documentTranscription(
               documentTranscriptionResult,
               message.documentFilename!
             ),

@@ -27,6 +27,7 @@ export async function configureLogging() {
     loggers: [
       { category: ['logtape', 'meta'], lowestLevel: 'warning', sinks: ['console'] },
       { category: 'app', lowestLevel: logLevel, sinks: activeSinks },
+      { category: 'infra', lowestLevel: logLevel, sinks: activeSinks },
       { category: 'server', lowestLevel: logLevel, sinks: activeSinks },
     ],
   })

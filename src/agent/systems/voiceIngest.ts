@@ -1,33 +1,22 @@
 import { getLogger } from '@logtape/logtape'
-import { ComponentNotFoundError, IngestionError } from '../../errors'
-import { ASSISTANT_PRIORITY } from '../../utils/priorities'
+import { IngestionError } from '../../errors'
 import { spreadError } from '../../utils/spreadError'
-import type { EntityId, Frame } from '../frame'
+import type { Frame } from '../frame'
 
 const logger = getLogger(['app', 'agent', 'ingestion', 'voice'])
 
-export async function voiceIngest(
-  frame: Frame,
-  deps: Deps,
-  messageEntity: EntityId
-): Promise<void> {
-  const media = frame.getComponent(messageEntity, 'Media')
-  if (!media) throw new ComponentNotFoundError(messageEntity, 'Media')
-  try {
-    const transcribed = await deps.ai.transcribeAudio({ audio: media.data })
-    frame.addComponent(messageEntity, 'TextContent', { text: transcribed })
-  } catch (error) {
-    logger.error('Voice ingestion error', { ...spreadError(error) })
-    const errorMessageEntity = frame.createEntity()
-    frame.addComponent(errorMessageEntity, 'Message', {
-      role: 'assistant',
-      type: 'text',
-      priority: ASSISTANT_PRIORITY,
-    })
-    frame.addComponent(errorMessageEntity, 'TextContent', {
-      text: `Desculpe, tive um problema ao transcrever a mensagem de voz.`,
-    })
+export async function voiceIngest(frame: Frame, deps: Deps): Promise<void> {
+  if (!frame.inbound?.media?.data) throw new IngestionError('Media is required for voice ingestion')
 
+  try {
+    frame.inbound.text = await deps.ai.transcribeAudio({ audio: frame.inbound.media.data })
+  } catch (error) {
+    frame.outbound = {
+      type: frame.inbound.type,
+      text: 'Desculpe, tive um problema ao transcrever a mensagem de voz.',
+    }
+
+    logger.error('Voice ingestion error', { ...spreadError(error) })
     throw new IngestionError('Failed to transcribe voice message')
   }
 }

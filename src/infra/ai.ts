@@ -20,7 +20,7 @@ import * as Prompt from '../prompts/prompt'
 import { formatTokenUsage } from '../utils/formatTokenUsage'
 import type { DB, FileSearchResult } from './db'
 
-const logger = getLogger(['app', 'infra', 'ai'])
+const logger = getLogger(['infra', 'ai'])
 
 const TEXT_MODEL =
   import.meta.env.TEXT_GENERATION_PROVIDER === 'google'
@@ -111,18 +111,11 @@ export const AIProvider: (db: DB) => AI = (db) => {
         throw new Error('User ID required for file retrieval')
       }
 
-      return `File with storage key ${storageKey} has been queued for retrieval and will be sent to you shortly.`
+      return `File with storage key ${storageKey} has been found and will be sent to the user.`
     },
   })
   return {
     respond: async ({ instructions = Prompt.system, messages, userMessageEmbedding }) => {
-      const ctxLogger = logger.with({
-        provider: TEXT_MODEL.provider,
-        model: TEXT_MODEL.modelId,
-        system: instructions,
-        prompt: messages.map((m) => `${m.role}: ${m.content}`).join('\n'),
-      })
-
       let tools: Record<string, Tool> = {}
       if (userMessageEmbedding) {
         tools.search_files = searchFilesTool(userMessageEmbedding)
@@ -146,6 +139,12 @@ export const AIProvider: (db: DB) => AI = (db) => {
         tools,
         stopWhen: stepCountIs(MAX_STEPS),
         maxOutputTokens: TEXT_GEN_MAX_OUTPUT_TOKENS,
+      })
+
+      const ctxLogger = logger.with({
+        provider: TEXT_MODEL.provider,
+        model: TEXT_MODEL.modelId,
+        responseId: response.response.id,
       })
 
       ctxLogger.debug('Text generation {provider}/{model}', {

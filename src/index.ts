@@ -50,7 +50,6 @@ app.post('/webhook', async (c) => {
     if (!headerSignature) return c.status(401)
 
     const body = await c.req.text()
-    logger.debug('Processing webhook notification', { body })
     const computedSignature = createHmac('sha256', import.meta.env.META_APP_SECRET)
       .update(body)
       .digest('hex')

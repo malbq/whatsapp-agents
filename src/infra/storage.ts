@@ -3,10 +3,12 @@ export interface Storage {
     key: string
     data: ArrayBuffer
     mimeType: string
+    filename?: string
   }) => Promise<void>
 
   retrieve: (key: string) => Promise<{
     data: ArrayBuffer
     mimeType: string
+    filename?: string
   }>
 }

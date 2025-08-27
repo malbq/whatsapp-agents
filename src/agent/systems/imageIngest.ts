@@ -1,62 +1,40 @@
 import { getLogger } from '@logtape/logtape'
-import { ComponentNotFoundError, IngestionError } from '../../errors'
+import { IngestionError } from '../../errors'
 import * as Prompt from '../../prompts/prompt'
-import { ASSISTANT_PRIORITY, SYSTEM_PRIORITY } from '../../utils/priorities'
 import { spreadError } from '../../utils/spreadError'
-import type { EntityId, Frame } from '../frame'
+import type { Frame } from '../frame'
 
 const logger = getLogger(['app', 'agent', 'ingestion', 'image'])
 
-export async function imageIngest(
-  frame: Frame,
-  deps: Deps,
-  messageEntity: EntityId,
-  caption?: string
-): Promise<void> {
-  const media = frame.getComponent(messageEntity, 'Media')
-  if (!media) throw new ComponentNotFoundError(messageEntity, 'Media')
+export async function imageIngest(frame: Frame, deps: Deps): Promise<void> {
+  if (!frame.inbound?.media) throw new IngestionError('Media is required for image ingestion')
 
   try {
-    const base64Image = Buffer.from(media.data).toString('base64')
+    const base64Image = Buffer.from(frame.inbound.media.data).toString('base64')
     const description = await deps.ai.analyzeImage({
-      imageUrl: `data:${media.mimeType};base64,${base64Image}`,
-      caption,
+      imageUrl: `data:${frame.inbound.media.mimeType};base64,${base64Image}`,
+      caption: frame.inbound.text,
     })
+    frame.inbound.image = { description }
 
-    const systemMessageEntity = frame.createEntity()
-    frame.addComponent(systemMessageEntity, 'Message', {
-      role: 'system',
-      type: 'image',
-      priority: SYSTEM_PRIORITY,
-    })
-    frame.addComponent(systemMessageEntity, 'TextContent', {
+    frame.systemMessages.push({
+      type: frame.inbound.type,
       text: Prompt.imageDescription(description),
     })
-    if (caption) {
-      frame.addComponent(messageEntity, 'TextContent', { text: caption })
-    } else {
-      const noCaptionMessageEntity = frame.createEntity()
-      frame.addComponent(noCaptionMessageEntity, 'Message', {
-        role: 'system',
-        type: 'image',
-        priority: SYSTEM_PRIORITY,
-      })
-      frame.addComponent(noCaptionMessageEntity, 'TextContent', {
+
+    if (!frame.inbound.text) {
+      frame.systemMessages.push({
+        type: frame.inbound.type,
         text: Prompt.imageWithoutCaption,
       })
     }
   } catch (error) {
-    logger.error('Image ingestion error', { ...spreadError(error) })
-    const errorMessageEntity = frame.createEntity()
-    frame.addComponent(errorMessageEntity, 'Message', {
-      role: 'assistant',
-      type: 'text',
-      priority: ASSISTANT_PRIORITY,
-    })
-    frame.addComponent(errorMessageEntity, 'TextContent', {
-      text: `Desculpe, tive um problema ao analisar a imagem.`,
-    })
+    frame.outbound = {
+      type: frame.inbound.type,
+      text: 'Desculpe, tive um problema ao analisar a imagem.',
+    }
 
+    logger.error('Image ingestion error', { ...spreadError(error) })
     throw new IngestionError('Failed to analyze image')
   }
 }

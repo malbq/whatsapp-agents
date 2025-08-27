@@ -1,8 +1,5 @@
-import { getLogger } from '@logtape/logtape'
-import type { StatusUpdate } from '../domain'
-
-const logger = getLogger(['app', 'features', 'handleStatusUpdate'])
+import type { StatusUpdate } from '../infra/chat'
 
 export async function handleStatusUpdate(statusUpdate: StatusUpdate) {
-  logger.info('Status update: {status}', { status: statusUpdate.status })
+  // no op
 }

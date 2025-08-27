@@ -1,17 +1,14 @@
 import { getLogger, withContext } from '@logtape/logtape'
 import { Frame } from './agent/frame'
-import { EmbeddingSystem } from './agent/systems/embeddingSystem'
-import { ImproveUserProfileSystem } from './agent/systems/improveUserProfileSystem'
-import { IngestionSystem } from './agent/systems/ingestionSystem'
-import { MediaStorageSystem } from './agent/systems/mediaStorageSystem'
-import { ReceiveMessageSystem } from './agent/systems/receiveMessageSystem'
-import { ResponseDeliverySystem } from './agent/systems/responseDeliverySystem'
-import { ResponseGenerationSystem } from './agent/systems/responseGenerationSystem'
-import { StoreMessageExchangeSystem } from './agent/systems/storeMessageExchangeSystem'
-import { UserSystem } from './agent/systems/userSystem'
-import { IngestionError } from './errors'
+import { ImproveUserProfile } from './agent/systems/improveUserProfile'
+import { IngestMessage } from './agent/systems/ingestMessage'
+import { MediaStorage } from './agent/systems/mediaStorage'
+import { MessageEmbedding } from './agent/systems/messageEmbedding'
+import { PersistUser } from './agent/systems/persistUser'
+import { ResponseDelivery } from './agent/systems/responseDelivery'
+import { ResponseGeneration } from './agent/systems/responseGeneration'
+import { StoreMessageExchange } from './agent/systems/storeMessageExchange'
 import type { IncomingMessage } from './infra/chat'
-import { ASSISTANT_PRIORITY } from './utils/priorities'
 import { spreadError } from './utils/spreadError'
 
 const logger = getLogger(['app', 'agent'])
@@ -19,51 +16,43 @@ const logger = getLogger(['app', 'agent'])
 export async function agent(deps: Deps, message: IncomingMessage): Promise<void> {
   const frame = new Frame()
 
-  try {
-    await UserSystem(frame, deps, {
-      externalId: message.userExternalId,
-      name: message.userName,
-    })
-  } catch (error) {
-    logger.error('Error persisting user {message}', spreadError(error))
-    // we can't do anything without a user
+  await PersistUser(frame, deps, {
+    externalId: message.userExternalId,
+    name: message.userName,
+  })
+  if (!frame.user) {
+    // Não podemos fazer nada sem um usuário, nem salvar a resposta no banco
     deps.chat.sendTextMessage({
       text: 'Desculpe, tive um problema e não consigo te responder agora.',
     })
     return
   }
 
-  withContext({ userId: frame.getComponent(frame.USER_ENTITY_ID, 'User')!.id }, async () => {
-    const messageEntity = ReceiveMessageSystem(frame, message)
+  withContext({ userId: frame.user.id }, async () => {
     try {
-      await IngestionSystem(frame, deps, messageEntity, message)
       deps.chat.acknowledgeProcessingMessage(message.externalId)
-      await ResponseGenerationSystem(frame, deps, messageEntity)
-      // await RetrieveFileSystem(frame, deps)
+      await IngestMessage(frame, deps, message)
+      await MessageEmbedding(deps, frame.inbound)
+      await ResponseGeneration(frame, deps)
     } catch (error) {
-      logger.error('Ingestion error', { ...spreadError(error) })
-      const errorMessageEntity = frame.createEntity()
-      frame.addComponent(errorMessageEntity, 'Message', {
-        role: 'assistant',
-        type: 'text',
-        priority: ASSISTANT_PRIORITY,
-      })
-      frame.addComponent(errorMessageEntity, 'TextContent', {
-        text:
-          error instanceof IngestionError
-            ? error.message
-            : 'Desculpe, tive um problema ao processar sua mensagem.',
-      })
+      logger.error('Error in agent response flow', { ...spreadError(error) })
+      frame.outbound = {
+        type: frame.inbound?.type ?? 'text',
+        text: frame.inbound?.text ?? 'Desculpe, tive um problema ao processar sua mensagem.',
+      }
     }
-    await ResponseDeliverySystem(frame, deps)
 
     try {
-      await Promise.all([
-        MediaStorageSystem(frame, deps, messageEntity),
-        EmbeddingSystem(frame, deps),
-      ])
-      await StoreMessageExchangeSystem(frame, deps)
-      ImproveUserProfileSystem(frame, deps, messageEntity)
+      await ResponseDelivery(frame, deps)
+    } catch (error) {
+      logger.error('Error in response delivery', { ...spreadError(error) })
+      return
+    }
+
+    try {
+      await Promise.all([MediaStorage(frame, deps), MessageEmbedding(deps, frame.outbound)])
+      await StoreMessageExchange(frame, deps)
+      ImproveUserProfile(frame, deps)
     } catch (error) {
       logger.error("Error after agent's response", { ...spreadError(error) })
     }

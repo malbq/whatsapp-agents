@@ -1,91 +1,64 @@
-import { ComponentNotFoundError, EntityNotFoundError } from '../errors'
-import type {
-  DocumentContentComponent,
-  ImageContentComponent,
-  MediaComponent,
-  MediaMetadataComponent,
-  MessageComponent,
-  MessageIdComponent,
-  StoredMediaComponent,
-  TextContentComponent,
-  UserComponent,
-  VectorEmbeddingComponent,
-} from './components'
+import type { ChunkData, MessageType, User } from '../infra/db'
 
-export type EntityId = number
-export type ComponentType =
-  | 'DocumentContent'
-  | 'ImageContent'
-  | 'Media'
-  | 'MediaMetadata'
-  | 'Message'
-  | 'MessageId'
-  | 'StoredMedia'
-  | 'TextContent'
-  | 'User'
-  | 'VectorEmbedding'
+/** TODO
+ * - refatorar tudo com opencode
+ * - transcrições devem passar por split e embedding
+ * - repensar system prompts relativos a documentos, imagens e audio
+ */
 
-export type ComponentMap = {
-  DocumentContent: DocumentContentComponent
-  ImageContent: ImageContentComponent
-  Media: MediaComponent
-  MediaMetadata: MediaMetadataComponent
-  Message: MessageComponent
-  MessageId: MessageIdComponent
-  StoredMedia: StoredMediaComponent
-  TextContent: TextContentComponent
-  User: UserComponent
-  VectorEmbedding: VectorEmbeddingComponent
+export class FrameRefac {
+  user?: User
+  inbound?: {
+    messageId: string
+    externalChatId: string
+    type: MessageType
+    text: string
+    media: {
+      data: ArrayBuffer
+      mimeType: string
+      filename: string
+      storageKey: string
+      transcription: string
+    }
+    embeddedContent?: Array<ChunkData>
+  }
+  outbound?: {
+    externalChatId: string
+    text: string
+    retrieveStorageKey: string
+    embeddedContent?: Array<ChunkData>
+  }
 }
 
 export class Frame {
-  private entities: Map<EntityId, Partial<ComponentMap>> = new Map()
-  private nextId: number = 1
-  public readonly USER_ENTITY_ID = 0
+  user?: User
+  inbound?: FrameMessage
+  systemMessages: Array<FrameMessage> = []
+  outbound?: FrameMessage
+}
 
-  constructor() {
-    this.entities.set(this.USER_ENTITY_ID, {})
+export interface FrameMessage {
+  id?: string
+  externalId?: string
+  type: MessageType
+  text?: string
+  media?: {
+    data: ArrayBuffer
+    mimeType: string
+    storageKey?: string
   }
-
-  createEntity(): EntityId {
-    const id = this.nextId++
-    this.entities.set(id, {})
-    return id
+  audio?: {
+    transcription: string
   }
-
-  addComponent<K extends ComponentType>(entity: EntityId, type: K, data: ComponentMap[K]) {
-    const components = this.entities.get(entity)
-    if (!components) {
-      throw new EntityNotFoundError(entity)
-    }
-    components[type] = data
+  image?: {
+    description: string
   }
-
-  getComponent<K extends ComponentType>(entity: EntityId, type: K): ComponentMap[K] | undefined {
-    const components = this.entities.get(entity)
-    if (!components) {
-      throw new EntityNotFoundError(entity)
-    }
-    if (!(type in components)) {
-      return
-    }
-    return components[type] as ComponentMap[K]
+  document?: {
+    transcription?: string
+    filename: string
   }
-
-  getRequiredComponent<K extends ComponentType>(entity: EntityId, type: K): ComponentMap[K] {
-    const components = this.entities.get(entity)
-    if (!components) {
-      throw new EntityNotFoundError(entity)
-    }
-    if (!(type in components)) {
-      throw new ComponentNotFoundError(entity, type)
-    }
-    return components[type] as ComponentMap[K]
+  retrieval?: {
+    storageKey: string
   }
-
-  query(components: ComponentType[]): EntityId[] {
-    return Array.from(this.entities.keys()).filter((id) =>
-      components.every((c) => this.entities.get(id)?.[c] !== undefined)
-    )
-  }
+  embeddedContent?: Array<ChunkData>
 }

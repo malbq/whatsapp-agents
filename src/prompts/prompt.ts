@@ -25,21 +25,21 @@ Quote: > text
 Inline code: \`text\``
 
 export const userProfile = (profile: string) => `# User Profile
-##This is a summary of what we know about the user
+This is a summary of what we know about the user.
 <profile>
 ${profile}
 </profile>
 Use this profile to personalize responses and anticipate needs.`
 
 export const currentSchedule = (schedule: Array<string>) => `# Current Schedule 
-##This is the current active reminders we have set for the user
+This is the current active reminders we have set for the user.
 <schedule>
 ${schedule.join('\n')}
 </schedule>
 Reference these reminders when relevant to queries about time, schedule, or tasks.`
 
 export const userMemory = (memory: Array<SimilarMessage>) => `# User Memory
-##This is a list of relevant information we gathered by searching every exchange with the user
+This is a list of relevant information we gathered by searching every exchange with the user.
 <memory>
 ${memory.map((m) => `${m.role}: ${m.content} (${m.timestamp.toISOString()})`).join('\n')}
 </memory>
@@ -52,7 +52,7 @@ Feel free to ignore past messages that seem to be from different and an outdated
 You can ONLY open links from the last message. DO NOT open links from other messages besides the last one.`
 
 export const audioTranscription = (transcription: string) => `# Audio Transcription
-##This is the transcription of an audio sent by the user
+This is the transcription of an audio sent by the user. 
 (the actual audio was omitted from this thread)
 <transcription>
 ${transcription}
@@ -60,7 +60,7 @@ ${transcription}
 Process this transcription as the user's current message input.`
 
 export const imageDescription = (description: string) => `# Image Description
-##This is the description of an image sent by the user
+This is the description of an image sent by the user.
 (the actual image was omitted from this thread)
 <description>
 ${description}
@@ -73,9 +73,9 @@ Use the context provided, especially chat history, to answer.
 If that is not enough to understand what the user wants, ask for clarification.
 Analyze available context to determine user intent or request clarification.`
 
-export const documentDescription = (description: string, filename: string) =>
+export const documentTranscription = (description: string, filename: string) =>
   `# Document Transcription
-##This is the full transcription of the content of a document sent by the user
+This is the full transcription of the content of a document sent by the user.
 (the actual document was omitted from this thread)
 The name of the document is: ${filename}
 <description>
@@ -88,7 +88,9 @@ export const updateUserProfile = (
   lastMessage: string
 ) => `Identify relevant personal information about the user and update their profile.
 Prioritize privacy; avoid sensitive details unless explicitly shared and user consents (e.g., 'store my family info').
+
 # Sensitive Data per LGPD
+
 Do NOT store or update: racial/ethnic origin, religion, politics, unions, health/sex life, genetic/biometric data, or inferences (e.g., family implying genetics, hobbies implying beliefs, work implying unions).
 Flag risks: age (minors), location (origins), family/best friends (genetics/affiliations), work/interests/plans (politics/health/religion).
 For any potential sensitive item, omit unless lastMessage explicitly shares AND consents to storage.
@@ -97,9 +99,7 @@ Store only the information that would be relevant to identify the user and perso
 - tone they prefer
 - interests & hobbies
 - current plans
-
 # Guidelines
-
 - Output the full updated profile, starting from the current one and incorporating only new information.
 - Do not remove any existing information from the profile.
 - Do not update the profile if the information is already present or if the message is not relevant.
@@ -109,14 +109,12 @@ Store only the information that would be relevant to identify the user and perso
 - Keep it short, less than 2000 characters.
 - If profile has more than 2000 characters, summarize it.
 - Be concise and to the point. Use only short sentences and abbreviate wherever you can.
-
-# Current User Profile
-
+<current_user_profile>
 ${profile}
-
-# Last User Message
-
-"${lastMessage}"`
+</current_user_profile>
+<last_user_message>
+"${lastMessage}"
+</last_user_message>`
 
 export const analyzeImage = `Provide a detailed description of this image in English.
 If it is a photo or illustration without text, give only the description.

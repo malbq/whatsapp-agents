@@ -1,10 +1,9 @@
 import { createClient, type Client } from '@libsql/client'
 import { getLogger } from '@logtape/logtape'
-import type { UserComponent } from '../agent/components'
 import { FailedToPersistUserError } from '../errors'
-import type { DB, FileSearchResult, RecentMessage, SimilarMessage } from './db'
+import type { DB, FileSearchResult, RecentMessage, SimilarMessage, User } from './db'
 
-const logger = getLogger(['app', 'infra', 'db'])
+const logger = getLogger(['infra', 'db'])
 
 export namespace LibSql {
   export const db = (client?: Client): DB => {
@@ -55,9 +54,9 @@ export namespace LibSql {
         const profile = (profileResult.rows[0]?.profile as string) || ''
 
         return {
-          id: newUser.id as UserComponent['id'],
-          externalId: newUser.external_id as UserComponent['externalId'],
-          name: newUser.name as UserComponent['name'],
+          id: newUser.id as User['id'],
+          externalId: newUser.external_id as User['externalId'],
+          name: newUser.name as User['name'],
           joinedAt: new Date(newUser.joined_at as string),
           profile,
         }
@@ -106,6 +105,7 @@ export namespace LibSql {
         await client.batch(statements)
         return messageIds
       },
+
       async findRecentMessages({ userId }) {
         const MAX_RECENT_MESSAGES = parseInt(import.meta.env.MAX_RECENT_MESSAGES ?? '100')
         const selectResult = await client.execute({
@@ -127,6 +127,7 @@ export namespace LibSql {
           }))
           .reverse()
       },
+
       async findSimilarMessages({ userId, queryEmbedding, excludeIds = [] }) {
         const SIMILARITY_THRESHOLD = parseFloat(import.meta.env.SIMILARITY_THRESHOLD ?? '0.5')
         const MAX_SIMILAR_MESSAGES = parseInt(import.meta.env.MAX_SIMILAR_MESSAGES ?? '10')
@@ -164,6 +165,7 @@ export namespace LibSql {
           timestamp: new Date(row.timestamp as string),
         }))
       },
+
       async updateUserProfile({ userId, profile, messageId }) {
         await client.execute({
           sql: `INSERT INTO user_profile_version (id, user_id, profile, message_id)

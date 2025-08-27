@@ -8,33 +8,29 @@ export async function loggingMiddleware(c: Context, next: Next) {
   const requestId = Bun.randomUUIDv7('base64')
   const start = Date.now()
 
-  await withContext(
-    {
-      requestId,
-    },
-    async () => {
-      logger.debug('Request {requestId}', {
-        method: c.req.method,
-        path: c.req.path,
-        headers: JSON.stringify(c.req.header()),
+  await withContext({ requestId }, async () => {
+    logger.debug(`Request ${requestId}`, {
+      method: c.req.method,
+      path: c.req.path,
+      headers: JSON.stringify(c.req.header()),
+      body: await c.req.text(),
+    })
+
+    try {
+      await next()
+      logger.debug(`Response ${requestId}`, {
+        status: c.res.status,
+        duration: time(start),
+      })
+    } catch (error) {
+      logger.error(`Request error ${requestId}`, {
+        ...spreadError(error),
+        duration: time(start),
       })
 
-      try {
-        await next()
-        logger.debug('Response {requestId}', {
-          status: c.res.status,
-          duration: time(start),
-        })
-      } catch (error) {
-        logger.error('Request error {requestId}', {
-          ...spreadError(error),
-          duration: time(start),
-        })
-
-        throw error
-      }
+      throw error
     }
-  )
+  })
 }
 function humanize(times: string[]) {
   const [delimiter, separator] = [',', '.']

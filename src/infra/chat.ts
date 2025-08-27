@@ -1,16 +1,20 @@
-import type { MessageComponent } from '../agent/components'
-import type { StatusUpdate } from '../domain'
+import type { MessageType } from './db'
 
 export interface IncomingMessage {
   userExternalId: string
   userName: string
   externalId: string
-  type: MessageComponent['type']
+  type: MessageType
   text?: string
   mediaData?: ArrayBuffer
   mimeType?: string
   documentFilename?: string
 }
+
+export type StatusUpdate = {
+  status: 'read' | 'delivered' | 'sent'
+}
+
 export interface Notification {
   message?: IncomingMessage
   statusUpdate?: StatusUpdate

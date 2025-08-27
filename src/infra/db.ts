@@ -1,21 +1,36 @@
-import type { UserComponent } from '../agent/components'
-import type { MessageRole, MessageType } from '../domain'
+import type { AIMessage } from './ai'
 
 export interface ChunkData {
   content: string
   embedding: Array<number>
 }
 
+export interface User {
+  id: string
+  externalId: string
+  name: string
+  joinedAt: Date
+  profile: string
+}
+
+export type MessageRole = AIMessage['role']
+export type MessageType = 'text' | 'voice' | 'audio' | 'document' | 'image' | 'unsupported'
+
 export interface DbMessageInput {
-  externalId?: string
   userId: string
   role: MessageRole
+  externalId?: string
   type: MessageType
   storageKey?: string
   content: Array<ChunkData>
 }
 
-export type RecentMessage = { id: string; role: MessageRole; content: string }
+export type RecentMessage = {
+  id: string
+  role: MessageRole
+  content: string
+}
+
 export type SimilarMessage = {
   id: string
   role: MessageRole
@@ -34,7 +49,7 @@ export interface FileSearchResult {
 
 export interface DB {
   storeWebhookEvent: (payload: string) => Promise<void>
-  persistUser: (params: { externalId: string; name: string }) => Promise<UserComponent>
+  persistUser: (params: { externalId: string; name: string }) => Promise<User>
   updateUserProfile: (params: {
     userId: string
     profile: string

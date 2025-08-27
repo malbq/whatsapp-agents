@@ -10,7 +10,7 @@ import type { Chat, IncomingMessage } from './chat'
 
 const { META_API_TOKEN, WA_API_VERSION } = import.meta.env
 
-const logger = getLogger(['app', 'infra', 'chat'])
+const logger = getLogger(['infra', 'chat'])
 
 function test() {}
 test()
@@ -121,7 +121,7 @@ export namespace Whatsapp {
         })) as AcknowledgeMessageResponse
 
       if (response.success) {
-        logger.info`Message acknowledged: ${messageId}`
+        logger.info(`Message acknowledged: ${messageId}`)
         return
       }
 

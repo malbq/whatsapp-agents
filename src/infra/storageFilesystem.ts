@@ -4,26 +4,26 @@ import type { Storage } from './storage'
 
 export namespace FilesystemStorage {
   export const storage = (base?: string): Storage => {
-    base = base ?? './storage'
     const fsStorage = createStorage<ArrayBuffer>({
-      driver: fsDriver({ base }),
+      driver: fsDriver({ base: base ?? './storage' }),
     })
     return {
-      store: async ({ key, data, mimeType }) => {
+      store: async ({ key, data, mimeType, filename }) => {
         await fsStorage.setItemRaw(key, data)
-        await fsStorage.setMeta(key, { mimeType })
+        await fsStorage.setMeta(key, { mimeType, filename })
       },
 
       retrieve: async (key) => {
         const data = await fsStorage.getItemRaw(key)
-        const meta = await fsStorage.getMeta(key)
         if (!data) {
           throw new Error(`Object not found: ${key}`)
         }
 
+        const meta = await fsStorage.getMeta(key)
         return {
           data,
           mimeType: meta.mimeType as string,
+          filename: meta.filename as string | undefined,
         }
       },
     }

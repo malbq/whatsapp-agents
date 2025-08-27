@@ -1,44 +1,38 @@
 import { getLogger } from '@logtape/logtape'
-import { ComponentNotFoundError, IngestionError } from '../../errors'
+import { IngestionError } from '../../errors'
 import * as Prompt from '../../prompts/prompt'
 import { parsePdf } from '../../utils/parsePdf'
-import { ASSISTANT_PRIORITY, SYSTEM_PRIORITY } from '../../utils/priorities'
 import { spreadError } from '../../utils/spreadError'
-import type { EntityId, Frame } from '../frame'
+import type { Frame } from '../frame'
 
 const logger = getLogger(['app', 'agent', 'ingestion', 'document'])
 
-export async function documentIngest(
-  frame: Frame,
-  deps: Deps,
-  messageEntity: EntityId,
-  filename: string
-): Promise<void> {
-  const media = frame.getComponent(messageEntity, 'Media')
-  if (!media) throw new ComponentNotFoundError(messageEntity, 'Media')
+export async function documentIngest(frame: Frame, deps: Deps): Promise<void> {
+  if (!frame.inbound?.media?.data)
+    throw new IngestionError('Media is required for document ingestion')
+
+  if (!frame.inbound?.document?.filename)
+    throw new IngestionError('Filename is required for document processing')
+
   try {
-    const description = await parseDocument(deps, media.data, media.mimeType, filename)
-    const systemMessageEntity = frame.createEntity()
-    frame.addComponent(systemMessageEntity, 'Message', {
-      role: 'system',
-      type: 'document',
-      priority: SYSTEM_PRIORITY,
-    })
-    frame.addComponent(systemMessageEntity, 'TextContent', {
-      text: Prompt.documentDescription(description, filename),
+    const transcription = await parseDocument(
+      deps,
+      frame.inbound.media.data,
+      frame.inbound.media.mimeType,
+      frame.inbound.document.filename
+    )
+    frame.inbound.document.transcription = transcription
+    frame.systemMessages.push({
+      type: frame.inbound.type,
+      text: Prompt.documentTranscription(transcription, frame.inbound.document.filename),
     })
   } catch (error) {
-    logger.error('Document ingestion error', { ...spreadError(error) })
-    const errorMessageEntity = frame.createEntity()
-    frame.addComponent(errorMessageEntity, 'Message', {
-      role: 'assistant',
-      type: 'text',
-      priority: ASSISTANT_PRIORITY,
-    })
-    frame.addComponent(errorMessageEntity, 'TextContent', {
-      text: `Desculpe, tive um problema ao processar o documento.`,
-    })
+    frame.outbound = {
+      type: frame.inbound.type,
+      text: 'Desculpe, tive um problema ao processar o documento.',
+    }
 
+    logger.error('Document ingestion error', { ...spreadError(error) })
     throw new IngestionError('Failed to process document')
   }
 }
