@@ -13,14 +13,23 @@ export namespace LibSql {
         url: 'file:./storage/db.db',
       })
     return {
-      async storeWebhookEvent(payload) {
-        await client.execute({
-          sql: `INSERT INTO
-          raw_incoming_message (payload)
-          VALUES (?)`,
-          args: [payload],
-        })
+      async storeWebhookEvent(payload, externalId) {
+        try {
+          await client.execute({
+            sql: `INSERT INTO
+            raw_incoming_message (external_id, payload)
+            VALUES (?, ?)`,
+            args: [externalId, payload],
+          })
+          return true
+        } catch (error) {
+          if (error instanceof Error && error.message?.includes('UNIQUE constraint failed')) {
+            return false
+          }
+          throw error
+        }
       },
+
       async persistUser({ externalId, name }) {
         const insertResult = await client
           .execute({
@@ -109,7 +118,11 @@ export namespace LibSql {
       async findRecentMessages({ userId }) {
         const MAX_RECENT_MESSAGES = parseInt(import.meta.env.MAX_RECENT_MESSAGES ?? '100')
         const selectResult = await client.execute({
-          sql: `SELECT m.id, m.role, GROUP_CONCAT(e.content, ' ') as content
+          sql: `SELECT m.id, m.role, m.type,
+          CASE 
+            WHEN m.type IN ('document', 'image') THEN SUBSTR(GROUP_CONCAT(e.content, ' '), 1, 200)
+            ELSE GROUP_CONCAT(e.content, ' ')
+          END as content
           FROM message m
           JOIN embedding e ON m.id = e.message_id
           WHERE m.user_id = ?
@@ -139,7 +152,14 @@ export namespace LibSql {
 
         const result = await client.execute({
           sql: `
-            SELECT m.id, m.role, e.content, m.type, m.timestamp
+            SELECT 
+              m.id, 
+              m.role, 
+              e.content, 
+              m.type, 
+              m.timestamp,
+              e.sequence as chunk_sequence,
+              (SELECT COUNT(*) FROM embedding e2 WHERE e2.message_id = m.id) as total_chunks
             FROM message m
             JOIN embedding e ON m.id = e.message_id
             WHERE m.user_id = ?
@@ -163,6 +183,8 @@ export namespace LibSql {
           content: row.content as SimilarMessage['content'],
           type: row.type as SimilarMessage['type'],
           timestamp: new Date(row.timestamp as string),
+          chunkSequence: row.chunk_sequence as number,
+          totalChunks: row.total_chunks as number,
         }))
       },
 

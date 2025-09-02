@@ -41,7 +41,14 @@ Reference these reminders when relevant to queries about time, schedule, or task
 export const userMemory = (memory: Array<SimilarMessage>) => `# User Memory
 This is a list of relevant information we gathered by searching every exchange with the user.
 <memory>
-${memory.map((m) => `${m.role}: ${m.content} (${m.timestamp.toISOString()})`).join('\n')}
+${memory
+  .map(
+    (m) =>
+      `${m.role}: ${m.content} (chunk ${m.chunkSequence}/${
+        m.totalChunks
+      }) (${m.timestamp.toISOString()})`
+  )
+  .join('\n')}
 </memory>
 Integrate these memories to provide context-aware answers and maintain conversation continuity.`
 
@@ -51,46 +58,27 @@ You must understand the context of the last message to answer it.
 Feel free to ignore past messages that seem to be from different and an outdated context.
 You can ONLY open links from the last message. DO NOT open links from other messages besides the last one.`
 
-export const audioTranscription = (transcription: string) => `# Audio Transcription
-This is the transcription of an audio sent by the user. 
-(the actual audio was omitted from this thread)
-<transcription>
-${transcription}
-</transcription>
-Process this transcription as the user's current message input.`
+export const audioTranscription = `The following message contains the transcription of an audio sent by the user.
+Process this transcription as the user's current message input.
+Note this audio was not a voice message, so it might contain noise, music or voice from other people.`
 
-export const imageDescription = (description: string) => `# Image Description
-This is the description of an image sent by the user.
-(the actual image was omitted from this thread)
-<description>
-${description}
-</description>
-Use this visual context to understand and respond to the user's message.`
+export const imageDescription = `The following message contains the description of an image sent by the user and processed by our system beforehand.
+Use this visual context to understand and respond to the user's message.
+The user may have sent a text message alongside the image, as a caption or a request.`
 
-export const imageWithoutCaption = `# Image Without Caption
-The user sent an image without text or caption.
-Use the context provided, especially chat history, to answer.
-If that is not enough to understand what the user wants, ask for clarification.
-Analyze available context to determine user intent or request clarification.`
-
-export const documentTranscription = (description: string, filename: string) =>
-  `# Document Transcription
-This is the full transcription of the content of a document sent by the user.
-(the actual document was omitted from this thread)
-The name of the document is: ${filename}
-<description>
-${description}
-</description>
-Use this document content to answer questions or provide relevant insights about the file.`
+export const documentTranscription = (
+  filename?: string
+) => `The following message contains the description of a document sent by the user and processed by our system beforehand.
+Use this document content to answer questions or provide relevant insights about the file.
+${filename ? `The name of the document is: ${filename}` : ''}
+`
 
 export const updateUserProfile = (
   profile: string,
   lastMessage: string
 ) => `Identify relevant personal information about the user and update their profile.
 Prioritize privacy; avoid sensitive details unless explicitly shared and user consents (e.g., 'store my family info').
-
-# Sensitive Data per LGPD
-
+# Sensitive Data per Brazil's data protection law
 Do NOT store or update: racial/ethnic origin, religion, politics, unions, health/sex life, genetic/biometric data, or inferences (e.g., family implying genetics, hobbies implying beliefs, work implying unions).
 Flag risks: age (minors), location (origins), family/best friends (genetics/affiliations), work/interests/plans (politics/health/religion).
 For any potential sensitive item, omit unless lastMessage explicitly shares AND consents to storage.
@@ -104,8 +92,8 @@ Store only the information that would be relevant to identify the user and perso
 - Do not remove any existing information from the profile.
 - Do not update the profile if the information is already present or if the message is not relevant.
 - If there are no updates, respond with empty text (no quotes, no spaces, no new lines).
-- Output shouldn't have any particular structure.
-- Profile must be in English.
+- Output must be in plain text, without any particular structure like markdown or json.
+- Output must be in English.
 - Keep it short, less than 2000 characters.
 - If profile has more than 2000 characters, summarize it.
 - Be concise and to the point. Use only short sentences and abbreviate wherever you can.

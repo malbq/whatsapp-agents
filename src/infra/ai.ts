@@ -25,7 +25,7 @@ const logger = getLogger(['infra', 'ai'])
 const TEXT_MODEL =
   import.meta.env.TEXT_GENERATION_PROVIDER === 'google'
     ? google('gemini-2.5-flash')
-    : openai('gpt-4.1-mini')
+    : openai('gpt-5-mini')
 
 const AUDIO_TRANSCRIPTION_MODEL =
   import.meta.env.AUDIO_TRANSCRIPTION_PROVIDER === 'google'

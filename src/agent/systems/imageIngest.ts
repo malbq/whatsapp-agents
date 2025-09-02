@@ -1,6 +1,5 @@
 import { getLogger } from '@logtape/logtape'
 import { IngestionError } from '../../errors'
-import * as Prompt from '../../prompts/prompt'
 import { spreadError } from '../../utils/spreadError'
 import type { Frame } from '../frame'
 
@@ -11,23 +10,10 @@ export async function imageIngest(frame: Frame, deps: Deps): Promise<void> {
 
   try {
     const base64Image = Buffer.from(frame.inbound.media.data).toString('base64')
-    const description = await deps.ai.analyzeImage({
+    frame.inbound.media.transcription = await deps.ai.analyzeImage({
       imageUrl: `data:${frame.inbound.media.mimeType};base64,${base64Image}`,
       caption: frame.inbound.text,
     })
-    frame.inbound.image = { description }
-
-    frame.systemMessages.push({
-      type: frame.inbound.type,
-      text: Prompt.imageDescription(description),
-    })
-
-    if (!frame.inbound.text) {
-      frame.systemMessages.push({
-        type: frame.inbound.type,
-        text: Prompt.imageWithoutCaption,
-      })
-    }
   } catch (error) {
     frame.outbound = {
       type: frame.inbound.type,

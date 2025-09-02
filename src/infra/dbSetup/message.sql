@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS message (
   id TEXT PRIMARY KEY,
-  external_id TEXT UNIQUE,
+  external_id TEXT,
   user_id TEXT NOT NULL,
   role TEXT NOT NULL,
   type TEXT NOT NULL,

@@ -35,17 +35,17 @@ export async function agent(deps: Deps, message: IncomingMessage): Promise<void>
       await MessageEmbedding(deps, frame.inbound)
       await ResponseGeneration(frame, deps)
     } catch (error) {
-      logger.error('Error in agent response flow', { ...spreadError(error) })
-      frame.outbound = {
-        type: frame.inbound?.type ?? 'text',
-        text: frame.inbound?.text ?? 'Desculpe, tive um problema ao processar sua mensagem.',
+      logger.error(`Agent response flow error: ${String(error)}`, { ...spreadError(error) })
+      frame.outbound = frame.outbound ?? {
+        type: 'text',
+        text: 'Desculpe, tive um problema ao processar sua mensagem.',
       }
     }
 
     try {
       await ResponseDelivery(frame, deps)
     } catch (error) {
-      logger.error('Error in response delivery', { ...spreadError(error) })
+      logger.error(`Response delivery error: ${String(error)}`, { ...spreadError(error) })
       return
     }
 
@@ -54,7 +54,7 @@ export async function agent(deps: Deps, message: IncomingMessage): Promise<void>
       await StoreMessageExchange(frame, deps)
       ImproveUserProfile(frame, deps)
     } catch (error) {
-      logger.error("Error after agent's response", { ...spreadError(error) })
+      logger.error(`Error after agent's response: ${String(error)}`, { ...spreadError(error) })
     }
   })
 }

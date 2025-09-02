@@ -37,6 +37,8 @@ export type SimilarMessage = {
   type: MessageType
   content: string
   timestamp: Date
+  chunkSequence: number
+  totalChunks: number
 }
 
 export interface FileSearchResult {
@@ -48,7 +50,7 @@ export interface FileSearchResult {
 }
 
 export interface DB {
-  storeWebhookEvent: (payload: string) => Promise<void>
+  storeWebhookEvent: (payload: string, externalId: string) => Promise<boolean>
   persistUser: (params: { externalId: string; name: string }) => Promise<User>
   updateUserProfile: (params: {
     userId: string

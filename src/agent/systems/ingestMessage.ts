@@ -18,27 +18,24 @@ export async function IngestMessage(
     `Incoming ${message.type} message from ${message.userName} (${message.userExternalId})`,
     { ...message }
   )
-  frame.inbound = {
-    externalId: message.externalId,
-    type: message.type,
-  }
 
-  if (message.documentFilename) {
-    frame.inbound.document = {
-      filename: message.documentFilename,
-    }
+  if (message.type === 'text' && !message.text) throw new IngestionError('Text content is required')
+
+  frame.inbound = {
+    externalChatId: message.externalId,
+    type: message.type,
   }
 
   if (message.mediaData && message.mimeType) {
     frame.inbound.media = {
       data: message.mediaData,
       mimeType: message.mimeType,
+      filename: message.documentFilename,
     }
   }
 
   switch (frame.inbound.type) {
     case 'text':
-      if (!message.text) throw new IngestionError('Text content is required')
       frame.inbound.text = message.text
       break
 
@@ -56,11 +53,15 @@ export async function IngestMessage(
       break
 
     case 'document':
+      frame.inbound.text = message.text
       await documentIngest(frame, deps)
       break
 
     default:
-      logger.error(`Unsupported message type ${message.type}`)
-      throw new IngestionError('Desculpe, ainda não consigo entender este tipo de mensagem.')
+      frame.outbound = {
+        type: 'text',
+        text: 'Desculpe, ainda não consigo entender este tipo de mensagem.',
+      }
+      throw new IngestionError(`Unsupported message type ${message.type}`)
   }
 }

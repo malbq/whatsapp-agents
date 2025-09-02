@@ -68,9 +68,14 @@ app.post('/webhook', async (c) => {
       return c.body('', 200)
     }
 
-    // store only messages, not status updates
-    deps.db.storeWebhookEvent(body)
+    const isNew = await deps.db.storeWebhookEvent(body, message.externalId)
+    if (!isNew) {
+      logger.info('Message already processed, skipping', { externalId: message.externalId })
+      return c.body('', 200)
+    }
+
     if (message.type === 'unsupported') {
+      logger.warn('Unsupported message type received', { externalId: message.externalId })
       return c.body('', 200)
     }
 

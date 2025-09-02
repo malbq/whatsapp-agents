@@ -59,6 +59,7 @@ export namespace Whatsapp {
             message: {
               ...message,
               type: 'document',
+              text: waMessage.document.caption,
               documentFilename: waMessage.document.filename,
               mediaData: await fetchReceivedMedia(waMessage.document.id, waMessage.document.sha256),
               mimeType: waMessage.document.mime_type,
@@ -508,6 +509,7 @@ export namespace Whatsapp {
     type: 'document'
     document: Media & {
       mime_type: 'application/pdf'
+      caption?: string
       filename: string
     }
   }
