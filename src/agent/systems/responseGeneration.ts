@@ -1,11 +1,18 @@
 import { getLogger } from '@logtape/logtape'
 import { ResponseGenerationError } from '../../errors'
 import type { AIMessage } from '../../infra/ai'
+import type { MessageType } from '../../infra/db'
 import * as Prompt from '../../prompts/prompt'
-import { getMessageTypeFromMimeType } from '../../utils/getMessageTypeFromMimeType'
 import type { Frame } from '../frame'
 
 const logger = getLogger(['app', 'agent', 'responseGeneration'])
+
+function mapMimeTypeToMessageType(mime: string | undefined): MessageType | null {
+  if (!mime) return null
+  if (mime.startsWith('image/')) return 'image'
+  if (mime === 'application/pdf') return 'document'
+  return null
+}
 
 export async function ResponseGeneration(frame: Frame, deps: Deps) {
   if (!frame.user) throw new ResponseGenerationError('User not found')
@@ -30,9 +37,7 @@ export async function ResponseGeneration(frame: Frame, deps: Deps) {
     logger.info('Context included: user profile')
   }
 
-  // CONTEXT: CURRENT SCHEDULE
-
-  // CONTEXT: MEMORY
+  // CONTEXT: MEMORY (similar messages)
   if (similarMessages.length) {
     messagesForAgent.push({ role: 'system', content: Prompt.userMemory(similarMessages) })
     logger.info(`Context included: similar messages (${similarMessages.length})`)
@@ -47,7 +52,7 @@ export async function ResponseGeneration(frame: Frame, deps: Deps) {
     logger.info(`Context: recent messages (${recentMessages.length})`)
   }
 
-  // CLARIFICATION MESSAGES
+  // CLARIFICATION MESSAGES BASED ON INBOUND TYPE
   if (frame.inbound.type === 'audio') {
     messagesForAgent.push({ role: 'system', content: Prompt.audioTranscription })
   }
@@ -61,6 +66,7 @@ export async function ResponseGeneration(frame: Frame, deps: Deps) {
     })
   }
 
+  // USER MESSAGE CONTENT
   if (frame.inbound.media?.transcription) {
     messagesForAgent.push({ role: 'user', content: frame.inbound.media.transcription })
   }
@@ -76,19 +82,29 @@ export async function ResponseGeneration(frame: Frame, deps: Deps) {
     })
     logger.info(`Response generated: ${response.text}`, { ...response })
 
+    if (response.storageKey) {
+      const media = await deps.storage.retrieve(response.storageKey)
+      const outboundType = mapMimeTypeToMessageType(media?.mimeType)
+      if (!outboundType) {
+        throw new ResponseGenerationError(
+          `Media with ${media?.mimeType} mime type cannot be sent in response`
+        )
+      }
+      frame.outbound = {
+        type: outboundType,
+        text: response.text,
+        media: {
+          data: media.data,
+          mimeType: media.mimeType,
+          filename: media.filename,
+        },
+      }
+      return
+    }
+
     frame.outbound = {
       type: 'text',
       text: response.text,
-    }
-
-    if (response.storageKey) {
-      frame.outbound.media = await deps.storage.retrieve(response.storageKey)
-      const type = getMessageTypeFromMimeType(frame.outbound.media.mimeType)
-      if (!type)
-        throw new ResponseGenerationError(
-          `Media with ${frame.outbound.media.mimeType} mime type cannot be sent in response`
-        )
-      frame.outbound.type = type
     }
   } catch (error) {
     frame.outbound = {

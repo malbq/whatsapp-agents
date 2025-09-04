@@ -13,8 +13,8 @@ export interface FrameMessage {
   text?: string
   textEmbedding?: Array<ChunkData>
   media?: {
-    data: ArrayBuffer
-    mimeType: string
+    data?: ArrayBuffer
+    mimeType?: string
     filename?: string
     storageKey?: string
     transcription?: string

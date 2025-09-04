@@ -8,6 +8,14 @@
 - Run one test file: bun test test/xyz.test.ts
 - Run one test name: bun test -t "name substring"
 
+## Tech stack
+
+- Web framework: HonoJS v4 (worker-style router)
+- LLM abstraction: Vercel AI SDK (ai package) over multiple providers
+- External services: Meta Business API (WhatsApp), OpenAI Responses API, Google AI Studio
+- Embeddings: Cloudflare Workers AI (generation), libsql vectors (storage)
+- File storage: Cloudflare R2 (production), unstorage filesystem (dev)
+
 ## Style & conventions
 
 - TypeScript strict; avoid any. Use zod for schemas. Prefer unknown over any.
@@ -23,21 +31,33 @@
 
 ## Architecture patterns
 
-- Entity-Component-System (ECS): Component-based architecture for separation of concerns
-- Frame: Central ECS engine managing entities and components
-- Systems: Specialized processors (ingestion, embedding, response generation)
-- Components: Data-only structures for entity state
-
-## Tech stack
-
-- Web framework: HonoJS v4 (worker-style router)
-- LLM abstraction: Vercel AI SDK (ai package) over multiple providers
-- External services: Meta Business API (WhatsApp), OpenAI Responses API, Google AI Studio
-- Embeddings: Cloudflare Workers AI (generation), libsql vectors (storage)
-- File storage: Cloudflare R2 (production), unstorage filesystem (dev)
+- Frame-based pipeline (ECS-inspired, minimalist): per-request Frame holds ephemeral state (user, inbound, outbound); no global mutable state.
+- Systems as focused async functions: (frame, deps, ...args) mutate only the Frame and use injected deps (PersistUser, IngestMessage, MessageEmbedding, ResponseGeneration, ResponseDelivery, MediaStorage, StoreMessageExchange, ImproveUserProfile).
+- Phased flow:
+  1. PersistUser ensures frame.user exists
+  2. IngestMessage captures raw input & media
+  3. Inbound MessageEmbedding enriches for retrieval/context
+  4. ResponseGeneration produces outbound message
+  5. ResponseDelivery sends answer (if this fails we stop)
+  6. Post-response best-effort: parallel MediaStorage + outbound MessageEmbedding, then StoreMessageExchange, ImproveUserProfile.
+- Error segmentation: three isolated try/catch blocks (generation, delivery, post-processing). Generation failure sets safe fallback outbound; delivery failure aborts tail; post tasks log only. Structured logging via logtape + spreadError.
+- Dual embedding strategy: inbound first (context + future memory), outbound after delivery prep (memory/personalization). Failures do not block other phases.
+- Logging context: withContext attaches userId for consistent structured logs across all systems.
+- Extensibility: add new capabilities by inserting a new System in the flow or post-response list; keep Frame minimal & data-only.
+- ECS note: simplified; Frame fields act as components; no registry/queries. Chosen for clarity & low overhead.
+- Testing: Systems remain unit-testable (pure-ish) due to explicit deps + narrow mutable surface (Frame).
 
 ## Agent workflow hints
 
-- Read spec first (.cursor/rules/spec-read.mdc); update spec per spec-update.mdc. Follow base.mdc style rules.
 - Prompts live in src/prompts; prefer Responses API; keep tokens minimal; log usage via utils/formatTokenUsage.ts.
 - When adding tests, mirror patterns in test/*.test.ts; keep focused, deterministic, and small.
+
+## Test patterns
+
+- Extract common setup into helpers (e.g. `createTestUser()`, `insertUserProfile()`)
+- Create shared mock configurations in beforeAll/beforeEach
+- Mock only chat and ai dependencies
+- Use `test.each` for similar scenarios with different inputs
+- When possible, use exact assertions: arrays, objects shapes, `toThrow(ErrorClass)`, `toThrow(/message/)`
+- Clean database in afterEach with helper functions
+- Keep describe blocks focused on single functionality areas

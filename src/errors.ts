@@ -40,6 +40,13 @@ export class ResponseGenerationError extends Error {
   }
 }
 
+export class FileRetrievalError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'FileRetrievalError'
+  }
+}
+
 export class ResponseDeliveryError extends Error {
   constructor(message: string) {
     super(message)

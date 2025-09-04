@@ -23,7 +23,6 @@ beforeAll(async () => {
       storeWebhookEvent: mock(),
       findSimilarMessages: mock(),
       searchFiles: mock(),
-      getFileMetadata: mock(),
     },
     chat: {
       parseNotification: mock(),
@@ -57,53 +56,66 @@ afterEach(async () => {
 
 describe('Document ingest', () => {
   test('should process bun.pdf file successfully', async () => {
-    const messageEntity = frame.createEntity()
     const pdfBuffer = await Bun.file(join(import.meta.dir, 'bun.pdf')).arrayBuffer()
 
-    frame.addComponent(messageEntity, 'Media', {
-      data: pdfBuffer,
-      mimeType: 'application/pdf',
-    })
+    frame.inbound = {
+      type: 'document',
+      media: {
+        data: pdfBuffer,
+        mimeType: 'application/pdf',
+        filename: 'bun.pdf',
+      },
+    }
 
-    await documentIngest(frame, deps, messageEntity, 'bun.pdf')
+    await documentIngest(frame, deps)
 
     expect(parsePdfMock).toHaveBeenCalledWith(pdfBuffer)
-    expect(deps.ai.transcribeDocument).not.toHaveBeenCalled()
-
-    const systemMessageEntity = frame
-      .query(['Message'])
-      .find((entity: number) => frame.getComponent(entity, 'Message')?.role === 'system')
-    expect(systemMessageEntity).toBeDefined()
-
-    const textContent = frame.getComponent(systemMessageEntity!, 'TextContent')
-    expect(textContent!.text).toContain('bun.pdf')
+    expect(frame.inbound?.media?.transcription).toBeDefined()
   })
 
   test('should process bun_flat.pdf file successfully', async () => {
-    const messageEntity = frame.createEntity()
     const pdfBuffer = await Bun.file(join(import.meta.dir, 'bun_flat.pdf')).arrayBuffer()
 
-    frame.addComponent(messageEntity, 'Media', {
-      data: pdfBuffer,
-      mimeType: 'application/pdf',
-    })
+    frame.inbound = {
+      type: 'document',
+      media: {
+        data: pdfBuffer,
+        mimeType: 'application/pdf',
+        filename: 'bun_flat.pdf',
+      },
+    }
 
-    await documentIngest(frame, deps, messageEntity, 'bun_flat.pdf')
+    parsePdfMock.mockResolvedValueOnce('')
+
+    await documentIngest(frame, deps)
 
     expect(parsePdfMock).toHaveBeenCalledWith(pdfBuffer)
-    expect(deps.ai.transcribeDocument).toHaveBeenCalledWith({
-      document: pdfBuffer,
-      mimeType: 'application/pdf',
-      filename: 'bun_flat.pdf',
-    })
+    expect(frame.inbound?.media?.transcription).toBe(mockDocumentTranscription)
+  })
 
-    const systemMessageEntity = frame
-      .query(['Message'])
-      .find((entity: number) => frame.getComponent(entity, 'Message')?.role === 'system')
-    expect(systemMessageEntity).toBeDefined()
+  test('should throw error when media is missing', async () => {
+    frame.inbound = {
+      type: 'document',
+    }
 
-    const textContent = frame.getComponent(systemMessageEntity!, 'TextContent')
-    expect(textContent).toBeDefined()
-    expect(textContent!.text).toContain('bun_flat.pdf')
+    await expect(documentIngest(frame, deps)).rejects.toThrow(
+      'Media is required for document ingestion'
+    )
+  })
+
+  test('should throw error when filename is missing', async () => {
+    const pdfBuffer = await Bun.file(join(import.meta.dir, 'bun.pdf')).arrayBuffer()
+
+    frame.inbound = {
+      type: 'document',
+      media: {
+        data: pdfBuffer,
+        mimeType: 'application/pdf',
+      },
+    }
+
+    await expect(documentIngest(frame, deps)).rejects.toThrow(
+      'Filename is required for document ingestion'
+    )
   })
 })

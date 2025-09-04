@@ -1,5 +1,6 @@
 import { getLogger, withContext } from '@logtape/logtape'
 import { Frame } from './agent/frame'
+import { FileRetrieval } from './agent/systems/fileRetrieval'
 import { ImproveUserProfile } from './agent/systems/improveUserProfile'
 import { IngestMessage } from './agent/systems/ingestMessage'
 import { MediaStorage } from './agent/systems/mediaStorage'
@@ -34,6 +35,7 @@ export async function agent(deps: Deps, message: IncomingMessage): Promise<void>
       await IngestMessage(frame, deps, message)
       await MessageEmbedding(deps, frame.inbound)
       await ResponseGeneration(frame, deps)
+      await FileRetrieval(frame, deps)
     } catch (error) {
       logger.error(`Agent response flow error: ${String(error)}`, { ...spreadError(error) })
       frame.outbound = frame.outbound ?? {
