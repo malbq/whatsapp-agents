@@ -1,0 +1,7 @@
+---
+alwaysApply: false
+---
+
+Update the progress tracking in the `## Next` section in `./TODO.md`, to reflect the current state of the project.
+DO NOT delete content from other sections unless it is explicitly stated to do so.
+NEVER remove content from `## Learnings & Insights` section.

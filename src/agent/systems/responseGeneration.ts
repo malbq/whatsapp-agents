@@ -74,6 +74,7 @@ export async function ResponseGeneration(frame: Frame, deps: Deps) {
       messages: messagesForAgent,
       userMessageEmbedding,
     })
+    logger.info(`Response generated: ${response.text}`, { ...response })
 
     frame.outbound = {
       type: 'text',

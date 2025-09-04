@@ -28,7 +28,7 @@ export async function agent(deps: Deps, message: IncomingMessage): Promise<void>
     return
   }
 
-  withContext({ userId: frame.user.id }, async () => {
+  await withContext({ userId: frame.user.id }, async () => {
     try {
       deps.chat.acknowledgeProcessingMessage(message.externalId)
       await IngestMessage(frame, deps, message)
@@ -52,7 +52,7 @@ export async function agent(deps: Deps, message: IncomingMessage): Promise<void>
     try {
       await Promise.all([MediaStorage(frame, deps), MessageEmbedding(deps, frame.outbound)])
       await StoreMessageExchange(frame, deps)
-      ImproveUserProfile(frame, deps)
+      await ImproveUserProfile(frame, deps)
     } catch (error) {
       logger.error(`Error after agent's response: ${String(error)}`, { ...spreadError(error) })
     }

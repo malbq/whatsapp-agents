@@ -11,7 +11,7 @@ describe.if(!!import.meta.env.TEST_AI)('Analyze image', () => {
       'base64'
     )}`
 
-    const analysis = await AIProvider.analyzeImage({ imageUrl })
+    const analysis = await AIProvider(null).analyzeImage({ imageUrl })
 
     expect(analysis).toBeTypeOf('string')
     expect(analysis.length).toBeGreaterThan(0)

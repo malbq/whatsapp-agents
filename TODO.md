@@ -36,17 +36,8 @@
 
 ## Open Questions
 
-- **Similar Messages Context**:
-
-  - Should we add full messages that match vector search?
-  - What if we match a document? Should we add at most a single document?
-
-- **Tool Execution Strategy**:
-
-  - How to integrate tool calls into the ECS architecture?
-  - Should tools be separate systems or integrated into response generation?
-
 - **Performance Optimization**:
+
   - Token budget management for large contexts
   - Embedding generation optimization
   - Database query optimization for vector search

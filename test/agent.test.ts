@@ -11,15 +11,16 @@ import {
   test,
 } from 'bun:test'
 import { agent } from '../src/agent'
-import type { UserComponent } from '../src/agent/components'
+import { configureLogging } from '../src/config/logging'
 import type { IncomingMessage } from '../src/infra/chat'
 import type { DB } from '../src/infra/db'
 import { LibSql } from '../src/infra/dbLibSql'
 import type { Storage } from '../src/infra/storage'
 import { FilesystemStorage } from '../src/infra/storageFilesystem'
-import * as Prompt from '../src/prompts/prompt'
 
 const originalEnv = Object.assign({}, import.meta.env)
+
+await configureLogging()
 
 const dbPath = `/tmp/agent-test-${Date.now()}.db`
 const storagePath = `/tmp/agent-test-${Date.now()}`
@@ -62,7 +63,7 @@ beforeAll(async () => {
     },
     ai: {
       analyzeImage: mock(async () => imageAnalysisResult),
-      respond: mock(async () => aiTextResponse),
+      respond: mock(async () => ({ text: aiTextResponse })),
       transcribeAudio: mock(async () => audioTranscriptionResult),
       transcribeDocument: mock(async () => documentTranscriptionResult),
       improveUserProfile: mock(async () => updatedProfile),
@@ -110,66 +111,42 @@ describe('Smoke test: first interaction', () => {
       type: 'text',
       text: 'Hello, this is a test message',
     }
-    const result = await agent(deps, message)
-    expect(result).toBeUndefined()
-    expect(deps.db.persistUser).toHaveBeenCalledWith({
-      externalId: message.userExternalId,
-      name: message.userName,
-    })
-    const persistedUser = (await deps.db.persistUser.mock.results[0]?.value) as UserComponent
-    expect(persistedUser).toEqual(
-      expect.objectContaining({
-        id: expect.any(String),
-        externalId: message.userExternalId,
-        name: message.userName,
-        joinedAt: expect.any(Date),
-        profile: '',
-      })
-    )
+
+    await agent(deps, message)
+
     expect(deps.chat.acknowledgeProcessingMessage).toHaveBeenCalled()
-    expect(deps.ai.respond.calls[0]?.[0]).toEqual({
-      messages: [{ role: 'user', content: message.text }],
-    })
-    expect(deps.chat.sendTextMessage).toHaveBeenCalledWith({ text: aiTextResponse })
     expect(deps.storage.store).not.toHaveBeenCalled()
-    expect(deps.ai.generateEmbeddings.mock.calls[0]?.[0]).toEqual({
-      text: [message.text],
-    })
-    expect(deps.ai.generateEmbeddings.mock.calls[1]?.[0]).toEqual({
-      text: [aiTextResponse],
-    })
-    expect(deps.db.storeMessage.mock.calls[0]?.[0]).toEqual([
-      {
-        externalId: message.externalId,
-        userId: persistedUser.id,
+
+    expect(deps.chat.sendTextMessage.mock.calls[0]?.[0]).toEqual({ text: aiTextResponse })
+
+    const user = await getUserWithProfileFromDatabase(message.userExternalId)
+    const messages = await getUserMessagesFromDatabase(user.id)
+
+    expect(messages).toEqual([
+      expect.objectContaining({
+        external_id: message.externalId,
+        user_id: user.id,
         role: 'user',
         type: 'text',
-        content: [
-          {
-            content: message.text,
-            embedding: mockEmbeddings,
-          },
-        ],
-      },
-      {
-        externalId: `${messageExternalId - 1}`,
-        userId: persistedUser.id,
+        content: message.text,
+      }),
+      expect.objectContaining({
+        external_id: `${messageExternalId - 1}`,
+        user_id: user.id,
         role: 'assistant',
         type: 'text',
-        content: [
-          {
-            content: aiTextResponse,
-            embedding: mockEmbeddings,
-          },
-        ],
-      },
+        content: aiTextResponse,
+      }),
     ])
-    expect(deps.db.updateUserProfile.mock.calls[0]?.[0]).toEqual({
-      userId: persistedUser.id,
+
+    expect(user).toMatchObject({
+      name: message.userName,
+      external_id: message.userExternalId,
       profile: updatedProfile,
-      messageId: (await deps.db.storeMessage.mock.results[0].value)?.[0],
+      profile_updated_by: messages[0]?.id,
     })
   })
+
   test('Voice recording', async () => {
     const message: IncomingMessage = {
       userExternalId: 'user-external-id',
@@ -180,55 +157,41 @@ describe('Smoke test: first interaction', () => {
       mimeType: 'audio/ogg',
     }
 
-    const result = await agent(deps, message)
-    expect(result).toBeUndefined()
-
-    expect(deps.db.persistUser).toHaveBeenCalledWith({
-      externalId: message.userExternalId,
-      name: message.userName,
-    })
-    const persistedUser = (await deps.db.persistUser.mock.results[0]?.value) as UserComponent
+    await agent(deps, message)
 
     expect(deps.chat.acknowledgeProcessingMessage).toHaveBeenCalled()
-    expect(deps.ai.transcribeAudio).toHaveBeenCalledWith({ audio: message.mediaData })
-    expect(deps.ai.respond).toHaveBeenCalledWith({
-      messages: [{ role: 'user', content: audioTranscriptionResult }],
+    expect(deps.chat.sendTextMessage.mock.calls[0]?.[0]).toEqual({
+      text: aiTextResponse,
     })
-    expect(deps.chat.sendTextMessage).toHaveBeenCalledWith({ text: aiTextResponse })
-    expect(deps.storage.store).not.toHaveBeenCalled()
-    expect(deps.ai.generateEmbeddings.mock.calls[0]?.[0]).toEqual({
-      text: [audioTranscriptionResult],
-    })
-    expect(deps.ai.generateEmbeddings.mock.calls[1]?.[0]).toEqual({
-      text: [aiTextResponse],
-    })
-    expect(deps.db.storeMessage.mock.calls[0]?.[0]).toEqual([
-      {
-        externalId: message.externalId,
-        userId: persistedUser.id,
+
+    const user = await getUserWithProfileFromDatabase(message.userExternalId)
+    const messages = await getUserMessagesFromDatabase(user.id)
+
+    expect(messages).toEqual([
+      expect.objectContaining({
+        external_id: message.externalId,
+        user_id: user.id,
         role: 'user',
         type: 'voice',
-        content: [
-          {
-            content: audioTranscriptionResult,
-            embedding: mockEmbeddings,
-          },
-        ],
-      },
-      {
-        externalId: `${messageExternalId - 1}`,
-        userId: persistedUser.id,
+        content: audioTranscriptionResult,
+      }),
+      expect.objectContaining({
+        external_id: `${messageExternalId - 1}`,
+        user_id: user.id,
         role: 'assistant',
         type: 'text',
-        content: [
-          {
-            content: aiTextResponse,
-            embedding: mockEmbeddings,
-          },
-        ],
-      },
+        content: aiTextResponse,
+      }),
     ])
+
+    expect(user).toMatchObject({
+      name: message.userName,
+      external_id: message.userExternalId,
+      profile: updatedProfile,
+      profile_updated_by: messages[0]?.id,
+    })
   })
+
   test('Audio (not voice recording)', async () => {
     const message: IncomingMessage = {
       userExternalId: 'user-external-id',
@@ -239,56 +202,38 @@ describe('Smoke test: first interaction', () => {
       mimeType: 'audio/ogg',
     }
 
-    const result = await agent(deps, message)
-    expect(result).toBeUndefined()
-    expect(deps.db.persistUser).toHaveBeenCalledWith({
-      externalId: message.userExternalId,
-      name: message.userName,
-    })
+    await agent(deps, message)
+
     expect(deps.chat.acknowledgeProcessingMessage).toHaveBeenCalled()
-    expect(deps.ai.transcribeAudio).toHaveBeenCalledWith({ audio: message.mediaData })
-    expect(deps.ai.respond).toHaveBeenCalledWith({
-      messages: [
-        {
-          role: 'system',
-          content: Prompt.audioTranscription(audioTranscriptionResult),
-        },
-      ],
-    })
     expect(deps.chat.sendTextMessage).toHaveBeenCalledWith({ text: aiTextResponse })
-    expect(deps.storage.store).not.toHaveBeenCalled()
-    expect(deps.ai.improveUserProfile).not.toHaveBeenCalled()
-    expect(deps.db.updateUserProfile).not.toHaveBeenCalled()
-    expect(deps.ai.generateEmbeddings.mock.calls[0]?.[0]).toEqual({
-      text: [Prompt.audioTranscription(audioTranscriptionResult), aiTextResponse],
-    })
-    const persistedUser = (await deps.db.persistUser.mock.results[0]?.value) as UserComponent
-    expect(deps.db.storeMessage.mock.calls[0]?.[0]).toEqual([
-      {
-        userId: persistedUser.id,
-        role: 'system',
+
+    const user = await getUserWithProfileFromDatabase(message.userExternalId)
+    const messages = await getUserMessagesFromDatabase(user.id)
+
+    expect(messages).toEqual([
+      expect.objectContaining({
+        external_id: `${message.externalId}`,
+        user_id: user.id,
+        role: 'user',
         type: 'audio',
-        content: [
-          {
-            content: Prompt.audioTranscription(audioTranscriptionResult),
-            embedding: mockEmbeddings,
-          },
-        ],
-      },
-      {
-        externalId: `${messageExternalId - 1}`,
-        userId: persistedUser.id,
+        content: audioTranscriptionResult,
+      }),
+      expect.objectContaining({
+        user_id: user.id,
         role: 'assistant',
         type: 'text',
-        content: [
-          {
-            content: aiTextResponse,
-            embedding: mockEmbeddings,
-          },
-        ],
-      },
+        content: aiTextResponse,
+      }),
     ])
+
+    expect(user).toMatchObject({
+      name: message.userName,
+      external_id: message.userExternalId,
+      profile: updatedProfile,
+      profile_updated_by: messages[0]?.id,
+    })
   })
+
   test('Image with caption', async () => {
     const message: IncomingMessage = {
       userExternalId: 'user-external-id',
@@ -300,95 +245,49 @@ describe('Smoke test: first interaction', () => {
       text: 'A beautiful sunset',
     }
 
-    const result = await agent(deps, message)
-    expect(result).toBeUndefined()
-    expect(deps.db.persistUser).toHaveBeenCalledWith({
-      externalId: message.userExternalId,
-      name: message.userName,
-    })
-    const persistedUser = (await deps.db.persistUser.mock.results[0]?.value) as UserComponent
-    expect(persistedUser).toEqual(
-      expect.objectContaining({
-        id: expect.any(String),
-        externalId: message.userExternalId,
-        name: message.userName,
-        joinedAt: expect.any(Date),
-        profile: '',
-      })
-    )
+    await agent(deps, message)
     expect(deps.chat.acknowledgeProcessingMessage).toHaveBeenCalled()
-    expect(deps.ai.analyzeImage.mock.calls[0]?.[0]).toEqual({
-      imageUrl: `data:image/jpeg;base64,${Buffer.from(message.mediaData!).toString('base64')}`,
-      caption: message.text,
-    })
-    expect(deps.ai.respond.mock.calls[0]?.[0]).toEqual({
-      messages: [
-        { role: 'system', content: Prompt.imageDescription(imageAnalysisResult) },
-        { role: 'user', content: message.text },
-      ],
-    })
     expect(deps.chat.sendTextMessage.mock.calls[0]?.[0]).toEqual({ text: aiTextResponse })
-    expect(deps.storage.store.mock.calls[0]?.[0]).toEqual({
-      key: expect.stringMatching(new RegExp(`^${persistedUser.id}/.*`)),
-      data: message.mediaData,
-      mimeType: message.mimeType,
-    })
-    expect(deps.ai.improveUserProfile.mock.calls[0]?.[0]).toEqual({
-      profile: persistedUser.profile,
-      message: message.text,
-    })
-    expect(deps.ai.generateEmbeddings.mock.calls[0]?.[0]).toEqual({
-      text: [message.text],
-    })
-    expect(deps.ai.generateEmbeddings.mock.calls[1]?.[0]).toEqual({
-      text: [Prompt.imageDescription(imageAnalysisResult), aiTextResponse],
-    })
-    expect(deps.db.storeMessage.mock.calls[0]?.[0]).toEqual([
-      {
-        userId: persistedUser.id,
-        role: 'system',
-        type: 'image',
-        mediaStorageKey: expect.stringMatching(new RegExp(`^${persistedUser.id}/.*`)),
-        content: [
-          {
-            content: Prompt.imageDescription(imageAnalysisResult),
-            embedding: mockEmbeddings,
-          },
-        ],
-      },
-      {
-        externalId: message.externalId,
-        userId: persistedUser.id,
+
+    const user = await getUserWithProfileFromDatabase(message.userExternalId)
+    const messages = await getUserMessagesFromDatabase(user.id)
+    const imageMessage = messages.find((m) => m.type === 'image')!
+
+    expect(
+      await Bun.file(`${storagePath}/${imageMessage.media_storage_key}`).arrayBuffer()
+    ).toEqual(message.mediaData!)
+
+    expect(messages).toEqual([
+      expect.objectContaining({
+        user_id: user.id,
         role: 'user',
         type: 'image',
-        mediaStorageKey: expect.stringMatching(new RegExp(`^${persistedUser.id}/.*`)),
-        content: [
-          {
-            content: message.text,
-            embedding: mockEmbeddings,
-          },
-        ],
-      },
-      {
-        externalId: `${messageExternalId - 1}`,
-        userId: persistedUser.id,
+        content: imageAnalysisResult,
+        media_storage_key: imageMessage.media_storage_key,
+      }),
+      expect.objectContaining({
+        external_id: message.externalId,
+        user_id: user.id,
+        role: 'user',
+        type: 'text',
+        content: message.text,
+      }),
+      expect.objectContaining({
+        user_id: user.id,
         role: 'assistant',
         type: 'text',
-        mediaStorageKey: expect.stringMatching(new RegExp(`^${persistedUser.id}/.*`)),
-        content: [
-          {
-            content: aiTextResponse,
-            embedding: mockEmbeddings,
-          },
-        ],
-      },
+        content: aiTextResponse,
+      }),
     ])
-    expect(deps.db.updateUserProfile.mock.calls[0]?.[0]).toEqual({
-      userId: persistedUser.id,
+
+    expect(user).toMatchObject({
+      name: message.userName,
+      external_id: message.userExternalId,
       profile: updatedProfile,
-      messageId: (await deps.db.storeMessage.mock.results[0].value)?.[0],
+      profile_updated_by: messages[1]?.id,
     })
   })
+
   test('Image without caption', async () => {
     const message: IncomingMessage = {
       userExternalId: 'user-external-id',
@@ -399,92 +298,44 @@ describe('Smoke test: first interaction', () => {
       mimeType: 'image/jpeg',
     }
 
-    const result = await agent(deps, message)
-    expect(result).toBeUndefined()
-    expect(deps.ai.improveUserProfile).not.toHaveBeenCalled()
-    expect(deps.db.updateUserProfile).not.toHaveBeenCalled()
+    await agent(deps, message)
+
     expect(deps.chat.acknowledgeProcessingMessage).toHaveBeenCalled()
+    expect(deps.chat.sendTextMessage.mock.calls[0]?.[0]).toEqual({ text: aiTextResponse })
 
-    expect(deps.db.persistUser.mock.calls[0]?.[0]).toEqual({
-      externalId: message.userExternalId,
-      name: message.userName,
-    })
-    const persistedUser = (await deps.db.persistUser.mock.results[0]?.value) as UserComponent
-    expect(persistedUser).toEqual(
+    const user = await getUserWithProfileFromDatabase(message.userExternalId)
+    const messages = await getUserMessagesFromDatabase(user.id)
+    const imageMessage = messages.find((m) => m.type === 'image')!
+
+    expect(
+      await Bun.file(`${storagePath}/${imageMessage.media_storage_key}`).arrayBuffer()
+    ).toEqual(message.mediaData!)
+
+    expect(messages).toEqual([
       expect.objectContaining({
-        id: expect.any(String),
-        externalId: message.userExternalId,
-        name: message.userName,
-        joinedAt: expect.any(Date),
-        profile: '',
-      })
-    )
-
-    expect(deps.ai.analyzeImage.mock.calls[0]?.[0]).toEqual({
-      imageUrl: `data:image/jpeg;base64,${Buffer.from(message.mediaData!).toString('base64')}`,
-    })
-
-    expect(deps.ai.respond.mock.calls[0]?.[0]).toEqual({
-      messages: [
-        { role: 'system', content: Prompt.imageDescription(imageAnalysisResult) },
-        { role: 'system', content: Prompt.imageWithoutCaption },
-      ],
-    })
-    expect(deps.chat.sendTextMessage.mock.calls[0]?.[0]).toEqual({
-      text: aiTextResponse,
-    })
-    expect(deps.storage.store.mock.calls[0]?.[0]).toEqual({
-      key: expect.stringMatching(new RegExp(`^${persistedUser.id}/.*`)),
-      data: message.mediaData,
-      mimeType: message.mimeType,
-    })
-    expect(deps.ai.generateEmbeddings.mock.calls[0]?.[0]).toEqual({
-      text: [
-        Prompt.imageDescription(imageAnalysisResult),
-        Prompt.imageWithoutCaption,
-        aiTextResponse,
-      ],
-    })
-    expect(deps.db.storeMessage.mock.calls[0]?.[0]).toEqual([
-      {
-        userId: persistedUser.id,
-        role: 'system',
+        external_id: message.externalId,
+        user_id: user.id,
+        role: 'user',
         type: 'image',
-        mediaStorageKey: expect.stringMatching(new RegExp(`^${persistedUser.id}/.*`)),
-        content: [
-          {
-            content: Prompt.imageDescription(imageAnalysisResult),
-            embedding: mockEmbeddings,
-          },
-        ],
-      },
-      {
-        userId: persistedUser.id,
-        role: 'system',
-        type: 'image',
-        mediaStorageKey: expect.stringMatching(new RegExp(`^${persistedUser.id}/.*`)),
-        content: [
-          {
-            content: Prompt.imageWithoutCaption,
-            embedding: mockEmbeddings,
-          },
-        ],
-      },
-      {
-        externalId: `${messageExternalId - 1}`,
-        userId: persistedUser.id,
+        content: imageAnalysisResult,
+        media_storage_key: imageMessage.media_storage_key,
+      }),
+      expect.objectContaining({
+        user_id: user.id,
         role: 'assistant',
         type: 'text',
-        mediaStorageKey: expect.stringMatching(new RegExp(`^${persistedUser.id}/.*`)),
-        content: [
-          {
-            content: aiTextResponse,
-            embedding: mockEmbeddings,
-          },
-        ],
-      },
+        content: aiTextResponse,
+      }),
     ])
+
+    expect(user).toMatchObject({
+      name: message.userName,
+      external_id: message.userExternalId,
+      profile: null,
+      profile_updated_by: null,
+    })
   })
+
   test('Document', async () => {
     const message: IncomingMessage = {
       userExternalId: 'user-external-id',
@@ -496,85 +347,41 @@ describe('Smoke test: first interaction', () => {
       documentFilename: 'test-document.pdf',
     }
 
-    const result = await agent(deps, message)
-    expect(result).toBeUndefined()
+    await agent(deps, message)
+
     expect(deps.chat.acknowledgeProcessingMessage).toHaveBeenCalled()
-    expect(deps.db.updateUserProfile).not.toHaveBeenCalled()
-
-    expect(deps.db.persistUser.mock.calls[0]?.[0]).toEqual({
-      externalId: message.userExternalId,
-      name: message.userName,
-    })
-    const persistedUser = (await deps.db.persistUser.mock.results[0]?.value) as UserComponent
-    expect(persistedUser).toEqual(
-      expect.objectContaining({
-        id: expect.any(String),
-        externalId: message.userExternalId,
-        name: message.userName,
-        joinedAt: expect.any(Date),
-        profile: '',
-      })
-    )
-    expect(deps.ai.transcribeDocument.mock.calls[0]?.[0]).toEqual({
-      document: message.mediaData,
-      mimeType: message.mimeType,
-      filename: message.documentFilename,
-    })
-
-    expect(deps.ai.respond.mock.calls[0]?.[0]).toEqual({
-      messages: [
-        {
-          role: 'system',
-          content: Prompt.documentTranscription(
-            documentTranscriptionResult,
-            message.documentFilename!
-          ),
-        },
-      ],
-    })
     expect(deps.chat.sendTextMessage.mock.calls[0]?.[0]).toEqual({ text: aiTextResponse })
-    expect(deps.storage.store.mock.calls[0]?.[0]).toEqual({
-      key: expect.stringMatching(new RegExp(`^${persistedUser.id}/.*`)),
-      data: message.mediaData,
-      mimeType: message.mimeType,
-    })
 
-    expect(deps.ai.generateEmbeddings.mock.calls[0]?.[0]).toEqual({
-      text: [
-        Prompt.documentTranscription(documentTranscriptionResult, message.documentFilename!),
-        aiTextResponse,
-      ],
-    })
-    expect(deps.db.storeMessage.mock.calls[0]?.[0]).toEqual([
-      {
-        userId: persistedUser.id,
-        role: 'system',
+    const user = await getUserWithProfileFromDatabase(message.userExternalId)
+    const messages = await getUserMessagesFromDatabase(user.id)
+    const documentMessage = messages.find((m) => m.type === 'document')!
+
+    expect(
+      await Bun.file(`${storagePath}/${documentMessage.media_storage_key}`).arrayBuffer()
+    ).toEqual(message.mediaData!)
+
+    expect(messages).toEqual([
+      expect.objectContaining({
+        user_id: user.id,
+        role: 'user',
         type: 'document',
-        mediaStorageKey: expect.stringMatching(new RegExp(`^${persistedUser.id}/.*`)),
-        content: [
-          {
-            content: Prompt.documentTranscription(
-              documentTranscriptionResult,
-              message.documentFilename!
-            ),
-            embedding: mockEmbeddings,
-          },
-        ],
-      },
-      {
-        externalId: `${messageExternalId - 1}`,
-        userId: persistedUser.id,
+        content: documentTranscriptionResult,
+        media_storage_key: documentMessage.media_storage_key,
+      }),
+      expect.objectContaining({
+        user_id: user.id,
         role: 'assistant',
         type: 'text',
-        mediaStorageKey: expect.stringMatching(new RegExp(`^${persistedUser.id}/.*`)),
-        content: [
-          {
-            content: aiTextResponse,
-            embedding: mockEmbeddings,
-          },
-        ],
-      },
+        content: aiTextResponse,
+      }),
     ])
+
+    expect(user).toMatchObject({
+      name: message.userName,
+      external_id: message.userExternalId,
+      profile: null,
+      profile_updated_by: null,
+    })
   })
 })
 
@@ -1197,9 +1004,53 @@ describe('Extra context: similar messages', () => {
 
     // Should have: user profile, similar messages, recent messages, and user message
     expect(messages.length).toBeGreaterThanOrEqual(4)
-    // console.log(messages)
 
     expect(messages[1]!.content).not.toContain('user: Hello, how are you?')
     expect(messages[1]!.content).not.toContain("assistant: Hi, I'm fine.")
   })
 })
+
+async function getUserMessagesFromDatabase(userId: string) {
+  return (
+    await dbClient.execute({
+      sql: `
+      SELECT m.*, GROUP_CONCAT(e.content, '') as content
+      FROM message m
+      JOIN embedding e ON m.id = e.message_id
+      WHERE m.user_id = ?
+      GROUP BY e.message_id
+      ORDER BY m.id, e.sequence`,
+      args: [userId],
+    })
+  ).rows as unknown as Array<{
+    id: string
+    external_id: string
+    role: string
+    type: string
+    user_id: string
+    content: string
+    media_storage_key?: string
+  }>
+}
+
+async function getUserWithProfileFromDatabase(userExternalId: string) {
+  return (
+    await dbClient.execute({
+      sql: `
+        SELECT u.*, p.profile, p.message_id as profile_updated_by
+        FROM user u
+        LEFT JOIN user_profile_version p ON u.id = p.user_id
+        WHERE u.external_id = ?
+        ORDER BY p.id DESC
+        LIMIT 1`,
+      args: [userExternalId],
+    })
+  ).rows[0] as unknown as {
+    id: string
+    external_id: string
+    name: string
+    joined_at: string
+    profile: string | null
+    profile_updated_by: string | null
+  }
+}

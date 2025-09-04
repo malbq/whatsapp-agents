@@ -14,7 +14,7 @@ import {
   type UserModelMessage,
 } from 'ai'
 import { z } from 'zod'
-import { getContext } from '..'
+import { getContext } from '../context'
 import { EmbeddingsGenerationError } from '../errors'
 import * as Prompt from '../prompts/prompt'
 import { formatTokenUsage } from '../utils/formatTokenUsage'

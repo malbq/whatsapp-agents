@@ -1,9 +1,10 @@
 import { getLogger } from '@logtape/logtape'
 import { Hono } from 'hono'
-import { contextStorage, getContext as getContextHono } from 'hono/context-storage'
+import { contextStorage } from 'hono/context-storage'
 import { createHmac } from 'node:crypto'
 import { agent } from './agent'
 import { configureLogging } from './config/logging'
+import type { Env } from './context'
 import { MediaHashMismatchError } from './errors'
 import { handleStatusUpdate } from './features/handleStatusUpdate'
 import { AIProvider } from './infra/ai'
@@ -19,21 +20,15 @@ await configureLogging()
 const logger = getLogger(['app'])
 
 const db = LibSql.db()
+const storage = FilesystemStorage.storage()
+const chat = Whatsapp.chat
+const ai = AIProvider(db)
 const deps: Deps = {
   db,
-  storage: FilesystemStorage.storage(),
-  chat: Whatsapp.chat,
-  ai: AIProvider(db),
+  storage,
+  chat,
+  ai,
 }
-
-type Env = {
-  Variables: {
-    businessPhoneNumberId?: string
-    userWhatsappId?: string
-    userId?: string
-  }
-}
-export const getContext = () => getContextHono<Env>()
 
 const app = new Hono<Env>()
 app.use(loggingMiddleware)

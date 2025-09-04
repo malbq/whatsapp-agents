@@ -10,7 +10,7 @@ export namespace LibSql {
     client =
       client ??
       createClient({
-        url: 'file:./storage/db.db',
+        url: 'file:./storage/assistant.db',
       })
     return {
       async storeWebhookEvent(payload, externalId) {
@@ -52,10 +52,10 @@ export namespace LibSql {
         const newUser = insertResult.rows[0]!
 
         const profileResult = await client.execute({
-          sql: `SELECT upv.profile FROM user u
-          LEFT JOIN user_profile_version upv ON u.id = upv.user_id
+          sql: `SELECT p.profile FROM user u
+          LEFT JOIN user_profile_version p ON u.id = p.user_id
           WHERE u.id = ? 
-          ORDER BY upv.id DESC 
+          ORDER BY p.id DESC 
           LIMIT 1`,
           args: [newUser.id as string],
         })
@@ -189,6 +189,8 @@ export namespace LibSql {
       },
 
       async updateUserProfile({ userId, profile, messageId }) {
+        profile = profile.trim()
+        if (profile.length === 0) return
         await client.execute({
           sql: `INSERT INTO user_profile_version (id, user_id, profile, message_id)
           VALUES (?, ?, ?, ?)`,

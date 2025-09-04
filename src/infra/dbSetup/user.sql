@@ -5,4 +5,4 @@ CREATE TABLE IF NOT EXISTS user (
   joined_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_user_external_id ON user (external_id); 
+CREATE INDEX IF NOT EXISTS idx_user_external_id ON user (external_id);

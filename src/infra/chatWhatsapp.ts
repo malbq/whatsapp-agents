@@ -1,11 +1,11 @@
 import { getLogger } from '@logtape/logtape'
 import { createHash } from 'node:crypto'
+import { getContext } from '../context'
 import {
   FailedToDownloadMediaError,
   MediaHashMismatchError,
   ResponseDeliveryError,
 } from '../errors'
-import { getContext } from '../index'
 import type { Chat, IncomingMessage } from './chat'
 
 const { META_API_TOKEN, WA_API_VERSION } = import.meta.env

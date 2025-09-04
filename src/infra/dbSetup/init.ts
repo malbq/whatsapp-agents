@@ -4,7 +4,7 @@ import { $ } from 'bun'
 import { readdir } from 'node:fs/promises'
 import { join } from 'node:path'
 
-const dbPath = process.argv[2] || './storage/db.db'
+const dbPath = process.argv[2] || './storage/assistant.db'
 
 const scriptsDir = await readdir(import.meta.dir)
 const scripts = scriptsDir.filter((file) => file.endsWith('.sql'))
