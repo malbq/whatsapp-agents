@@ -4,7 +4,6 @@ export type Env = {
   Variables: {
     businessPhoneNumberId?: string
     userWhatsappId?: string
-    userId?: string
   }
 }
 

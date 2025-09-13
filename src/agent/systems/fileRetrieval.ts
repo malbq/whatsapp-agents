@@ -30,11 +30,14 @@ export async function FileRetrieval(frame: Frame, deps: Deps) {
     frame.outbound.media.filename = retrievedMedia.filename
     frame.outbound.type = type
 
-    logger.info(`File retrieved successfully for storage key: ${frame.outbound.media.storageKey}`, {
-      messageType: type,
-      mimeType: retrievedMedia.mimeType,
-      filename: retrievedMedia.filename,
-    })
+    logger.info(
+      `File retrieved successfully from "${frame.outbound.media.storageKey}" (${frame.outbound.media.data.byteLength} bytes)`,
+      {
+        messageType: type,
+        mimeType: retrievedMedia.mimeType,
+        filename: retrievedMedia.filename,
+      }
+    )
   } catch (error) {
     frame.outbound = {
       type: 'text',

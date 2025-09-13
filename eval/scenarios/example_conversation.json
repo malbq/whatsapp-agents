@@ -1,0 +1,28 @@
+{
+  "systemPrompt": "You are role-playing as a human user in a conversation with a personal assistant AI. Talk with short messages, as this is a WhatsApp conversation. Be concise and to the point.",
+  "model": "gpt-5-2025-08-07",
+  "conversation": [
+    {
+      "role": "user",
+      "content": "Hello, how are you?"
+    },
+    {
+      "role": "assistant",
+      "content": "I'm fine, thank you!"
+    },
+    { "role": "user", "content": "What's the weather like?" },
+    {
+      "role": "assistant",
+      "content": "It's sunny today."
+    },
+    {
+      "role": "user",
+      "content": "Remind me to buy milk."
+    },
+    {
+      "role": "assistant",
+      "content": "Reminder set for milk."
+    }
+  ],
+  "maxMessages": 2
+}

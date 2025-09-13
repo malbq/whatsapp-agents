@@ -3,15 +3,20 @@ import { getLogger } from '@logtape/logtape'
 import { FailedToPersistUserError } from '../errors'
 import type { DB, FileSearchResult, RecentMessage, SimilarMessage, User } from './db'
 
+const MAX_RECENT_MESSAGES = parseInt(import.meta.env.MAX_RECENT_MESSAGES ?? '100')
+const VECTOR_DISTANCE_THRESHOLD = parseFloat(
+  import.meta.env.FILE_VECTOR_DISTANCE_THRESHOLD ?? '0.50'
+)
+const MAX_SIMILAR_MESSAGES = parseInt(import.meta.env.MAX_SIMILAR_MESSAGES ?? '10')
+const MAX_FILES = parseInt(import.meta.env.FILE_SEARCH_LIMIT ?? '10')
+
 const logger = getLogger(['infra', 'db'])
 
 export namespace LibSql {
   export const db = (client?: Client): DB => {
-    client =
-      client ??
-      createClient({
-        url: 'file:./storage/assistant.db',
-      })
+    client ??= createClient({
+      url: 'file:./storage/assistant.db',
+    })
     return {
       async storeWebhookEvent(payload, externalId) {
         try {
@@ -116,7 +121,6 @@ export namespace LibSql {
       },
 
       async findRecentMessages({ userId }) {
-        const MAX_RECENT_MESSAGES = parseInt(import.meta.env.MAX_RECENT_MESSAGES ?? '100')
         const selectResult = await client.execute({
           sql: `SELECT m.id, m.role, m.type,
           CASE 
@@ -142,8 +146,6 @@ export namespace LibSql {
       },
 
       async findSimilarMessages({ userId, queryEmbedding, excludeIds = [] }) {
-        const SIMILARITY_THRESHOLD = parseFloat(import.meta.env.SIMILARITY_THRESHOLD ?? '0.5')
-        const MAX_SIMILAR_MESSAGES = parseInt(import.meta.env.MAX_SIMILAR_MESSAGES ?? '10')
         const queryEmbeddingString = JSON.stringify(queryEmbedding)
 
         const excludeClause = excludeIds.length
@@ -171,7 +173,7 @@ export namespace LibSql {
             userId,
             ...excludeIds,
             queryEmbeddingString,
-            SIMILARITY_THRESHOLD,
+            VECTOR_DISTANCE_THRESHOLD,
             queryEmbeddingString,
             MAX_SIMILAR_MESSAGES,
           ],
@@ -199,8 +201,6 @@ export namespace LibSql {
       },
 
       async searchFiles({ userId, queryEmbedding }) {
-        const SIMILARITY_THRESHOLD = parseFloat(import.meta.env.FILE_SIMILARITY_THRESHOLD ?? '0.50')
-        const MAX_FILES = 10
         const queryEmbeddingString = JSON.stringify(queryEmbedding)
 
         const result = await client.execute({
@@ -218,7 +218,7 @@ export namespace LibSql {
             AND distance < ?
             ORDER BY distance ASC
             LIMIT 50`,
-          args: [queryEmbeddingString, userId, SIMILARITY_THRESHOLD],
+          args: [queryEmbeddingString, userId, VECTOR_DISTANCE_THRESHOLD],
         })
 
         const fileGroups = new Map<
@@ -249,7 +249,6 @@ export namespace LibSql {
           })
         })
 
-        // Calculate average scores and prepare results
         const fileResults: FileSearchResult[] = Array.from(fileGroups.values())
           .map((group) => {
             const score =

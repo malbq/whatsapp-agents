@@ -1,7 +1,7 @@
 import { generateObject } from 'ai'
 import chalk from 'chalk'
 import path from 'node:path'
-import { format, instructions, requiredContext } from '../../../src/prompts/intentClassification'
+import { format, instructions, requiredContext } from '../../src/prompts/intentClassification'
 
 const inputData = path.join(import.meta.dir, 'data.json')
 const report = path.join(import.meta.dir, 'report.csv')

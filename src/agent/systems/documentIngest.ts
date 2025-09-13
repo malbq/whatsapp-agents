@@ -7,17 +7,21 @@ import type { Frame } from '../frame'
 const logger = getLogger(['app', 'agent', 'ingestion', 'document'])
 
 export async function documentIngest(frame: Frame, deps: Deps): Promise<void> {
-  if (!frame.inbound?.media) throw new IngestionError('Media is required for document ingestion')
-
+  if (!frame.inbound?.media?.data)
+    throw new IngestionError('Media is required for document ingestion')
+  if (!frame.inbound?.media?.mimeType)
+    throw new IngestionError('Media mime type is required for document ingestion')
   if (!frame.inbound?.media?.filename)
     throw new IngestionError('Filename is required for document ingestion')
-
   try {
     frame.inbound.media.transcription = await parseDocument(
       deps,
       frame.inbound.media.data,
       frame.inbound.media.mimeType,
       frame.inbound.media.filename
+    )
+    logger.debug(
+      `Processed document "${frame.inbound.media.filename}" of type ${frame.inbound.media.mimeType} (${frame.inbound.media.data.byteLength} bytes)`
     )
   } catch (error) {
     frame.outbound = {

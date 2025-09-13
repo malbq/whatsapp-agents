@@ -15,9 +15,9 @@ export async function IngestMessage(
   message: IncomingMessage
 ): Promise<void> {
   logger.info(
-    `Incoming ${message.type} message from ${message.userName} (${message.userExternalId})`,
-    { ...message }
+    `Incoming ${message.type} message from ${message.userName} (${message.userExternalId})`
   )
+  logger.debug(`Incoming message: ${message.text}`, { ...message })
 
   if (message.type === 'text' && !message.text) throw new IngestionError('Text content is required')
 

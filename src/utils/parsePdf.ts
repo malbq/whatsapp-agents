@@ -6,7 +6,8 @@ const logger = getLogger(['app', 'utils', 'parsePdf'])
 
 export async function parsePdf(file: ArrayBuffer) {
   try {
-    const doc = await getDocumentProxy(file)
+    const copy = file.slice(0)
+    const doc = await getDocumentProxy(copy)
     const { text } = await extractText(doc, { mergePages: true })
     return text
   } catch (error) {

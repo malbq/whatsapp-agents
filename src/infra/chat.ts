@@ -20,19 +20,28 @@ export interface Notification {
   statusUpdate?: StatusUpdate
 }
 
+export interface OutgoingTextMessage {
+  text: string
+  replyingTo?: string
+}
+export interface OutgoingImageMessage {
+  data: ArrayBuffer
+  caption?: string
+  replyingTo?: string
+  mimeType: string
+}
+export interface OutgoingDocumentMessage {
+  data: ArrayBuffer
+  filename: string
+  caption?: string
+  replyingTo?: string
+  mimeType: string
+}
+
 export interface Chat {
   parseNotification: (notification: any) => Promise<Notification>
   acknowledgeProcessingMessage: (messageId: string) => Promise<void>
-  sendTextMessage: (params: { text: string; replyingTo?: string }) => Promise<string>
-  sendImageMessage: (params: {
-    data: ArrayBuffer
-    caption?: string
-    replyingTo?: string
-  }) => Promise<string>
-  sendDocumentMessage: (params: {
-    data: ArrayBuffer
-    filename: string
-    caption?: string
-    replyingTo?: string
-  }) => Promise<string>
+  sendTextMessage: (params: OutgoingTextMessage) => Promise<string>
+  sendImageMessage: (params: OutgoingImageMessage) => Promise<string>
+  sendDocumentMessage: (params: OutgoingDocumentMessage) => Promise<string>
 }

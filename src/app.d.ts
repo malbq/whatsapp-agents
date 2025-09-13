@@ -21,14 +21,13 @@ declare global {
     CF_ACCOUNT_ID: string
     CF_API_TOKEN: string
     MAX_RECENT_MESSAGES: string
-    SIMILARITY_THRESHOLD: string
+    VECTOR_DISTANCE_THRESHOLD: string
+    FILE_SEARCH_LIMIT: string
     MAX_SIMILAR_MESSAGES: string
     TEXT_GENERATION_PROVIDER: string
     AUDIO_TRANSCRIPTION_PROVIDER: string
     IMAGE_ANALYSIS_PROVIDER: string
     LOKI_PUSH_URL?: string
-    LOKI_MAX_BATCH_BYTES?: number
-    LOKI_FLUSH_INTERVAL_MS?: number
     TEST_AI?: string
   }
 }

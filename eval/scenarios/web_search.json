@@ -1,0 +1,18 @@
+{
+  "name": "web_search_and_scheduling",
+  "userExternalId": "eval_user_tools",
+  "steps": [
+    {
+      "user": "Preciso saber sobre as eleições no Brasil em 2024",
+      "note": "Should trigger web search tool"
+    },
+    {
+      "user": "Me lembra disso amanhã às 9h",
+      "note": "Should trigger scheduling tool"
+    },
+    {
+      "user": "Quais são meus lembretes?",
+      "note": "Should list scheduled reminders"
+    }
+  ]
+}

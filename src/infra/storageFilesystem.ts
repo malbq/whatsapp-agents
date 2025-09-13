@@ -3,9 +3,9 @@ import fsDriver from 'unstorage/drivers/fs'
 import type { Storage } from './storage'
 
 export namespace FilesystemStorage {
-  export const storage = (base?: string): Storage => {
+  export const storage = (base: string = './storage'): Storage => {
     const fsStorage = createStorage<ArrayBuffer>({
-      driver: fsDriver({ base: base ?? './storage' }),
+      driver: fsDriver({ base }),
     })
     return {
       store: async ({ key, data, mimeType, filename }) => {

@@ -1,27 +1,54 @@
-import { join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
+import { z } from 'zod'
 import { AIProvider } from '../../src/infra/ai'
-import type { DbMessageInput } from '../../src/infra/db'
 
-const messages: Array<Pick<DbMessageInput, 'role' | 'type' | 'content'>> = [
-  { role: 'user', type: 'text', content: [{ content: 'Hello, how are you?', embedding: [] }] },
-  { role: 'assistant', type: 'text', content: [{ content: "Hi, I'm fine.", embedding: [] }] },
-  { role: 'user', type: 'text', content: [{ content: "What's the weather like?", embedding: [] }] },
-  { role: 'assistant', type: 'text', content: [{ content: "It's sunny today.", embedding: [] }] },
-  { role: 'user', type: 'text', content: [{ content: 'Remind me to buy milk.', embedding: [] }] },
-  {
-    role: 'assistant',
-    type: 'text',
-    content: [{ content: 'Reminder set for milk.', embedding: [] }],
-  },
-  { role: 'user', type: 'text', content: [{ content: 'Tell me a joke.', embedding: [] }] },
-  {
-    role: 'assistant',
-    type: 'text',
-    content: [
-      { content: 'Why did the chicken cross the road? To get to the other side.', embedding: [] },
-    ],
-  },
-]
+const MessageSchema = z.object({
+  role: z.enum(['user', 'assistant']),
+  type: z.literal('text'),
+  content: z
+    .array(
+      z.object({
+        content: z.string().min(1),
+        embedding: z.array(z.any()).length(0),
+      })
+    )
+    .length(1),
+})
+
+const MessagesSchema = z.array(MessageSchema)
+
+type MessageInput = z.infer<typeof MessageSchema>
+
+function validateMessages(data: unknown): asserts data is MessageInput[] {
+  MessagesSchema.parse(data)
+}
+
+async function loadMessagesFromFile(filePath: string): Promise<MessageInput[]> {
+  try {
+    const fileContent = await Bun.file(filePath).text()
+    const parsed = JSON.parse(fileContent)
+    validateMessages(parsed)
+    return parsed
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      console.error('Invalid JSON structure:', error.errors)
+      throw new Error('JSON validation failed')
+    }
+    throw error
+  }
+}
+
+function getJsonFilePath(): string {
+  const filePath = process.argv[2]
+  if (!filePath) {
+    console.error('Usage: bun run generateVectorMemory.ts <path-to-json-file>')
+    process.exit(1)
+  }
+  return filePath
+}
+
+const jsonFilePath = getJsonFilePath()
+const messages = await loadMessagesFromFile(jsonFilePath)
 
 const embeddings = await AIProvider.generateEmbeddings({
   text: messages.map(({ content }) => content[0]?.content ?? ''),
@@ -45,8 +72,7 @@ messages.forEach((message, i) => {
     `'${userId}', ` +
     `'${message.role}', ` +
     `'${message.type}', ` +
-    `'${timestamp}' ` +
-    ');\n'
+    `'${timestamp}');\n`
 
   sqlInserts +=
     'INSERT INTO embedding ' +
@@ -55,9 +81,11 @@ messages.forEach((message, i) => {
     `'${id}', ` +
     `1, ` +
     `'${message.content[0]?.content.replace(/'/g, "''") ?? ''}', ` +
-    `vector32('${embedding}') ` +
-    ');\n'
+    `vector32('${embedding}'));\n`
 })
 
-await Bun.write(join(import.meta.dir, '..', 'memory.sql'), sqlInserts)
-console.log('Generated memory.sql with test data')
+const inputDir = dirname(jsonFilePath)
+const inputBasename = basename(jsonFilePath, '.json')
+const outputPath = join(inputDir, `${inputBasename}.sql`)
+await Bun.write(outputPath, sqlInserts)
+console.log(`Generated ${outputPath} with ${messages.length} messages`)

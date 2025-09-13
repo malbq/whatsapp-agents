@@ -1,18 +1,10 @@
 import { getLogger } from '@logtape/logtape'
 import { ResponseGenerationError } from '../../errors'
 import type { AIMessage } from '../../infra/ai'
-import type { MessageType } from '../../infra/db'
 import * as Prompt from '../../prompts/prompt'
 import type { Frame } from '../frame'
 
 const logger = getLogger(['app', 'agent', 'responseGeneration'])
-
-function mapMimeTypeToMessageType(mime: string | undefined): MessageType | null {
-  if (!mime) return null
-  if (mime.startsWith('image/')) return 'image'
-  if (mime === 'application/pdf') return 'document'
-  return null
-}
 
 export async function ResponseGeneration(frame: Frame, deps: Deps) {
   if (!frame.user) throw new ResponseGenerationError('User not found')
@@ -76,35 +68,24 @@ export async function ResponseGeneration(frame: Frame, deps: Deps) {
 
   try {
     const userMessageEmbedding = frame.inbound.textEmbedding?.[0]?.embedding
-    const response = await deps.ai.respond({
-      messages: messagesForAgent,
-      userMessageEmbedding,
-    })
-    logger.info(`Response generated: ${response.text}`, { ...response })
-
-    if (response.storageKey) {
-      const media = await deps.storage.retrieve(response.storageKey)
-      const outboundType = mapMimeTypeToMessageType(media?.mimeType)
-      if (!outboundType) {
-        throw new ResponseGenerationError(
-          `Media with ${media?.mimeType} mime type cannot be sent in response`
-        )
-      }
-      frame.outbound = {
-        type: outboundType,
-        text: response.text,
-        media: {
-          data: media.data,
-          mimeType: media.mimeType,
-          filename: media.filename,
-        },
-      }
-      return
-    }
+    const response = await deps.ai.respond(
+      {
+        messages: messagesForAgent,
+        userId: frame.user.id,
+        userMessageEmbedding,
+      },
+      deps
+    )
+    logger.info(`Response generated for ${frame.user.name} (${frame.user.externalId})`)
+    logger.debug(`Generated response: ${response.text}`, { ...response })
 
     frame.outbound = {
       type: 'text',
       text: response.text,
+    }
+
+    if (response.storageKey) {
+      frame.outbound.media = { storageKey: response.storageKey }
     }
   } catch (error) {
     frame.outbound = {

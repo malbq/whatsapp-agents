@@ -1,0 +1,47 @@
+[
+  {
+    "role": "user",
+    "type": "text",
+    "content": [{ "content": "Hello, how are you?", "embedding": [] }]
+  },
+  {
+    "role": "assistant",
+    "type": "text",
+    "content": [{ "content": "Hi, I'm fine.", "embedding": [] }]
+  },
+  {
+    "role": "user",
+    "type": "text",
+    "content": [{ "content": "What's the weather like?", "embedding": [] }]
+  },
+  {
+    "role": "assistant",
+    "type": "text",
+    "content": [{ "content": "It's sunny today.", "embedding": [] }]
+  },
+  {
+    "role": "user",
+    "type": "text",
+    "content": [{ "content": "Remind me to buy milk.", "embedding": [] }]
+  },
+  {
+    "role": "assistant",
+    "type": "text",
+    "content": [{ "content": "Reminder set for milk.", "embedding": [] }]
+  },
+  {
+    "role": "user",
+    "type": "text",
+    "content": [{ "content": "Tell me a joke.", "embedding": [] }]
+  },
+  {
+    "role": "assistant",
+    "type": "text",
+    "content": [
+      {
+        "content": "Why did the chicken cross the road? To get to the other side.",
+        "embedding": []
+      }
+    ]
+  }
+]

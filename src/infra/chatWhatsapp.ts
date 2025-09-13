@@ -6,6 +6,7 @@ import {
   MediaHashMismatchError,
   ResponseDeliveryError,
 } from '../errors'
+import { getFileExtensionFromMimeType } from '../utils/getFileExtensionFromMimeType'
 import type { Chat, IncomingMessage } from './chat'
 
 const { META_API_TOKEN, WA_API_VERSION } = import.meta.env
@@ -181,7 +182,7 @@ export namespace Whatsapp {
 
       return response.messages[0].id
     },
-    sendImageMessage: async ({ data, caption, replyingTo: replyToMessage }) => {
+    sendImageMessage: async ({ data, caption, mimeType, replyingTo: replyToMessage }) => {
       const businessPhoneNumberId = getContext().get('businessPhoneNumberId')
       const to = getContext().get('userWhatsappId')
 
@@ -190,10 +191,13 @@ export namespace Whatsapp {
         throw new ResponseDeliveryError('Missing context for sending message')
       }
 
-      // First upload the image to Facebook
       const formData = new FormData()
-      formData.append('file', new Blob([data]), 'image.jpg')
-      formData.append('type', 'image/jpeg')
+      formData.append(
+        'file',
+        new Blob([data], { type: mimeType }),
+        `image.${getFileExtensionFromMimeType(mimeType)}`
+      )
+      formData.append('type', mimeType)
       formData.append('messaging_product', 'whatsapp')
 
       const uploadResponse = await fetch(
@@ -208,11 +212,15 @@ export namespace Whatsapp {
       )
 
       if (!uploadResponse.ok) {
-        logger.error('Failed to upload image: {status} {statusText}', {
-          status: uploadResponse.status,
-          statusText: uploadResponse.statusText,
-          body: await uploadResponse.text(),
-        })
+        logger.error(
+          `Failed to upload image: [${uploadResponse.status} ${
+            uploadResponse.statusText
+          }] ${await uploadResponse.text()}`,
+          {
+            status: uploadResponse.status,
+            statusText: uploadResponse.statusText,
+          }
+        )
         throw new ResponseDeliveryError('Failed to upload image')
       }
 
@@ -246,11 +254,15 @@ export namespace Whatsapp {
       logger.debug('Image message API response {status}', { status: response.status })
 
       if (!response.ok) {
-        logger.error('Failed to send image message: {status} {statusText}', {
-          status: response.status,
-          statusText: response.statusText,
-          body: await response.text(),
-        })
+        logger.error(
+          `Failed to send image message: [${response.status} ${
+            response.statusText
+          }] ${await response.text()}`,
+          {
+            status: response.status,
+            statusText: response.statusText,
+          }
+        )
         throw new ResponseDeliveryError('Failed to send image message')
       }
 
@@ -265,7 +277,13 @@ export namespace Whatsapp {
       return messageResponse.messages[0].id
     },
 
-    sendDocumentMessage: async ({ data, filename, caption, replyingTo: replyToMessage }) => {
+    sendDocumentMessage: async ({
+      data,
+      filename,
+      caption,
+      mimeType,
+      replyingTo: replyToMessage,
+    }) => {
       const businessPhoneNumberId = getContext().get('businessPhoneNumberId')
       const to = getContext().get('userWhatsappId')
 
@@ -274,10 +292,9 @@ export namespace Whatsapp {
         throw new ResponseDeliveryError('Missing context for sending message')
       }
 
-      // First upload the document to Facebook
       const formData = new FormData()
-      formData.append('file', new Blob([data]), filename)
-      formData.append('type', 'application/octet-stream')
+      formData.append('file', new Blob([data], { type: mimeType }), filename)
+      formData.append('type', mimeType)
       formData.append('messaging_product', 'whatsapp')
 
       const uploadResponse = await fetch(
@@ -292,18 +309,21 @@ export namespace Whatsapp {
       )
 
       if (!uploadResponse.ok) {
-        logger.error('Failed to upload document: {status} {statusText}', {
-          status: uploadResponse.status,
-          statusText: uploadResponse.statusText,
-          body: await uploadResponse.text(),
-        })
+        const body = await uploadResponse.text()
+        logger.error(
+          `Failed to upload document: [${uploadResponse.status} ${uploadResponse.statusText}] ${body}`,
+          {
+            status: uploadResponse.status,
+            statusText: uploadResponse.statusText,
+            body,
+          }
+        )
         throw new ResponseDeliveryError('Failed to upload document')
       }
 
       const uploadResult = (await uploadResponse.json()) as { id: string }
       const mediaId = uploadResult.id
 
-      // Now send the document message
       const message = {
         messaging_product: 'whatsapp' as const,
         to,
@@ -361,7 +381,7 @@ export namespace Whatsapp {
       `https://graph.facebook.com/${WA_API_VERSION}/${mediaId}/`,
       init
     ).then((response) => response.json())) as MediaUrlResponse
-    logger.info`Media URL: ${urlData.url}`
+    logger.debug(`Media URL: ${urlData.url}`)
 
     const mediaResponse = await fetch(urlData.url, init)
 

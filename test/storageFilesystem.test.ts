@@ -16,7 +16,7 @@ afterEach(async () => {
 })
 
 afterAll(async () => {
-  await Bun.$`rm -rf ${storageBase} `
+  await Bun.$`rm -rf ${storageBase}`
 })
 
 test('Store and retrieve real image file', async () => {

@@ -4,7 +4,7 @@
 
 - **Tool Integration**: Implement tools
 
-  - `search_file` and `retrieve_file` tools for file access
+  - Add file name to media storage keys: `<random>_<original_file_name>.<ext>`
   - `create_reminder` and `cancel_reminder` tools
   - Tool execution system in agent workflow
   - Transform profile update in a tool

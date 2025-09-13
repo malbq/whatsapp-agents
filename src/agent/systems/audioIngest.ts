@@ -6,7 +6,7 @@ import type { Frame } from '../frame'
 const logger = getLogger(['app', 'agent', 'ingestion', 'audio'])
 
 export async function audioIngest(frame: Frame, deps: Deps): Promise<void> {
-  if (!frame.inbound?.media) throw new IngestionError('Media is required for audio ingestion')
+  if (!frame.inbound?.media?.data) throw new IngestionError('Media is required for audio ingestion')
 
   try {
     frame.inbound.text = await deps.ai.transcribeAudio({ audio: frame.inbound.media.data })

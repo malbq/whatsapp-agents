@@ -47,7 +47,7 @@ export async function agent(deps: Deps, message: IncomingMessage): Promise<void>
     try {
       await ResponseDelivery(frame, deps)
     } catch (error) {
-      logger.error(`Response delivery error: ${String(error)}`, { ...spreadError(error) })
+      logger.error(String(error), { ...spreadError(error) })
       return
     }
 
