@@ -32,3 +32,21 @@ export async function configureLogging() {
     ],
   })
 }
+
+export async function configureEvalLogging() {
+  const sinks = {
+    console: getConsoleSink({
+      formatter: ansiColorFormatter,
+    }),
+  }
+
+  await configure({
+    sinks,
+    contextLocalStorage: new AsyncLocalStorage(),
+    loggers: [
+      { category: ['logtape', 'meta'], lowestLevel: 'warning', sinks: ['console'] },
+      { category: 'infra', lowestLevel: 'debug', sinks: ['console'] },
+      { category: 'eval', lowestLevel: 'debug', sinks: ['console'] },
+    ],
+  })
+}

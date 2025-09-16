@@ -1,0 +1,18 @@
+{
+  "name": "historico_longo",
+  "messages": [{ "role": "user", "content": "Como a inflação afeta a renda fixa?" }],
+  "context": {
+    "recentMessages": [
+      { "role": "user", "content": "Oi" },
+      { "role": "assistant", "content": "Oi! Como posso ajudar?" },
+      { "role": "user", "content": "Quero aprender sobre investimentos." },
+      { "role": "assistant", "content": "Podemos falar de renda fixa, ações ou fundos." },
+      { "role": "user", "content": "Comecemos por renda fixa." },
+      { "role": "assistant", "content": "Renda fixa inclui Tesouro Direto, CDB, LCI/LCA..." },
+      { "role": "user", "content": "O que é Tesouro Selic?" },
+      { "role": "assistant", "content": "Título público atrelado à taxa Selic, liquidez diária." },
+      { "role": "user", "content": "E Tesouro IPCA+?" },
+      { "role": "assistant", "content": "Protege contra inflação, paga juro real + IPCA." }
+    ]
+  }
+}

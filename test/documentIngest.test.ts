@@ -55,15 +55,17 @@ afterEach(async () => {
 })
 
 describe('Document ingest', () => {
-  test('should process bun.pdf file successfully', async () => {
-    const pdfBuffer = await Bun.file(join(import.meta.dir, 'bun.pdf')).arrayBuffer()
+  test('should process transcribeDocument.input.pdf file successfully', async () => {
+    const pdfBuffer = await Bun.file(
+      join(import.meta.dir, '../eval/transcribeDocument.input.pdf')
+    ).arrayBuffer()
 
     frame.inbound = {
       type: 'document',
       media: {
         data: pdfBuffer,
         mimeType: 'application/pdf',
-        filename: 'bun.pdf',
+        filename: 'transcribeDocument.input.pdf',
       },
     }
 
@@ -73,15 +75,17 @@ describe('Document ingest', () => {
     expect(frame.inbound?.media?.transcription).toBeDefined()
   })
 
-  test('should process bun_flat.pdf file successfully', async () => {
-    const pdfBuffer = await Bun.file(join(import.meta.dir, 'bun_flat.pdf')).arrayBuffer()
+  test('should process transcribeDocument_flat.input.pdf file successfully', async () => {
+    const pdfBuffer = await Bun.file(
+      join(import.meta.dir, '../eval/transcribeDocument_flat.input.pdf')
+    ).arrayBuffer()
 
     frame.inbound = {
       type: 'document',
       media: {
         data: pdfBuffer,
         mimeType: 'application/pdf',
-        filename: 'bun_flat.pdf',
+        filename: 'transcribeDocument_flat.input.pdf',
       },
     }
 
@@ -104,7 +108,9 @@ describe('Document ingest', () => {
   })
 
   test('should throw error when filename is missing', async () => {
-    const pdfBuffer = await Bun.file(join(import.meta.dir, 'bun.pdf')).arrayBuffer()
+    const pdfBuffer = await Bun.file(
+      join(import.meta.dir, '../eval/transcribeDocument.input.pdf')
+    ).arrayBuffer()
 
     frame.inbound = {
       type: 'document',

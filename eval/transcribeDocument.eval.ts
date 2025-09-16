@@ -7,12 +7,14 @@ setDefaultTimeout(30_000)
 
 describe.if(!!import.meta.env.TEST_AI)('Transcribe document', () => {
   test('should transcribe well-formed PDF document and compare with extracted content', async () => {
-    const pdfBuffer = await Bun.file(join(import.meta.dir, '../bun.pdf')).arrayBuffer()
+    const pdfBuffer = await Bun.file(
+      join(import.meta.dir, '../transcribeDocument.input.pdf')
+    ).arrayBuffer()
 
     const llmResult = await AIProvider.transcribeDocument({
       document: pdfBuffer,
       mimeType: 'application/pdf',
-      filename: 'bun.pdf',
+      filename: 'transcribeDocument.input.pdf',
     })
 
     const extractedText = await parsePdf(pdfBuffer)
@@ -30,14 +32,16 @@ describe.if(!!import.meta.env.TEST_AI)('Transcribe document', () => {
 
   test('should transcribe flattened PDF document and compare with extracted content', async () => {
     const flattenedPdfBuffer = await Bun.file(
-      join(import.meta.dir, '../bun_flat.pdf')
+      join(import.meta.dir, '../transcribeDocument_flat.input.pdf')
     ).arrayBuffer()
-    const textPdfBuffer = await Bun.file(join(import.meta.dir, '../bun.pdf')).arrayBuffer()
+    const textPdfBuffer = await Bun.file(
+      join(import.meta.dir, '../transcribeDocument.input.pdf')
+    ).arrayBuffer()
 
     const llmResult = await AIProvider.transcribeDocument({
       document: flattenedPdfBuffer,
       mimeType: 'application/pdf',
-      filename: 'bun_flat.pdf',
+      filename: 'transcribeDocument_flat.input.pdf',
     })
 
     const extractedText = await parsePdf(textPdfBuffer)

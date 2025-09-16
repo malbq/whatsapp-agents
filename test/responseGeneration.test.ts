@@ -12,21 +12,25 @@ import {
   test,
 } from 'bun:test'
 import { Frame } from '../src/agent/frame'
+import { FileRetrieval } from '../src/agent/systems/fileRetrieval'
 import { ResponseGeneration } from '../src/agent/systems/responseGeneration'
 import { ResponseGenerationError } from '../src/errors'
-import type { AI } from '../src/infra/ai'
 import type { Chat } from '../src/infra/chat'
 import type { DB, MessageType, User } from '../src/infra/db'
 import { LibSql } from '../src/infra/dbLibSql'
 import type { Storage } from '../src/infra/storage'
-import * as Prompt from '../src/prompts/prompt'
+import { audioTranscription } from '../src/prompts/audioTranscription'
+import { documentTranscription } from '../src/prompts/documentTranscription'
+import { imageDescription } from '../src/prompts/imageDescription'
+import { recentMessages } from '../src/prompts/recentMessages'
+import { userProfile } from '../src/prompts/userProfile'
 
 const originalEnv = Object.assign({}, import.meta.env)
 
 const dbPath = `/tmp/response-generation-test-${Date.now()}.db`
 let db: DB
 let dbClient: Client
-let ai: AI
+let ai: TestDeps['ai']
 let storage: Storage
 let deps: Deps
 
@@ -145,10 +149,10 @@ describe('ResponseGeneration Module', () => {
       await ResponseGeneration(frame, deps)
       expect(ai.respond).toHaveBeenCalledWith({
         messages: [
-          { role: 'system', content: Prompt.userProfile(user.profile) },
+          { role: 'system', content: userProfile(user.profile) },
           { role: 'user', content: 'Hello there' },
         ],
-        userMessageEmbedding: undefined,
+        searchFilesCallback: expect.any(Function),
       })
     })
 
@@ -167,13 +171,13 @@ describe('ResponseGeneration Module', () => {
       await ResponseGeneration(frame, deps)
       expect(ai.respond).toHaveBeenCalledWith({
         messages: [
-          { role: 'system', content: Prompt.userProfile(user.profile) },
-          { role: 'system', content: Prompt.recentMessages },
+          { role: 'system', content: userProfile(user.profile) },
+          { role: 'system', content: recentMessages },
           { role: 'user', content: 'Previous message' },
           { role: 'assistant', content: 'Previous response' },
           { role: 'user', content: 'Current message' },
         ],
-        userMessageEmbedding: undefined,
+        searchFilesCallback: expect.any(Function),
       })
     })
 
@@ -196,13 +200,13 @@ describe('ResponseGeneration Module', () => {
       await ResponseGeneration(frame, deps)
       expect(ai.respond).toHaveBeenCalledWith({
         messages: [
-          { role: 'system', content: Prompt.userProfile(user.profile) },
-          { role: 'system', content: Prompt.recentMessages },
+          { role: 'system', content: userProfile(user.profile) },
+          { role: 'system', content: recentMessages },
           { role: 'user', content: 'Similar message' },
           { role: 'assistant', content: 'Similar response' },
           { role: 'user', content: 'Current message' },
         ],
-        userMessageEmbedding: mockEmbeddings,
+        searchFilesCallback: expect.any(Function),
       })
     })
   })
@@ -225,8 +229,8 @@ describe('ResponseGeneration Module', () => {
           },
         },
         expectedMessages: [
-          { role: 'system', content: Prompt.userProfile(user.profile) },
-          { role: 'system', content: Prompt.audioTranscription },
+          { role: 'system', content: userProfile(user.profile) },
+          { role: 'system', content: audioTranscription },
           { role: 'user', content: 'Audio transcription text' },
         ],
       },
@@ -234,8 +238,8 @@ describe('ResponseGeneration Module', () => {
         name: 'image message',
         inbound: { type: 'image' as MessageType, text: 'Image caption' },
         expectedMessages: [
-          { role: 'system', content: Prompt.userProfile(user.profile) },
-          { role: 'system', content: Prompt.imageDescription },
+          { role: 'system', content: userProfile(user.profile) },
+          { role: 'system', content: imageDescription },
           { role: 'user', content: 'Image caption' },
         ],
       },
@@ -251,8 +255,8 @@ describe('ResponseGeneration Module', () => {
           },
         },
         expectedMessages: [
-          { role: 'system', content: Prompt.userProfile(user.profile) },
-          { role: 'system', content: Prompt.documentTranscription('document.pdf') },
+          { role: 'system', content: userProfile(user.profile) },
+          { role: 'system', content: documentTranscription('document.pdf') },
           { role: 'user', content: 'Document content' },
         ],
       },
@@ -263,7 +267,7 @@ describe('ResponseGeneration Module', () => {
       await ResponseGeneration(frame, deps)
       expect(ai.respond).toHaveBeenCalledWith({
         messages: expectedMessages,
-        userMessageEmbedding: undefined,
+        searchFilesCallback: expect.any(Function),
       })
     })
   })
@@ -301,11 +305,22 @@ describe('ResponseGeneration Module', () => {
         filename: 'generated.jpg',
       }))
       await ResponseGeneration(frame, deps)
+      expect(frame.outbound).toEqual({
+        type: 'text',
+        text: 'Here is your image',
+        media: { storageKey: 'image-storage-key' },
+      })
+      await FileRetrieval(frame, deps)
       expect(storage.retrieve).toHaveBeenCalledWith('image-storage-key')
       expect(frame.outbound).toEqual({
         type: 'image',
         text: 'Here is your image',
-        media: { data: new ArrayBuffer(0), mimeType: 'image/jpeg', filename: 'generated.jpg' },
+        media: {
+          storageKey: 'image-storage-key',
+          data: new ArrayBuffer(0),
+          mimeType: 'image/jpeg',
+          filename: 'generated.jpg',
+        },
       })
     })
 
@@ -337,8 +352,8 @@ describe('ResponseGeneration Module', () => {
         mimeType: 'unsupported/type',
         filename: 'content.xyz',
       }))
-      await expect(ResponseGeneration(frame, deps)).rejects.toThrow(ResponseGenerationError)
-      await expect(ResponseGeneration(frame, deps)).rejects.toThrow(
+      await ResponseGeneration(frame, deps)
+      await expect(FileRetrieval(frame, deps)).rejects.toThrow(
         /Media with unsupported\/type mime type cannot be sent in response/
       )
     })

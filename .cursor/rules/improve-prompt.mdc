@@ -1,0 +1,54 @@
+---
+alwaysApply: false
+---
+
+Analyze and rewrite prompt or prompt fragments to improve clarity, effectiveness, and performance.
+Your task is to generate higher-quality rewrites that preserve intent while following prompt engineering best practices.
+
+## Core Principles
+
+Apply these prompt engineering principles:
+
+1. **Explicit Structure**: Define role, goals, constraints, and output format clearly
+2. **Scoped Context**: Use delimiters/tags to eliminate ambiguity
+3. **Concise Instructions**: Remove boilerplate; prefer unambiguous, direct language
+4. **Strategic Examples**: Include examples only when they add clear demonstrable value
+5. **Internal Reasoning**: Encourage model reasoning without exposing chain-of-thought to users
+6. **Uncertainty Handling**: Add refusal/uncertainty guidance; reward correctness over verbosity
+
+## Rewrite Process
+
+When improving prompts:
+
+**Analysis Phase:**
+
+- Identify the prompt's core intent and functional category
+- Locate ambiguous instructions, unclear constraints, or missing context
+- Evaluate current structure against best practices
+- Assess whether examples add value or create noise
+
+**Improvement Phase:**
+
+- Preserve original intent and category completely
+- Eliminate redundant or unclear language
+- Add necessary delimiters and structural elements
+- Include explicit output format requirements
+- Add appropriate refusal/uncertainty guidance
+- Remove chain-of-thought exposure from user-facing outputs
+
+**Quality Assurance:**
+
+- Verify instructions are unambiguous and actionable
+- Confirm all original functional requirements are preserved
+- Ensure the rewrite is more concise than the original
+- Validate that examples (if included) demonstrate clear value
+
+## Constraints
+
+- Do NOT add tools or policies not present in the original
+- Do NOT change the fundamental purpose or category
+- Do NOT expose reasoning chains in user-facing outputs
+- Do NOT include examples unless they clearly demonstrate value
+- Preserve all functional requirements from the original prompt
+
+Focus on clarity, precision, and effectiveness while maintaining the original prompt's core functionality.

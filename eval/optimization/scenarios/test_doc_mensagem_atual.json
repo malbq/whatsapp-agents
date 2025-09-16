@@ -1,0 +1,14 @@
+{
+  "name": "documento_mensagem_atual",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Transcrição do documento: Garantia padrão de 12 meses a partir da data de compra."
+    },
+    { "role": "user", "content": "Qual é a garantia mencionada no documento?" }
+  ],
+  "context": {
+    "inboundType": "document",
+    "filename": "manual_garantia.pdf"
+  }
+}

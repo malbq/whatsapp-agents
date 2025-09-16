@@ -1,0 +1,25 @@
+{
+  "name": "devolver_arquivo",
+  "messages": [
+    { "role": "user", "content": "Me envie novamente o arquivo que te mandei hoje cedo." }
+  ],
+  "context": {
+    "recentMessages": [
+      { "role": "user", "content": "Enviei o arquivo contrato.pdf agora há pouco." }
+    ],
+    "fileSearchResults": [
+      {
+        "storageKey": "r2://user-files/contrato.pdf",
+        "score": 0.92,
+        "snippet": "Contrato de prestação de serviços — Cláusula 5.2...",
+        "timestamp": "2025-09-16T12:15:00Z"
+      },
+      {
+        "storageKey": "r2://user-files/comprovante_pagamento_julho.pdf",
+        "score": 0.61,
+        "snippet": "Comprovante de pagamento — Julho 2025",
+        "timestamp": "2025-07-01T09:30:00Z"
+      }
+    ]
+  }
+}

@@ -1,3 +1,36 @@
+#!/usr/bin/env bun
+
+/**
+ * Evaluation Simulation Runner
+ *
+ * USAGE:
+ *   bun run eval/run.ts <config_file>
+ *
+ * ARGUMENTS:
+ *   config_file: Path to JSON simulation configuration file
+ *
+ * CONFIG FILE FORMAT:
+ *   {
+ *     "systemPrompt": "System prompt for user message generation",
+ *     "model": "OpenAI model name (e.g., 'gpt-5')",
+ *     "maxMessages": 10,  // Maximum number of conversation turns
+ *     "conversation": [    // Optional: Pre-existing conversation history
+ *       {"role": "user", "content": "Hello"},
+ *       {"role": "assistant", "content": "Hi there!"}
+ *     ]
+ *   }
+ *
+ * OUTPUT:
+ *   - Creates a timestamped directory under eval/reports/
+ *   - Initializes a fresh SQLite database for the simulation
+ *   - Generates JSON report with complete conversation history
+ *   - Includes user profile updates and message metadata
+ *   - Cache files are stored alongside config files with .embeddings.json extension
+ *
+ * EXAMPLE:
+ *   bun run eval/run.ts scenarios/customer_support.json
+ */
+
 import { openai } from '@ai-sdk/openai'
 import { createClient, type Client } from '@libsql/client'
 import { generateText } from 'ai'
@@ -6,7 +39,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
 import { z } from 'zod'
 import { agent } from '../src/agent'
-import { configureLogging } from '../src/config/logging'
+import { configureEvalLogging } from '../src/config/logging'
 import { AIProvider } from '../src/infra/ai'
 import type { Chat, IncomingMessage } from '../src/infra/chat'
 import { LibSql } from '../src/infra/dbLibSql'
@@ -23,7 +56,7 @@ async function main() {
   const config = await loadSimulationConfig(configFile)
   const configName = basename(configFile, '.json')
   import.meta.env.NODE_ENV = 'test'
-  await configureLogging() // introduce log files
+  await configureEvalLogging()
 
   const runId = newRunId()
   const runDir = join(import.meta.dirname, `/reports/${configName}_${runId}`)

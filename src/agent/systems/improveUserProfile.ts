@@ -19,7 +19,7 @@ export async function ImproveUserProfile(frame: Frame, deps: Deps) {
   })
 
   if (improvedProfile.trim().length === 0) {
-    logger.info('Skipping profile update: No improvement found')
+    logger.info('Skipping profile update: No improvement to make')
     return
   }
 

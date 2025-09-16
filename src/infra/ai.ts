@@ -17,9 +17,14 @@ import {
 import { z } from 'zod'
 
 import { EmbeddingsGenerationError } from '../errors'
-import * as Prompt from '../prompts/prompt'
+import { analyzeImage } from '../prompts/analyzeImage'
+import { retrieveFileToolDescription } from '../prompts/retrieveFileToolDescription'
+import { searchFilesToolDescription } from '../prompts/searchFilesToolDescription'
+import { system } from '../prompts/system'
+import { transcribeDocument } from '../prompts/transcribeDocument'
+import { updateUserProfile } from '../prompts/updateUserProfile'
 import { formatTokenUsage } from '../utils/formatTokenUsage'
-import type { DB, FileSearchResult } from './db'
+import type { FileSearchResult } from './db'
 
 const logger = getLogger(['infra', 'ai'])
 
@@ -47,22 +52,12 @@ const MAX_STEPS = 5
 export type AIMessage = SystemModelMessage | UserModelMessage | AssistantModelMessage
 
 export interface AI {
-  respond: (
-    params: {
-      instructions?: string
-      messages: Array<AIMessage>
-      userId: string
-      userMessageEmbedding?: number[]
-    },
-    deps: {
-      db: DB
-    }
-  ) => Promise<{
-    text: string
-    usage: LanguageModelUsage
-    storageKey?: string
-  }>
-  transcribeAudio: (params: { audio: ArrayBuffer }) => Promise<string>
+  respond: (params: {
+    instructions?: string
+    messages: AIMessage[]
+    searchFilesCallback: () => Promise<Array<Omit<FileSearchResult, 'messageId'>>>
+  }) => Promise<{ text: string; usage: LanguageModelUsage; storageKey?: string }>
+  transcribeAudio: (params: { instructions?: string; audio: ArrayBuffer }) => Promise<string>
   analyzeImage: (params: {
     instructions?: string
     imageUrl: string
@@ -74,29 +69,29 @@ export interface AI {
     mimeType: string
     filename: string
   }) => Promise<string>
-  improveUserProfile: (params: { profile: string; message: string }) => Promise<string>
+  improveUserProfile: (params: {
+    instructions?: (profile: string, message: string) => string
+    profile: string
+    message: string
+  }) => Promise<string>
   generateEmbeddings: (params: { text: string[] }) => Promise<number[][]>
 }
 
 type AiToolSet = {
-  search_files?: ReturnType<typeof searchFilesTool>
-  retrieve_file?: ReturnType<typeof retrieveFileTool>
+  search_files: ReturnType<typeof searchFilesTool>
+  retrieve_file: ReturnType<typeof retrieveFileTool>
   google_search?: ReturnType<typeof google.tools.googleSearch>
   web_search_preview?: ReturnType<typeof openai.tools.webSearchPreview>
 }
 
 export const AIProvider: AI = {
-  respond: async (
-    { instructions = Prompt.system, messages, userId, userMessageEmbedding },
-    { db }
-  ) => {
-    let tools: AiToolSet = {}
+  respond: async ({ instructions = system, messages, searchFilesCallback }) => {
     let storageKey: string | undefined
-    if (userMessageEmbedding) {
-      tools.search_files = searchFilesTool(db, userMessageEmbedding, userId)
-      tools.retrieve_file = retrieveFileTool((key) => {
+    let tools: AiToolSet = {
+      search_files: searchFilesTool(searchFilesCallback),
+      retrieve_file: retrieveFileTool((key) => {
         storageKey = key
-      })
+      }),
     }
     switch (TEXT_MODEL.provider) {
       case 'google.generative-ai':
@@ -143,7 +138,7 @@ export const AIProvider: AI = {
     }
   },
 
-  transcribeAudio: async ({ audio }: { audio: ArrayBuffer }) => {
+  transcribeAudio: async ({ instructions = 'Transcribe the audio file', audio }) => {
     let text = ''
     let usage: LanguageModelUsage | undefined
     switch (AUDIO_TRANSCRIPTION_MODEL.provider) {
@@ -152,7 +147,7 @@ export const AIProvider: AI = {
           const response = await generateText({
             model: AUDIO_TRANSCRIPTION_MODEL as LanguageModel,
             temperature: TRANSCRIPTION_GEN_TEMP,
-            system: 'Generate a transcription of the audio file',
+            system: instructions,
             messages: [
               {
                 role: 'user',
@@ -198,15 +193,7 @@ export const AIProvider: AI = {
     return text
   },
 
-  analyzeImage: async ({
-    instructions = Prompt.analyzeImage,
-    imageUrl,
-    caption,
-  }: {
-    instructions?: string
-    imageUrl: string
-    caption?: string
-  }) => {
+  analyzeImage: async ({ instructions = analyzeImage, imageUrl, caption }) => {
     const response = await generateText({
       model: IMAGE_ANALYSIS_MODEL,
       temperature: IMAGE_ANALYSIS_TEMP,
@@ -242,15 +229,10 @@ export const AIProvider: AI = {
   },
 
   transcribeDocument: async ({
-    instructions = Prompt.trascribeDocument,
+    instructions = transcribeDocument,
     document,
     mimeType,
     filename,
-  }: {
-    instructions?: string
-    document: ArrayBuffer
-    mimeType: string
-    filename: string
   }) => {
     const copy = document.slice(0)
     const response = await generateText({
@@ -281,11 +263,11 @@ export const AIProvider: AI = {
     return response.text
   },
 
-  improveUserProfile: async ({ profile, message }: { profile: string; message: string }) => {
+  improveUserProfile: async ({ instructions = updateUserProfile, profile, message }) => {
     const response = await generateText({
       model: TEXT_MODEL,
       maxOutputTokens: 2000,
-      prompt: Prompt.updateUserProfile(profile, message),
+      prompt: instructions(profile, message),
     })
     logger.debug(`Update user profile with ${TEXT_MODEL.provider}/${TEXT_MODEL.modelId}`, {
       text: response.text,
@@ -337,28 +319,18 @@ export const AIProvider: AI = {
   },
 }
 
-const searchFilesTool = (db: DB, embedding: number[], userId: string) =>
+const searchFilesTool = (
+  searchFilesCallback: () => Promise<Array<Omit<FileSearchResult, 'messageId'>>>
+) =>
   tool({
-    description: Prompt.searchFilesToolDescription,
+    description: searchFilesToolDescription,
     inputSchema: z.object({}),
-    execute: async () => {
-      const results = await db.searchFiles({
-        userId,
-        queryEmbedding: embedding,
-      })
-
-      return results.map<Omit<FileSearchResult, 'messageId'>>((file) => ({
-        storageKey: file.storageKey,
-        timestamp: file.timestamp,
-        snippet: file.snippet,
-        score: file.score,
-      }))
-    },
+    execute: searchFilesCallback,
   })
 
 const retrieveFileTool = (cb: (storageKey: string) => void) =>
   tool({
-    description: Prompt.retrieveFileToolDescription,
+    description: retrieveFileToolDescription,
     inputSchema: z.object({
       storageKey: z.string().describe('The storage key of the file to retrieve'),
     }),

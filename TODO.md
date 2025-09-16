@@ -4,9 +4,9 @@
 
 - **Tool Integration**: Implement tools
 
-  - Add file name to media storage keys: `<random>_<original_file_name>.<ext>`
+  - Add file name to media storage keys: `<sorted_uuid>_<original_file_name>.<ext>`
   - `create_reminder` and `cancel_reminder` tools
-  - Tool execution system in agent workflow
+  - Generate a query string for file search tool
   - Transform profile update in a tool
 
 - **Scheduler System**: Implement reminder functionality
@@ -15,7 +15,7 @@
   - Test schedule triggering
   - Add schedule to context
 
-- **User Management**: Complete user profile system
+- **User Management**: Complete user management system
 
   - Subscription plan management
   - Usage tracking and limits
@@ -51,15 +51,23 @@
 
 ## Learnings & Insights
 
-- WhatsApp templates required for proactive messages; otherwise 24h window to respond user initiated messages
+### WhatsApp
+
+- WhatsApp templates required for proactive messages - otherwise 24h window to respond user initiated messages
 - Users cannot edit messages in business chats
 - Users can only delete messages for themselves in business chats
 - [Cloud API does not notify about message deletion](https://developers.facebook.com/docs/whatsapp/cloud-api/webhooks/payload-examples#status--message-deleted)
-- GPT-4.1 has 1M tokens context window, but degrades quite fast: https://openai.com/index/gpt-4-1/
-- OpenAI only opens URLs if `web_search_preview` is enabled; `gpt-4.1-nano` does not support `web_search_preview`.
-- We must use specific model name/version; new models must be evaluated; relying on default might disrupt experience.
+- Cloud API does not notify when user is typing
+
+### AI
+
 - Model-specific configuration allows optimization for different tasks (text vs image vs audio)
-- Gemini flash models are a lot faster than GPT reading pdf files:
+- We must use specific model name/version
+  - New models must be evaluated
+  - Relying on default might disrupt experience
+- OpenAI only opens URLs if `web_search_preview` is enabled; `gpt-4.1-nano` does not support `web_search_preview`.
+- GPT-4.1 has 1M tokens context window, but degrades quite fast: https://openai.com/index/gpt-4-1/
+- Gemini flash models are a lot faster than GPT at reading pdf files:
   - GPT-4o: got lost reading a pdf with flattened pages, reached a line where it started repeating the same text over and over again.
   - GPT 4o: 2m
   - GPT 4o mini: 2m
