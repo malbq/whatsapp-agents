@@ -2,6 +2,7 @@ import { afterAll, afterEach, beforeAll, expect, test } from 'bun:test'
 import { join } from 'node:path'
 import type { Storage } from '../src/infra/storage'
 import { FilesystemStorage } from '../src/infra/storageFilesystem'
+import { sanitizeFilename } from '../src/utils/sanitizeFilename'
 
 const storageBase = `/tmp/fs-storage-test-${Date.now()}`
 let storage: Storage
@@ -12,11 +13,11 @@ beforeAll(async () => {
 })
 
 afterEach(async () => {
-  await Bun.$`rm -rf ${storageBase}/${bucket}* 2>/dev/null`
+  await Bun.$`rm -rf ${storageBase}/${bucket}* 2>/dev/null || true`
 })
 
 afterAll(async () => {
-  await Bun.$`rm -rf ${storageBase} 2>/dev/null`
+  await Bun.$`rm -rf ${storageBase} 2>/dev/null || true`
 })
 
 test('Store and retrieve real image file', async () => {
@@ -72,4 +73,14 @@ test('Retrieved image format is valid', async () => {
 
   expect(retrievedFile.size).toBe(1024)
   expect(retrievedFile.type).toBe('image/jpeg')
+})
+
+test('sanitizeFilename utility function', () => {
+  expect(sanitizeFilename('simple.jpg')).toBe('simple.jpg')
+  expect(sanitizeFilename('file with spaces.png')).toBe('file_with_spaces.png')
+  expect(sanitizeFilename('file<>:"/\\|?*.txt')).toBe('file_.txt')
+  expect(sanitizeFilename('  leading spaces  ')).toBe('leading_spaces')
+  expect(sanitizeFilename('multiple   spaces')).toBe('multiple_spaces')
+  expect(sanitizeFilename('')).toBe('unnamed')
+  expect(sanitizeFilename('a'.repeat(150))).toHaveLength(100)
 })

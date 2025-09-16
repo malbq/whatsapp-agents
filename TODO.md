@@ -2,18 +2,16 @@
 
 ## Next
 
-- **Tool Integration**: Implement tools
-
-  - Add file name to media storage keys: `<sorted_uuid>_<original_file_name>.<ext>`
-  - `create_reminder` and `cancel_reminder` tools
-  - Generate a query string for file search tool
-  - Transform profile update in a tool
-
 - **Scheduler System**: Implement reminder functionality
 
-  - Manual schedule management
+  - Schedule management
   - Test schedule triggering
+  - `create_reminder` and `cancel_reminder` tools
   - Add schedule to context
+
+- **Tool Integration**: Implement tools
+
+  - Generate a query string for file search tool as user message may be inadequate for vector search
 
 - **User Management**: Complete user management system
 
@@ -48,6 +46,7 @@
 - Cost Monitoring: Set up alerts for AI provider usage thresholds (e.g., via OpenAI dashboard hooks)
 - Automated DB backups
 - Media storage snapshots
+- Transform profile update in a tool
 
 ## Learnings & Insights
 
