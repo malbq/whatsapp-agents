@@ -49,6 +49,45 @@ export interface FileSearchResult {
   timestamp: Date
 }
 
+export type ReminderStatus = 'scheduled' | 'sending' | 'sent' | 'cancelled' | 'failed'
+
+export interface Reminder {
+  id: string
+  userId: string
+  status: ReminderStatus
+  dueAt: Date
+  description: string
+  message: string
+  createdAt: Date
+  updatedAt: Date
+  sentAt?: Date
+  waMessageId?: string
+  error?: string
+  recurrenceCron?: string
+}
+
+export interface ReminderCreateParams {
+  userId: string
+  dueAt: Date
+  description: string
+  message: string
+  recurrenceCron?: string
+}
+
+export interface ReminderListItem {
+  id: string
+  dueAt: Date
+  description: string
+  message: string
+}
+
+export interface DueReminderItem {
+  id: string
+  userId: string
+  message: string
+  isReclaimed: boolean
+}
+
 export interface DB {
   storeWebhookEvent: (payload: string, externalId: string) => Promise<boolean>
   persistUser: (params: { externalId: string; name: string }) => Promise<User>
@@ -68,4 +107,13 @@ export interface DB {
     userId: string
     queryEmbedding: Array<number>
   }) => Promise<Array<FileSearchResult>>
+  createReminder: (params: ReminderCreateParams) => Promise<{ id: string }>
+  cancelReminder: (params: { id: string }) => Promise<boolean>
+  listUpcomingReminders: (params: {
+    userId: string
+    limit?: number
+  }) => Promise<Array<ReminderListItem>>
+  takeDueReminders: (params: { now: Date; limit?: number }) => Promise<Array<DueReminderItem>>
+  markReminderSent: (params: { id: string; waMessageId: string }) => Promise<void>
+  markReminderFailed: (params: { id: string; error: string }) => Promise<void>
 }

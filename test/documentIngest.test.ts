@@ -23,6 +23,12 @@ beforeAll(async () => {
       storeWebhookEvent: mock(),
       findSimilarMessages: mock(),
       searchFiles: mock(),
+      createReminder: mock(),
+      cancelReminder: mock(),
+      listUpcomingReminders: mock(),
+      takeDueReminders: mock(),
+      markReminderSent: mock(),
+      markReminderFailed: mock(),
     },
     chat: {
       parseNotification: mock(),

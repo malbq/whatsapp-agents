@@ -6,8 +6,9 @@
 
   - Schedule management
   - Test schedule triggering
-  - `create_reminder` and `cancel_reminder` tools
-  - Add schedule to context
+  - `create_reminder` tool
+  - `cancel_reminder` tool
+  - `list_reminders` tool
 
 - **Tool Integration**: Implement tools
 

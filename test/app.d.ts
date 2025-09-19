@@ -71,6 +71,24 @@ declare global {
         Parameters<DB['findSimilarMessages']>
       >
       searchFiles: jest.Mock<ReturnType<DB['searchFiles']>, Parameters<DB['searchFiles']>>
+      createReminder: jest.Mock<ReturnType<DB['createReminder']>, Parameters<DB['createReminder']>>
+      cancelReminder: jest.Mock<ReturnType<DB['cancelReminder']>, Parameters<DB['cancelReminder']>>
+      listUpcomingReminders: jest.Mock<
+        ReturnType<DB['listUpcomingReminders']>,
+        Parameters<DB['listUpcomingReminders']>
+      >
+      takeDueReminders: jest.Mock<
+        ReturnType<DB['takeDueReminders']>,
+        Parameters<DB['takeDueReminders']>
+      >
+      markReminderSent: jest.Mock<
+        ReturnType<DB['markReminderSent']>,
+        Parameters<DB['markReminderSent']>
+      >
+      markReminderFailed: jest.Mock<
+        ReturnType<DB['markReminderFailed']>,
+        Parameters<DB['markReminderFailed']>
+      >
     }
   }
 }

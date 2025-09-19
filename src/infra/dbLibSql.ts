@@ -9,6 +9,7 @@ const VECTOR_DISTANCE_THRESHOLD = parseFloat(
 )
 const MAX_SIMILAR_MESSAGES = parseInt(import.meta.env.MAX_SIMILAR_MESSAGES ?? '10')
 const MAX_FILES = parseInt(import.meta.env.FILE_SEARCH_LIMIT ?? '10')
+const SENDING_STALE_SECONDS = parseInt(import.meta.env.REMINDER_SENDING_STALE_SECONDS ?? '300')
 
 const logger = getLogger(['infra', 'db'])
 
@@ -142,7 +143,7 @@ export namespace LibSql {
             role: row.role as RecentMessage['role'],
             content: row.content as RecentMessage['content'],
           }))
-          .reverse()
+          .toReversed()
       },
 
       async findSimilarMessages({ userId, queryEmbedding, excludeIds = [] }) {
@@ -273,6 +274,114 @@ export namespace LibSql {
           .slice(0, MAX_FILES)
 
         return fileResults
+      },
+
+      async createReminder(params) {
+        const id = Bun.randomUUIDv7()
+        await client.execute({
+          sql: `INSERT INTO reminder (
+            id, user_id, status, due_at, description, message, recurrence_cron
+          ) VALUES (?, ?, 'scheduled', ?, ?, ?, ?)`,
+          args: [
+            id,
+            params.userId,
+            params.dueAt.toISOString(),
+            params.description,
+            params.message,
+            params.recurrenceCron ?? null,
+          ],
+        })
+        return { id }
+      },
+
+      async cancelReminder({ id }) {
+        const result = await client.execute({
+          sql: `UPDATE reminder SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP
+                WHERE id = ? AND status IN ('scheduled', 'sending')
+                RETURNING id`,
+          args: [id],
+        })
+        return result.rows.length > 0
+      },
+
+      async listUpcomingReminders({ userId, limit = 10 }) {
+        const result = await client.execute({
+          sql: `SELECT id, due_at, description, message
+                FROM reminder
+                WHERE user_id = ? AND status = 'scheduled'
+                ORDER BY due_at ASC
+                LIMIT ?`,
+          args: [userId, limit],
+        })
+        return result.rows.map((row) => ({
+          id: row.id as string,
+          dueAt: new Date(row.due_at as string),
+          description: row.description as string,
+          message: row.message as string,
+        }))
+      },
+
+      async takeDueReminders({ now, limit = 100 }) {
+        const staleBefore = new Date(now.getTime() - SENDING_STALE_SECONDS * 1000)
+        await client.execute('BEGIN IMMEDIATE')
+        try {
+          const candidatesResult = await client.execute({
+            sql: `SELECT id, user_id, message, status AS prev_status
+                  FROM reminder
+                  WHERE (
+                    status = 'scheduled' AND due_at <= ?
+                  ) OR (
+                    status = 'sending' AND updated_at <= ?
+                  )
+                  ORDER BY due_at ASC
+                  LIMIT ?`,
+            args: [now.toISOString(), staleBefore.toISOString(), limit],
+          })
+
+          const candidates = candidatesResult.rows.map((row) => ({
+            id: row.id as string,
+            userId: row.user_id as string,
+            message: row.message as string,
+            isReclaimed: row.prev_status === 'sending',
+          }))
+
+          if (candidates.length === 0) {
+            await client.execute('COMMIT')
+            return []
+          }
+
+          const placeholders = candidates.map(() => '?').join(',')
+          await client.execute({
+            sql: `UPDATE reminder
+                  SET status = 'sending', updated_at = CURRENT_TIMESTAMP
+                  WHERE id IN (${placeholders})`,
+            args: candidates.map((c) => c.id),
+          })
+
+          await client.execute('COMMIT')
+          return candidates
+        } catch (error) {
+          await client.execute('ROLLBACK')
+          throw error
+        }
+      },
+
+      async markReminderSent({ id, waMessageId }) {
+        await client.execute({
+          sql: `UPDATE reminder SET status = 'sent', sent_at = CURRENT_TIMESTAMP,
+                wa_message_id = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?`,
+          args: [waMessageId, id],
+        })
+      },
+
+      async markReminderFailed({ id, error }) {
+        await client.execute({
+          sql: `UPDATE reminder SET status = 'failed', error = ?,
+                updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?`,
+          args: [error, id],
+        })
       },
     }
   }

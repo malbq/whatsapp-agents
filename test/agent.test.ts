@@ -35,7 +35,7 @@ const mockEmbeddings = Array.from({ length: 384 }, () => Math.random())
 let messageExternalId = 0
 
 beforeAll(async () => {
-  await Bun.$`mkdir -p ${storagePath} 2>/dev/null`
+  await Bun.$`mkdir -p ${storagePath}`.nothrow()
   storage = FilesystemStorage.storage(storagePath)
   dbClient = createClient({ url: `file:${dbPath}` })
   db = LibSql.db(dbClient)
@@ -50,6 +50,12 @@ beforeAll(async () => {
       storeWebhookEvent: mock(db.storeWebhookEvent),
       findSimilarMessages: mock(db.findSimilarMessages),
       searchFiles: mock(db.searchFiles),
+      createReminder: mock(db.createReminder),
+      cancelReminder: mock(db.cancelReminder),
+      listUpcomingReminders: mock(db.listUpcomingReminders),
+      takeDueReminders: mock(db.takeDueReminders),
+      markReminderSent: mock(db.markReminderSent),
+      markReminderFailed: mock(db.markReminderFailed),
     },
     chat: {
       parseNotification: mock(),
@@ -86,14 +92,14 @@ afterEach(async () => {
     DELETE FROM message;
     DELETE FROM raw_incoming_message;
   `)
-  await Bun.$`find ${storagePath} -mindepth 1 -delete 2>/dev/null`
+  await Bun.$`find ${storagePath} -mindepth 1 -delete`.nothrow()
   Object.assign(import.meta.env, originalEnv)
 })
 
 afterAll(async () => {
   try {
-    await Bun.$`rm -f ${dbPath} 2>/dev/null`
-    await Bun.$`rm -rf ${storagePath} 2>/dev/null`
+    await Bun.$`rm -f ${dbPath}`.nothrow()
+    await Bun.$`rm -rf ${storagePath}`.nothrow()
   } catch (error) {
     console.warn('Cleanup error:', error)
   }

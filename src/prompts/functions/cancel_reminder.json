@@ -12,8 +12,6 @@
         "description": "The id of the reminder to cancel."
       }
     },
-    "required": [
-      "description"
-    ]
+    "required": ["reminder_id"]
   }
 }

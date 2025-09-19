@@ -13,11 +13,11 @@ beforeAll(async () => {
 })
 
 afterEach(async () => {
-  await Bun.$`rm -rf ${storageBase}/${bucket}* 2>/dev/null || true`
+  await Bun.$`rm -rf ${storageBase}/${bucket}*`.nothrow()
 })
 
 afterAll(async () => {
-  await Bun.$`rm -rf ${storageBase} 2>/dev/null || true`
+  await Bun.$`rm -rf ${storageBase}`.nothrow()
 })
 
 test('Store and retrieve real image file', async () => {

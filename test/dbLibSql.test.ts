@@ -25,7 +25,7 @@ afterEach(async () => {
 })
 
 afterAll(async () => {
-  await Bun.$`rm ${dbPath}`
+  await Bun.$`rm ${dbPath}`.nothrow()
 })
 
 describe('LibSql operations', () => {

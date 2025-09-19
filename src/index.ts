@@ -15,6 +15,7 @@ import { loggingMiddleware } from './middleware/logging'
 import { spreadError } from './utils/spreadError'
 import { validateEnvVars } from './utils/validateEnv'
 
+validateEnvVars()
 await configureLogging()
 
 const logger = getLogger(['app'])
@@ -36,7 +37,6 @@ app.get('/', async (c) => {
 
 app.post('/webhook', async (c) => {
   try {
-    validateEnvVars()
     const headerSignature = c.req.header('x-hub-signature-256')?.slice(7)
     if (!headerSignature) return c.status(401)
 
@@ -58,34 +58,6 @@ app.post('/webhook', async (c) => {
       logger.warn('Unknown notification received', { body })
       return c.body('', 200)
     }
-
-    // if (message.type === 'image' || message.type === 'document') {
-    //   const key = `test/${Date.now()}.${getFileExtensionFromMimeType(message.mimeType!)}`
-    //   console.log(`Media mimeType: ${message.mimeType}`)
-    //   console.log(`Media size: ${message.mediaData?.byteLength}`)
-    //   console.log(`Storing media with key: ${key}`)
-    //   await deps.storage.store({
-    //     key: key,
-    //     data: message.mediaData!,
-    //     mimeType: message.mimeType!,
-    //   })
-    //   const retrieved = await deps.storage.retrieve(key)
-    //   if (message.type == 'image') {
-    //     console.log('sending image')
-    //     deps.chat.sendImageMessage({
-    //       data: retrieved.data,
-    //       mimeType: retrieved.mimeType,
-    //     })
-    //   }
-    //   if (message.type == 'document') {
-    //     console.log('sending document')
-    //     deps.chat.sendDocumentMessage({
-    //       data: message.mediaData!,
-    //       filename: message.documentFilename!,
-    //       mimeType: message.mimeType!,
-    //     })
-    //   }
-    // }
 
     const isNew = await deps.db.storeWebhookEvent(body, message.externalId)
     if (!isNew) {

@@ -108,7 +108,7 @@ afterEach(async () => {
 afterAll(async () => {
   if (dbClient) {
     await dbClient.close()
-    await Bun.$`rm -f ${dbPath} 2>/dev/null`
+    await Bun.$`rm -f ${dbPath}`.nothrow()
   }
 })
 

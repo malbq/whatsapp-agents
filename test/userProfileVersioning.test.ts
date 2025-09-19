@@ -9,7 +9,7 @@ describe('User Profile Versioning', () => {
   let dbClient: ReturnType<typeof createClient>
 
   beforeAll(async () => {
-    await Bun.$`mkdir -p ${storagePath} 2>/dev/null`
+    await Bun.$`mkdir -p ${storagePath}`.nothrow()
     dbClient = createClient({ url: `file:${dbPath}` })
     db = LibSql.db(dbClient)
     await Bun.$`bun run ./src/infra/dbSetup/init.ts ${dbPath}`
@@ -17,8 +17,8 @@ describe('User Profile Versioning', () => {
 
   afterAll(async () => {
     try {
-      await Bun.$`rm -f ${dbPath} 2>/dev/null`
-      await Bun.$`rm -rf ${storagePath} 2>/dev/null`
+      await Bun.$`rm -f ${dbPath}`.nothrow()
+      await Bun.$`rm -rf ${storagePath}`.nothrow()
     } catch (error) {
       console.warn('Cleanup error:', error)
     }

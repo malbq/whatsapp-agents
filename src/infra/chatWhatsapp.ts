@@ -182,6 +182,7 @@ export namespace Whatsapp {
 
       return response.messages[0].id
     },
+
     sendImageMessage: async ({ data, caption, mimeType, replyingTo: replyToMessage }) => {
       const businessPhoneNumberId = getContext().get('businessPhoneNumberId')
       const to = getContext().get('userWhatsappId')
