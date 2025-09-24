@@ -1,14 +1,25 @@
 import { getLogger } from '@logtape/logtape'
 import { ResponseGenerationError } from '../../errors'
 import type { AIMessage } from '../../infra/ai'
+import type { MessageType } from '../../infra/db'
 import type { Frame } from '../frame'
-import { audioTranscription } from '../prompts/audioTranscription'
-import { documentTranscription } from '../prompts/documentTranscription'
-import { imageDescription } from '../prompts/imageDescription'
 import { recentMessages as recentMessagesPrompt } from '../prompts/recentMessages'
 import { userProfile } from '../prompts/userProfile'
 
 const logger = getLogger(['app', 'agent', 'responseGeneration'])
+
+function formatWithTag(type: MessageType, content: string, filename?: string) {
+  switch (type) {
+    case 'audio':
+      return `[aud] ${content}`
+    case 'image':
+      return `[img] ${content}`
+    case 'document':
+      return `[doc${filename ? `:${filename}` : ''}] ${content}`
+    default:
+      return content
+  }
+}
 
 export async function ResponseGeneration(frame: Frame, deps: Deps) {
   if (!frame.user) throw new ResponseGenerationError('User not found')
@@ -29,28 +40,24 @@ export async function ResponseGeneration(frame: Frame, deps: Deps) {
   if (recentMessages.length) {
     messagesForAgent.push({ role: 'system', content: recentMessagesPrompt })
     recentMessages.forEach((message) => {
-      messagesForAgent.push({ role: message.role, content: message.content })
+      messagesForAgent.push({
+        role: message.role,
+        content: formatWithTag(message.type, message.content),
+      })
     })
     logger.info(`Context: recent messages (${recentMessages.length})`)
   }
 
-  // CLARIFICATION MESSAGES BASED ON INBOUND TYPE
-  if (frame.inbound.type === 'audio') {
-    messagesForAgent.push({ role: 'system', content: audioTranscription })
-  }
-  if (frame.inbound.type === 'image') {
-    messagesForAgent.push({ role: 'system', content: imageDescription })
-  }
-  if (frame.inbound.type === 'document') {
-    messagesForAgent.push({
-      role: 'system',
-      content: documentTranscription(frame.inbound.media?.filename),
-    })
-  }
-
   // USER MESSAGE CONTENT
   if (frame.inbound.media?.transcription) {
-    messagesForAgent.push({ role: 'user', content: frame.inbound.media.transcription })
+    messagesForAgent.push({
+      role: 'user',
+      content: formatWithTag(
+        frame.inbound.type,
+        frame.inbound.media?.transcription,
+        frame.inbound.media?.filename
+      ),
+    })
   }
   if (frame.inbound.text) {
     messagesForAgent.push({ role: 'user', content: frame.inbound.text })

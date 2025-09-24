@@ -84,8 +84,10 @@ describe('LibSql operations', () => {
     expect(recentMessages).toHaveLength(2)
     expect(recentMessages[0]!.role).toBe('user')
     expect(recentMessages[0]!.content).toBe('Hello, how are you? My name is John Doe.')
+    expect(recentMessages[0]!.type).toBe('text')
     expect(recentMessages[1]!.role).toBe('assistant')
     expect(recentMessages[1]!.content).toBe("Hi John, I'm fine.")
+    expect(recentMessages[1]!.type).toBe('text')
   })
 
   test('vector operations', async () => {

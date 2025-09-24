@@ -36,6 +36,7 @@ export type RecentMessage = {
   id: string
   role: MessageRole
   content: string
+  type: MessageType
 }
 
 export type SimilarMessage = {

@@ -125,7 +125,7 @@ export namespace LibSql {
         const selectResult = await client.execute({
           sql: `SELECT m.id, m.role, m.type,
           CASE 
-            WHEN m.type IN ('document', 'image') THEN SUBSTR(GROUP_CONCAT(e.content, ' '), 1, 200)
+            WHEN m.type IN ('document') THEN SUBSTR(GROUP_CONCAT(e.content, ' '), 1, 200)
             ELSE GROUP_CONCAT(e.content, ' ')
           END as content
           FROM message m
@@ -142,6 +142,7 @@ export namespace LibSql {
             id: row.id as RecentMessage['id'],
             role: row.role as RecentMessage['role'],
             content: row.content as RecentMessage['content'],
+            type: row.type as RecentMessage['type'],
           }))
           .toReversed()
       },

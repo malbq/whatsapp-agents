@@ -32,25 +32,22 @@ declare global {
         ReturnType<Chat['sendInteractiveCtaUrl']>,
         Parameters<Chat['sendInteractiveCtaUrl']>
       >
+      sendTemplate: jest.Mock<ReturnType<Chat['sendTemplate']>, Parameters<Chat['sendTemplate']>>
     }
     storage: {
       store: jest.Mock<ReturnType<Storage['store']>, Parameters<Storage['store']>>
       retrieve: jest.Mock<ReturnType<Storage['retrieve']>, Parameters<Storage['retrieve']>>
     }
     ai: {
-      analyzeImage: jest.Mock<ReturnType<AI['analyzeImage']>, Parameters<AI['analyzeImage']>>
       respond: jest.Mock<ReturnType<AI['respond']>, Parameters<AI['respond']>>
       transcribeAudio: jest.Mock<
         ReturnType<AI['transcribeAudio']>,
         Parameters<AI['transcribeAudio']>
       >
+      analyzeImage: jest.Mock<ReturnType<AI['analyzeImage']>, Parameters<AI['analyzeImage']>>
       transcribeDocument: jest.Mock<
         ReturnType<AI['transcribeDocument']>,
         Parameters<AI['transcribeDocument']>
-      >
-      improveUserProfile: jest.Mock<
-        ReturnType<AI['improveUserProfile']>,
-        Parameters<AI['improveUserProfile']>
       >
       generateEmbeddings: jest.Mock<
         ReturnType<AI['generateEmbeddings']>,

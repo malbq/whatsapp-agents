@@ -30,7 +30,6 @@ const imageAnalysisResult = 'image analysis result'
 const aiTextResponse = 'mock response'
 const audioTranscriptionResult = 'transcribed audio text'
 const documentTranscriptionResult = 'document transcription result'
-const updatedProfile = 'updated profile'
 const mockEmbeddings = Array.from({ length: 384 }, () => Math.random())
 let messageExternalId = 0
 
@@ -69,14 +68,17 @@ beforeAll(async () => {
       sendInteractiveList: mock(async () => `${messageExternalId++}`),
       sendInteractiveButton: mock(async () => `${messageExternalId++}`),
       sendInteractiveCtaUrl: mock(async () => `${messageExternalId++}`),
+      sendTemplate: mock(async () => `${messageExternalId++}`),
     },
     ai: {
       analyzeImage: mock(async () => imageAnalysisResult),
-      respond: mock(async () => ({ text: aiTextResponse })),
+      respond: mock(async () => ({
+        text: aiTextResponse,
+        usage: { totalTokens: 10, inputTokens: 5, outputTokens: 5 },
+      })),
       transcribeAudio: mock(async () => audioTranscriptionResult),
       transcribeDocument: mock(async () => documentTranscriptionResult),
-      improveUserProfile: mock(async () => updatedProfile),
-      generateEmbeddings: mock(async () => [mockEmbeddings]),
+      generateEmbeddings: mock(async (text) => [{ content: text, embedding: mockEmbeddings }]),
     },
     storage: {
       store: mock(storage.store),
@@ -149,8 +151,6 @@ describe('Smoke test: first interaction', () => {
     expect(user).toMatchObject({
       name: message.userName,
       external_id: message.userExternalId,
-      profile: updatedProfile,
-      profile_updated_by: messages[0]?.id,
     })
   })
 
@@ -194,8 +194,6 @@ describe('Smoke test: first interaction', () => {
     expect(user).toMatchObject({
       name: message.userName,
       external_id: message.userExternalId,
-      profile: updatedProfile,
-      profile_updated_by: messages[0]?.id,
     })
   })
 
@@ -236,8 +234,6 @@ describe('Smoke test: first interaction', () => {
     expect(user).toMatchObject({
       name: message.userName,
       external_id: message.userExternalId,
-      profile: updatedProfile,
-      profile_updated_by: messages[0]?.id,
     })
   })
 
@@ -290,8 +286,6 @@ describe('Smoke test: first interaction', () => {
     expect(user).toMatchObject({
       name: message.userName,
       external_id: message.userExternalId,
-      profile: updatedProfile,
-      profile_updated_by: messages[1]?.id,
     })
   })
 
