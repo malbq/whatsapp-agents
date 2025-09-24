@@ -1,5 +1,6 @@
 import { getLogger } from '@logtape/logtape'
 import { Hono } from 'hono'
+import { websocket } from 'hono/bun'
 import { contextStorage } from 'hono/context-storage'
 import { createHmac } from 'node:crypto'
 import { agent } from './agent'
@@ -12,6 +13,7 @@ import { AIProvider } from './infra/ai'
 import { Whatsapp } from './infra/chatWhatsapp'
 import { LibSql } from './infra/dbLibSql'
 import { FilesystemStorage } from './infra/storageFilesystem'
+import loggingRoutes from './logging/service'
 import { loggingMiddleware } from './middleware/logging'
 import { spreadError } from './utils/spreadError'
 import { validateEnvVars } from './utils/validateEnv'
@@ -29,13 +31,13 @@ const deps: Deps = {
 }
 
 const app = new Hono<Env>()
-app.use(loggingMiddleware)
 app.use(contextStorage())
 
 app.get('/', async (c) => {
   return c.text('OK')
 })
 
+app.use('/webhook', loggingMiddleware)
 app.post('/webhook', async (c) => {
   try {
     const headerSignature = c.req.header('x-hub-signature-256')?.slice(7)
@@ -104,7 +106,10 @@ app.get('/webhook', function webhookVerificationRequest(c) {
   return c.body('', 403)
 })
 
+app.route('/logs', loggingRoutes)
+
 export default {
   port: 8080,
   fetch: app.fetch,
+  websocket,
 }

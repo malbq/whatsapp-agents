@@ -18,7 +18,7 @@
     "@logtape/otel": "^1.0.4",
     "ai": "^5.0.0-beta.32",
     "compromise": "^14.14.4",
-    "hono": "^4.8.5",
+    "hono": "^4.9.8",
     "retext": "^9.0.0",
     "retext-readability": "^8.0.0",
     "retext-smartypants": "^6.2.0",

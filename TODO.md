@@ -4,6 +4,7 @@
 
 - **Tool Integration**: Refactor to LLM-centric agent with tools
 
+  - enable all tools in AIProvider
   - how to bind profile update to the message that triggered it if we have not saved it yet?
 
 - **User Management**: Complete user management system
