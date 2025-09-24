@@ -14,7 +14,14 @@ export interface User {
 }
 
 export type MessageRole = AIMessage['role']
-export type MessageType = 'text' | 'voice' | 'audio' | 'document' | 'image' | 'unsupported'
+export type MessageType =
+  | 'text'
+  | 'voice'
+  | 'audio'
+  | 'document'
+  | 'image'
+  | 'reaction'
+  | 'unsupported'
 
 export interface DbMessageInput {
   userId: string
@@ -91,11 +98,7 @@ export interface DueReminderItem {
 export interface DB {
   storeWebhookEvent: (payload: string, externalId: string) => Promise<boolean>
   persistUser: (params: { externalId: string; name: string }) => Promise<User>
-  updateUserProfile: (params: {
-    userId: string
-    profile: string
-    messageId?: string
-  }) => Promise<void>
+  updateUserProfile: (params: { userId: string; profile: string }) => Promise<void>
   storeMessage: (messages: Array<DbMessageInput>) => Promise<Array<string>>
   findRecentMessages: (params: { userId: string }) => Promise<Array<RecentMessage>>
   findSimilarMessages: (params: {

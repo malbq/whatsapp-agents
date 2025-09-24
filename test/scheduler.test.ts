@@ -30,10 +30,16 @@ describe('Scheduler', () => {
 
     chat = {
       parseNotification: mock(),
-      acknowledgeProcessingMessage: mock(),
-      sendTextMessage: mockSendTextMessage,
-      sendImageMessage: mock(),
-      sendDocumentMessage: mock(),
+      acknowledgeMessage: mock(),
+      sendText: mockSendTextMessage,
+      sendImage: mock(),
+      sendDocument: mock(),
+      sendLocation: mock(),
+      sendReaction: mock(),
+      sendContact: mock(),
+      sendInteractiveList: mock(),
+      sendInteractiveButton: mock(),
+      sendInteractiveCtaUrl: mock(),
     }
   })
 
@@ -332,7 +338,7 @@ describe('Scheduler', () => {
 
     const items = await db.takeDueReminders({ now, limit: 10 })
     expect(items.length).toBe(1)
-    expect(items[0]!.isReclaimed).toBe('scheduled')
+    expect(items[0]!.isReclaimed).toBe(false)
   })
 
   test('takeDueReminders returns status for reclaimed sending items', async () => {
@@ -359,6 +365,6 @@ describe('Scheduler', () => {
 
     const items = await db.takeDueReminders({ now, limit: 10 })
     expect(items.length).toBe(1)
-    expect(items[0]!.isReclaimed).toBe('sending')
+    expect(items[0]!.isReclaimed).toBe(true)
   })
 })

@@ -1,13 +1,10 @@
 import { getLogger, withContext } from '@logtape/logtape'
 import { Frame } from './agent/frame'
-import { FileRetrieval } from './agent/systems/fileRetrieval'
-import { ImproveUserProfile } from './agent/systems/improveUserProfile'
-import { IngestMessage } from './agent/systems/ingestMessage'
-import { MediaStorage } from './agent/systems/mediaStorage'
-import { MessageEmbedding } from './agent/systems/messageEmbedding'
+import { embedMessages } from './agent/systems/embedMessages'
+import { ingestMessage } from './agent/systems/ingestMessage'
 import { PersistUser } from './agent/systems/persistUser'
-import { ResponseDelivery } from './agent/systems/responseDelivery'
 import { ResponseGeneration } from './agent/systems/responseGeneration'
+import { storeMedia } from './agent/systems/storeMedia'
 import { StoreMessageExchange } from './agent/systems/storeMessageExchange'
 import type { IncomingMessage } from './infra/chat'
 import { spreadError } from './utils/spreadError'
@@ -23,19 +20,17 @@ export async function agent(deps: Deps, message: IncomingMessage): Promise<void>
   })
   if (!frame.user) {
     // Não podemos fazer nada sem um usuário, nem salvar a resposta no banco
-    deps.chat.sendTextMessage({
+    deps.chat.sendText({
       text: 'Desculpe, tive um problema e não consigo te responder agora.',
     })
     return
   }
 
   await withContext({ userId: frame.user.id }, async () => {
+    deps.chat.acknowledgeMessage(message.externalId)
     try {
-      deps.chat.acknowledgeProcessingMessage(message.externalId)
-      await IngestMessage(frame, deps, message)
-      await MessageEmbedding(deps, frame.inbound)
+      await ingestMessage(frame, deps, message)
       await ResponseGeneration(frame, deps)
-      await FileRetrieval(frame, deps)
     } catch (error) {
       logger.error(`Agent response flow error: ${String(error)}`, { ...spreadError(error) })
       frame.outbound = frame.outbound ?? {
@@ -45,16 +40,8 @@ export async function agent(deps: Deps, message: IncomingMessage): Promise<void>
     }
 
     try {
-      await ResponseDelivery(frame, deps)
-    } catch (error) {
-      logger.error(String(error), { ...spreadError(error) })
-      return
-    }
-
-    try {
-      await Promise.all([MediaStorage(frame, deps), MessageEmbedding(deps, frame.outbound)])
+      await Promise.all([storeMedia(frame, deps), embedMessages(frame, deps)])
       await StoreMessageExchange(frame, deps)
-      await ImproveUserProfile(frame, deps)
     } catch (error) {
       logger.error(`Error after agent's response: ${String(error)}`, { ...spreadError(error) })
     }

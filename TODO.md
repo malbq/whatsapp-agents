@@ -2,17 +2,9 @@
 
 ## Next
 
-- **Scheduler System**: Implement reminder functionality
+- **Tool Integration**: Refactor to LLM-centric agent with tools
 
-  - Schedule management
-  - Test schedule triggering
-  - `create_reminder` tool
-  - `cancel_reminder` tool
-  - `list_reminders` tool
-
-- **Tool Integration**: Implement tools
-
-  - Generate a query string for file search tool as user message may be inadequate for vector search
+  - how to bind profile update to the message that triggered it if we have not saved it yet?
 
 - **User Management**: Complete user management system
 
@@ -47,7 +39,9 @@
 - Cost Monitoring: Set up alerts for AI provider usage thresholds (e.g., via OpenAI dashboard hooks)
 - Automated DB backups
 - Media storage snapshots
-- Transform profile update in a tool
+- Real-time TTS
+  - Requires interactive message with type `call_permission_request`
+  - [WhatsApp Cloud API Calling](https://developers.facebook.com/docs/whatsapp/cloud-api/calling)
 
 ## Learnings & Insights
 

@@ -1,4 +1,4 @@
-export function getFileExtensionFromMimeType(mimeType: string): string {
+export function getExtFromMimeType(mimeType: string): string {
   const cleanMimeType = mimeType.split(';')[0]?.trim().toLowerCase()
   return mimeToExt[cleanMimeType || ''] || '.bin'
 }

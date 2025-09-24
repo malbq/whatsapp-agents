@@ -9,7 +9,7 @@ export async function loggingMiddleware(c: Context, next: Next) {
   const start = Date.now()
 
   await withContext({ requestId }, async () => {
-    logger.debug(`Request ${requestId}`, {
+    logger.debug(`🡇 Request ${requestId}`, {
       method: c.req.method,
       path: c.req.path,
       headers: JSON.stringify(c.req.header()),
@@ -18,7 +18,7 @@ export async function loggingMiddleware(c: Context, next: Next) {
 
     try {
       await next()
-      logger.debug(`Response ${requestId}`, {
+      logger.debug(`🡅 Response (${c.res.status}) ${requestId}`, {
         status: c.res.status,
         duration: time(start),
       })

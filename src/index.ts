@@ -5,6 +5,7 @@ import { createHmac } from 'node:crypto'
 import { agent } from './agent'
 import { configureLogging } from './config/logging'
 import type { Env } from './context'
+import { extractCommand, sendCommandMessage } from './echo'
 import { MediaHashMismatchError } from './errors'
 import { handleStatusUpdate } from './features/handleStatusUpdate'
 import { AIProvider } from './infra/ai'
@@ -56,6 +57,12 @@ app.post('/webhook', async (c) => {
 
     if (!message) {
       logger.warn('Unknown notification received', { body })
+      return c.body('', 200)
+    }
+
+    const command = extractCommand(message)
+    if (command) {
+      await sendCommandMessage(deps.chat, command, message.externalId)
       return c.body('', 200)
     }
 

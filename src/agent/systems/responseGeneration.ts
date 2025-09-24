@@ -1,13 +1,12 @@
 import { getLogger } from '@logtape/logtape'
 import { ResponseGenerationError } from '../../errors'
 import type { AIMessage } from '../../infra/ai'
-import { audioTranscription } from '../../prompts/audioTranscription'
-import { documentTranscription } from '../../prompts/documentTranscription'
-import { imageDescription } from '../../prompts/imageDescription'
-import { recentMessages as recentMessagesPrompt } from '../../prompts/recentMessages'
-import { userMemory } from '../../prompts/userMemory'
-import { userProfile } from '../../prompts/userProfile'
 import type { Frame } from '../frame'
+import { audioTranscription } from '../prompts/audioTranscription'
+import { documentTranscription } from '../prompts/documentTranscription'
+import { imageDescription } from '../prompts/imageDescription'
+import { recentMessages as recentMessagesPrompt } from '../prompts/recentMessages'
+import { userProfile } from '../prompts/userProfile'
 
 const logger = getLogger(['app', 'agent', 'responseGeneration'])
 
@@ -15,15 +14,6 @@ export async function ResponseGeneration(frame: Frame, deps: Deps) {
   if (!frame.user) throw new ResponseGenerationError('User not found')
   if (!frame.inbound?.text && !frame.inbound?.media?.transcription)
     throw new ResponseGenerationError('User message not found')
-
-  const recentMessages = await deps.db.findRecentMessages({ userId: frame.user.id })
-  const similarMessages = frame.inbound.textEmbedding?.[0]
-    ? await deps.db.findSimilarMessages({
-        userId: frame.user.id,
-        queryEmbedding: frame.inbound.textEmbedding[0].embedding,
-        excludeIds: recentMessages.map((message) => message.id),
-      })
-    : []
 
   // BUILD CONTEXT
   const messagesForAgent: Array<AIMessage> = []
@@ -34,13 +24,8 @@ export async function ResponseGeneration(frame: Frame, deps: Deps) {
     logger.info('Context included: user profile')
   }
 
-  // CONTEXT: MEMORY (similar messages)
-  if (similarMessages.length) {
-    messagesForAgent.push({ role: 'system', content: userMemory(similarMessages) })
-    logger.info(`Context included: similar messages (${similarMessages.length})`)
-  }
-
   // CONTEXT: RECENT THREAD
+  const recentMessages = await deps.db.findRecentMessages({ userId: frame.user.id })
   if (recentMessages.length) {
     messagesForAgent.push({ role: 'system', content: recentMessagesPrompt })
     recentMessages.forEach((message) => {
@@ -72,33 +57,15 @@ export async function ResponseGeneration(frame: Frame, deps: Deps) {
   }
 
   try {
-    const searchFilesCallback = async () => {
-      if (!frame.inbound?.textEmbedding?.[0]?.embedding) return []
-      const results = await deps.db.searchFiles({
-        userId: frame.user!.id,
-        queryEmbedding: frame.inbound.textEmbedding[0].embedding,
-      })
-      return results.map((file) => ({
-        storageKey: file.storageKey,
-        timestamp: file.timestamp,
-        snippet: file.snippet,
-        score: file.score,
-      }))
-    }
-    const response = await deps.ai.respond({
-      messages: messagesForAgent,
-      searchFilesCallback,
-    })
-    logger.info(`Response generated for ${frame.user.name} (${frame.user.externalId})`)
-    logger.debug(`Generated response: ${response.text}`, { ...response })
+    const response = await deps.ai.respond({ messages: messagesForAgent })
+    const externalChatId = await deps.chat.sendText({ text: response.text })
+
+    logger.info(`Text response sent to ${frame.user.name} (${frame.user.externalId})`)
 
     frame.outbound = {
+      externalChatId,
       type: 'text',
       text: response.text,
-    }
-
-    if (response.storageKey) {
-      frame.outbound.media = { storageKey: response.storageKey }
     }
   } catch (error) {
     frame.outbound = {

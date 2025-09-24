@@ -6,7 +6,7 @@ import type { Frame } from '../frame'
 
 const logger = getLogger(['app', 'agent', 'ingestion', 'document'])
 
-export async function documentIngest(frame: Frame, deps: Deps): Promise<void> {
+export async function ingestDocument(frame: Frame, deps: Deps): Promise<void> {
   if (!frame.inbound?.media?.data)
     throw new IngestionError('Media is required for document ingestion')
   if (!frame.inbound?.media?.mimeType)

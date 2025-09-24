@@ -5,7 +5,7 @@ import type { Frame } from '../frame'
 
 const logger = getLogger(['app', 'agent', 'ingestion', 'image'])
 
-export async function imageIngest(frame: Frame, deps: Deps): Promise<void> {
+export async function ingestImage(frame: Frame, deps: Deps): Promise<void> {
   if (!frame.inbound?.media?.data || !frame.inbound?.media?.mimeType)
     throw new IngestionError('Media is required for image ingestion')
 

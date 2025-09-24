@@ -1,7 +1,7 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, jest, mock, test } from 'bun:test'
 import { join } from 'node:path'
 import { Frame } from '../src/agent/frame'
-import { documentIngest } from '../src/agent/systems/documentIngest'
+import { ingestDocument } from '../src/agent/systems/ingestDocument'
 import { parsePdf } from '../src/utils/parsePdf'
 
 let deps: TestDeps
@@ -32,10 +32,16 @@ beforeAll(async () => {
     },
     chat: {
       parseNotification: mock(),
-      acknowledgeProcessingMessage: mock(),
-      sendTextMessage: mock(),
-      sendImageMessage: mock(),
-      sendDocumentMessage: mock(),
+      acknowledgeMessage: mock(),
+      sendText: mock(),
+      sendImage: mock(),
+      sendDocument: mock(),
+      sendLocation: mock(),
+      sendReaction: mock(),
+      sendContact: mock(),
+      sendInteractiveList: mock(),
+      sendInteractiveButton: mock(),
+      sendInteractiveCtaUrl: mock(),
     },
     ai: {
       analyzeImage: mock(),
@@ -75,7 +81,7 @@ describe('Document ingest', () => {
       },
     }
 
-    await documentIngest(frame, deps)
+    await ingestDocument(frame, deps)
 
     expect(parsePdfMock).toHaveBeenCalledWith(pdfBuffer)
     expect(frame.inbound?.media?.transcription).toBeDefined()
@@ -97,7 +103,7 @@ describe('Document ingest', () => {
 
     parsePdfMock.mockResolvedValueOnce('')
 
-    await documentIngest(frame, deps)
+    await ingestDocument(frame, deps)
 
     expect(parsePdfMock).toHaveBeenCalledWith(pdfBuffer)
     expect(frame.inbound?.media?.transcription).toBe(mockDocumentTranscription)
@@ -108,7 +114,7 @@ describe('Document ingest', () => {
       type: 'document',
     }
 
-    await expect(documentIngest(frame, deps)).rejects.toThrow(
+    await expect(ingestDocument(frame, deps)).rejects.toThrow(
       'Media is required for document ingestion'
     )
   })
@@ -126,7 +132,7 @@ describe('Document ingest', () => {
       },
     }
 
-    await expect(documentIngest(frame, deps)).rejects.toThrow(
+    await expect(ingestDocument(frame, deps)).rejects.toThrow(
       'Filename is required for document ingestion'
     )
   })

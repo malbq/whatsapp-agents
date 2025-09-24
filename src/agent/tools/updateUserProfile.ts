@@ -1,5 +1,14 @@
-export const updateUserProfile = (profile: string, lastMessage: string) => `
-Goal: Enrich the user profile with only explicit, minimal facts that aid personalization, strictly following Brazil’s LGPD and privacy rules.
+import { getLogger } from '@logtape/logtape'
+import { tool } from 'ai'
+import { z } from 'zod'
+import type { Frame } from '../frame'
+
+const logger = getLogger(['app', 'agent', 'updateUserProfile'])
+
+export const updateUserProfileToolDefinition = (frame: Frame, deps: Deps) =>
+  tool({
+    name: 'update_user_profile',
+    description: `Goal: Enrich the user profile with only explicit, minimal facts that aid personalization, strictly following Brazil'S GPD and privacy rules.
 
 Sensitive data (never store or infer): racial/ethnic origin, religion, politics, unions, health/sex life, genetic/biometric data, or any inferences about these (e.g., family implying genetics, hobbies implying beliefs, job implying unions).
 Risk flags (handle with extra caution; avoid inferences): age (esp. minors), location suggesting origins, family/best friends (genetics/affiliations), work/interests/plans that could imply politics/health/religion.
@@ -41,11 +50,34 @@ Output requirements:
 - Output the full updated profile (current content plus any new items), plain text, English only. No markdown, no JSON, no labels.
 - Be concise. Short sentences. Under 2000 characters. If it exceeds 2000, summarize it while preserving meaning, consents/opt-outs, and contact statuses.
 - Do not remove existing information.
-- If the info is already stored or the message is not relevant, output empty text (no quotes, no spaces, no new lines).
+- If the info is already stored or the message is not relevant, output empty text (no quotes, no spaces, no new lines).`,
+    inputSchema: z.object({
+      improvedProfile: z.string().describe('The improved profile to update'),
+    }),
+    execute: async ({ improvedProfile }) => {
+      if (!frame.user) {
+        logger.warn('Skipping profile update: User not found')
+        return 'User not found'
+      }
+      if (improvedProfile.trim().length === 0) {
+        logger.info('Skipping profile update: No improvement to make')
+        return 'No improvement to make'
+      }
 
-<current_user_profile>
-${profile}
-</current_user_profile>
-<last_user_message>
-"${lastMessage}"
-</last_user_message>`
+      if (improvedProfile === frame.user.profile) {
+        logger.warn('Skipping profile update: LLM returned the same profile')
+        return 'You cannot update the profile to the same profile'
+      }
+
+      await deps.db.updateUserProfile({
+        userId: frame.user.id,
+        profile: improvedProfile,
+        // TODO: where the messageId comes from?
+      })
+
+      logger.info('Profile improved')
+      logger.debug('Profile diff', { current: frame.user.profile, improved: improvedProfile })
+
+      return 'Profile updated'
+    },
+  })

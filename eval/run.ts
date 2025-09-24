@@ -383,19 +383,45 @@ function createUserMessageGenerator(
   }
 }
 const evalChat: Chat & { lastAssistantMessage?: string } = {
-  sendTextMessage: async (params) => {
+  sendText: async (params) => {
     evalChat.lastAssistantMessage = params.text
     return newExternalId()
   },
-  sendImageMessage: async (params) => {
+  sendImage: async (params) => {
     evalChat.lastAssistantMessage = params.caption
     return newExternalId()
   },
-  sendDocumentMessage: async (params) => {
+  sendDocument: async (params) => {
     evalChat.lastAssistantMessage = params.caption
     return newExternalId()
   },
-  acknowledgeProcessingMessage: async (_) => {},
+  sendLocation: async (params) => {
+    evalChat.lastAssistantMessage = params.name || params.address || 'location'
+    return newExternalId()
+  },
+  sendReaction: async (params) => {
+    evalChat.lastAssistantMessage = `reaction: ${params.emoji}`
+    return newExternalId()
+  },
+  sendContact: async (params) => {
+    evalChat.lastAssistantMessage = `contact: ${
+      params.contacts[0]?.name?.formattedName || 'contact'
+    }`
+    return newExternalId()
+  },
+  sendInteractiveList: async (params) => {
+    evalChat.lastAssistantMessage = params.body.text
+    return newExternalId()
+  },
+  sendInteractiveButton: async (params) => {
+    evalChat.lastAssistantMessage = params.body.text
+    return newExternalId()
+  },
+  sendInteractiveCtaUrl: async (params) => {
+    evalChat.lastAssistantMessage = params.body.text
+    return newExternalId()
+  },
+  acknowledgeMessage: async (_) => {},
   parseNotification: async (_) => ({}),
 }
 

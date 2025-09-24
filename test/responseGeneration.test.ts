@@ -12,6 +12,11 @@ import {
   test,
 } from 'bun:test'
 import { Frame } from '../src/agent/frame'
+import { audioTranscription } from '../src/agent/prompts/audioTranscription'
+import { documentTranscription } from '../src/agent/prompts/documentTranscription'
+import { imageDescription } from '../src/agent/prompts/imageDescription'
+import { recentMessages } from '../src/agent/prompts/recentMessages'
+import { userProfile } from '../src/agent/prompts/userProfile'
 import { FileRetrieval } from '../src/agent/systems/fileRetrieval'
 import { ResponseGeneration } from '../src/agent/systems/responseGeneration'
 import { ResponseGenerationError } from '../src/errors'
@@ -19,11 +24,6 @@ import type { Chat } from '../src/infra/chat'
 import type { DB, MessageType, User } from '../src/infra/db'
 import { LibSql } from '../src/infra/dbLibSql'
 import type { Storage } from '../src/infra/storage'
-import { audioTranscription } from '../src/prompts/audioTranscription'
-import { documentTranscription } from '../src/prompts/documentTranscription'
-import { imageDescription } from '../src/prompts/imageDescription'
-import { recentMessages } from '../src/prompts/recentMessages'
-import { userProfile } from '../src/prompts/userProfile'
 
 const originalEnv = Object.assign({}, import.meta.env)
 
@@ -74,9 +74,7 @@ beforeAll(async () => {
     analyzeImage: mock(async () => 'image analysis'),
     transcribeDocument: mock(async () => 'document transcription'),
     improveUserProfile: mock(async () => 'updated profile'),
-    generateEmbeddings: mock(async ({ text }: { text: string[] }) =>
-      text.map(() => mockEmbeddings)
-    ),
+    generateEmbeddings: mock(async () => [mockEmbeddings]),
   }
 
   storage = {

@@ -191,13 +191,13 @@ export namespace LibSql {
         }))
       },
 
-      async updateUserProfile({ userId, profile, messageId }) {
+      async updateUserProfile({ userId, profile }) {
         profile = profile.trim()
         if (profile.length === 0) return
         await client.execute({
-          sql: `INSERT INTO user_profile_version (id, user_id, profile, message_id)
-          VALUES (?, ?, ?, ?)`,
-          args: [Bun.randomUUIDv7(), userId, profile, messageId ?? null],
+          sql: `INSERT INTO user_profile_version (id, user_id, profile)
+          VALUES (?, ?, ?)`,
+          args: [Bun.randomUUIDv7(), userId, profile],
         })
       },
 

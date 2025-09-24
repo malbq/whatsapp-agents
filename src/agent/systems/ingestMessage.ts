@@ -2,14 +2,14 @@ import { getLogger } from '@logtape/logtape'
 import { IngestionError } from '../../errors'
 import type { IncomingMessage } from '../../infra/chat'
 import type { Frame } from '../frame'
-import { audioIngest } from './audioIngest'
-import { documentIngest } from './documentIngest'
-import { imageIngest } from './imageIngest'
-import { voiceIngest } from './voiceIngest'
+import { ingestAudio } from './ingestAudio'
+import { ingestDocument } from './ingestDocument'
+import { ingestImage } from './ingestImage'
+import { ingestVoice } from './ingestVoice'
 
 const logger = getLogger(['app', 'agent', 'ingestion'])
 
-export async function IngestMessage(
+export async function ingestMessage(
   frame: Frame,
   deps: Deps,
   message: IncomingMessage
@@ -40,21 +40,21 @@ export async function IngestMessage(
       break
 
     case 'voice':
-      await voiceIngest(frame, deps)
+      await ingestVoice(frame, deps)
       break
 
     case 'audio':
-      await audioIngest(frame, deps)
+      await ingestAudio(frame, deps)
       break
 
     case 'image':
       frame.inbound.text = message.text
-      await imageIngest(frame, deps)
+      await ingestImage(frame, deps)
       break
 
     case 'document':
       frame.inbound.text = message.text
-      await documentIngest(frame, deps)
+      await ingestDocument(frame, deps)
       break
 
     default:

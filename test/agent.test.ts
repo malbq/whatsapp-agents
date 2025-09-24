@@ -59,10 +59,16 @@ beforeAll(async () => {
     },
     chat: {
       parseNotification: mock(),
-      acknowledgeProcessingMessage: mock(),
-      sendTextMessage: mock(async () => `${messageExternalId++}`),
-      sendImageMessage: mock(async () => `${messageExternalId++}`),
-      sendDocumentMessage: mock(async () => `${messageExternalId++}`),
+      acknowledgeMessage: mock(),
+      sendText: mock(async () => `${messageExternalId++}`),
+      sendImage: mock(async () => `${messageExternalId++}`),
+      sendDocument: mock(async () => `${messageExternalId++}`),
+      sendLocation: mock(async () => `${messageExternalId++}`),
+      sendReaction: mock(async () => `${messageExternalId++}`),
+      sendContact: mock(async () => `${messageExternalId++}`),
+      sendInteractiveList: mock(async () => `${messageExternalId++}`),
+      sendInteractiveButton: mock(async () => `${messageExternalId++}`),
+      sendInteractiveCtaUrl: mock(async () => `${messageExternalId++}`),
     },
     ai: {
       analyzeImage: mock(async () => imageAnalysisResult),
@@ -70,9 +76,7 @@ beforeAll(async () => {
       transcribeAudio: mock(async () => audioTranscriptionResult),
       transcribeDocument: mock(async () => documentTranscriptionResult),
       improveUserProfile: mock(async () => updatedProfile),
-      generateEmbeddings: mock(async ({ text }: { text: string[] }) =>
-        text.map(() => mockEmbeddings)
-      ),
+      generateEmbeddings: mock(async () => [mockEmbeddings]),
     },
     storage: {
       store: mock(storage.store),
@@ -117,10 +121,10 @@ describe('Smoke test: first interaction', () => {
 
     await agent(deps, message)
 
-    expect(deps.chat.acknowledgeProcessingMessage).toHaveBeenCalled()
+    expect(deps.chat.acknowledgeMessage).toHaveBeenCalled()
     expect(deps.storage.store).not.toHaveBeenCalled()
 
-    expect(deps.chat.sendTextMessage.mock.calls[0]?.[0]).toEqual({ text: aiTextResponse })
+    expect(deps.chat.sendText.mock.calls[0]?.[0]).toEqual({ text: aiTextResponse })
 
     const user = await getUserWithProfileFromDatabase(message.userExternalId)
     const messages = await getUserMessagesFromDatabase(user.id)
@@ -162,8 +166,8 @@ describe('Smoke test: first interaction', () => {
 
     await agent(deps, message)
 
-    expect(deps.chat.acknowledgeProcessingMessage).toHaveBeenCalled()
-    expect(deps.chat.sendTextMessage.mock.calls[0]?.[0]).toEqual({
+    expect(deps.chat.acknowledgeMessage).toHaveBeenCalled()
+    expect(deps.chat.sendText.mock.calls[0]?.[0]).toEqual({
       text: aiTextResponse,
     })
 
@@ -207,8 +211,8 @@ describe('Smoke test: first interaction', () => {
 
     await agent(deps, message)
 
-    expect(deps.chat.acknowledgeProcessingMessage).toHaveBeenCalled()
-    expect(deps.chat.sendTextMessage).toHaveBeenCalledWith({ text: aiTextResponse })
+    expect(deps.chat.acknowledgeMessage).toHaveBeenCalled()
+    expect(deps.chat.sendText).toHaveBeenCalledWith({ text: aiTextResponse })
 
     const user = await getUserWithProfileFromDatabase(message.userExternalId)
     const messages = await getUserMessagesFromDatabase(user.id)
@@ -249,8 +253,8 @@ describe('Smoke test: first interaction', () => {
     }
 
     await agent(deps, message)
-    expect(deps.chat.acknowledgeProcessingMessage).toHaveBeenCalled()
-    expect(deps.chat.sendTextMessage.mock.calls[0]?.[0]).toEqual({ text: aiTextResponse })
+    expect(deps.chat.acknowledgeMessage).toHaveBeenCalled()
+    expect(deps.chat.sendText.mock.calls[0]?.[0]).toEqual({ text: aiTextResponse })
 
     const user = await getUserWithProfileFromDatabase(message.userExternalId)
     const messages = await getUserMessagesFromDatabase(user.id)
@@ -303,8 +307,8 @@ describe('Smoke test: first interaction', () => {
 
     await agent(deps, message)
 
-    expect(deps.chat.acknowledgeProcessingMessage).toHaveBeenCalled()
-    expect(deps.chat.sendTextMessage.mock.calls[0]?.[0]).toEqual({ text: aiTextResponse })
+    expect(deps.chat.acknowledgeMessage).toHaveBeenCalled()
+    expect(deps.chat.sendText.mock.calls[0]?.[0]).toEqual({ text: aiTextResponse })
 
     const user = await getUserWithProfileFromDatabase(message.userExternalId)
     const messages = await getUserMessagesFromDatabase(user.id)
@@ -352,8 +356,8 @@ describe('Smoke test: first interaction', () => {
 
     await agent(deps, message)
 
-    expect(deps.chat.acknowledgeProcessingMessage).toHaveBeenCalled()
-    expect(deps.chat.sendTextMessage.mock.calls[0]?.[0]).toEqual({ text: aiTextResponse })
+    expect(deps.chat.acknowledgeMessage).toHaveBeenCalled()
+    expect(deps.chat.sendText.mock.calls[0]?.[0]).toEqual({ text: aiTextResponse })
 
     const user = await getUserWithProfileFromDatabase(message.userExternalId)
     const messages = await getUserMessagesFromDatabase(user.id)

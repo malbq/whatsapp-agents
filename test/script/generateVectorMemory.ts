@@ -50,9 +50,9 @@ function getJsonFilePath(): string {
 const jsonFilePath = getJsonFilePath()
 const messages = await loadMessagesFromFile(jsonFilePath)
 
-const embeddings = await AIProvider.generateEmbeddings({
-  text: messages.map(({ content }) => content[0]?.content ?? ''),
-})
+const embeddings = await AIProvider.generateEmbeddings(
+  messages.map(({ content }) => content[0]?.content ?? '').join(' ')
+)
 
 const baseTimestamp = new Date('2025-01-01T10:00:00Z')
 const userId = '1'
@@ -61,7 +61,7 @@ let sqlInserts = ''
 messages.forEach((message, i) => {
   const id = `mem-${i + 1}`
   const timestamp = new Date(baseTimestamp.getTime() + i * 60000).toISOString()
-  const embedding = JSON.stringify(embeddings[i])
+  const embedding = JSON.stringify(embeddings[i]!.embedding)
 
   sqlInserts +=
     'INSERT INTO message ' +

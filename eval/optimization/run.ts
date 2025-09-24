@@ -34,13 +34,13 @@
 import { readFile } from 'node:fs/promises'
 import { parseArgs } from 'node:util'
 
+import { audioTranscription } from '../../src/agent/prompts/audioTranscription.js'
+import { documentTranscription } from '../../src/agent/prompts/documentTranscription.js'
+import { imageDescription } from '../../src/agent/prompts/imageDescription.js'
+import { recentMessages as recentMessagesPrompt } from '../../src/agent/prompts/recentMessages.js'
+import { userProfile as userProfilePrompt } from '../../src/agent/prompts/userProfile.js'
 import { configureEvalLogging } from '../../src/config/logging.js'
 import { AIProvider } from '../../src/infra/ai.js'
-import { audioTranscription } from '../../src/prompts/audioTranscription.js'
-import { documentTranscription } from '../../src/prompts/documentTranscription.js'
-import { imageDescription } from '../../src/prompts/imageDescription.js'
-import { recentMessages as recentMessagesPrompt } from '../../src/prompts/recentMessages.js'
-import { userProfile as userProfilePrompt } from '../../src/prompts/userProfile.js'
 
 import { PromptGenerator } from './generator.js'
 import { Judge } from './judge.js'

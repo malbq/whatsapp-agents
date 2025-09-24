@@ -27,9 +27,9 @@ import { existsSync, mkdirSync } from 'node:fs'
 import { parseArgs } from 'node:util'
 import { z } from 'zod'
 
+import { updateUserProfile } from '../../src/agent/prompts/updateUserProfile'
 import { configureEvalLogging } from '../../src/config/logging'
 import { AIProvider } from '../../src/infra/ai'
-import { updateUserProfile } from '../../src/prompts/updateUserProfile'
 
 const GPT5_MODEL = openai('gpt-5')
 const GPT5_MINI_MODEL = openai('gpt-5-mini')

@@ -10,21 +10,27 @@ declare global {
         ReturnType<Chat['parseNotification']>,
         Parameters<Chat['parseNotification']>
       >
-      acknowledgeProcessingMessage: jest.Mock<
-        ReturnType<Chat['acknowledgeProcessingMessage']>,
-        Parameters<Chat['acknowledgeProcessingMessage']>
+      acknowledgeMessage: jest.Mock<
+        ReturnType<Chat['acknowledgeMessage']>,
+        Parameters<Chat['acknowledgeMessage']>
       >
-      sendTextMessage: jest.Mock<
-        ReturnType<Chat['sendTextMessage']>,
-        Parameters<Chat['sendTextMessage']>
+      sendText: jest.Mock<ReturnType<Chat['sendText']>, Parameters<Chat['sendText']>>
+      sendImage: jest.Mock<ReturnType<Chat['sendImage']>, Parameters<Chat['sendImage']>>
+      sendDocument: jest.Mock<ReturnType<Chat['sendDocument']>, Parameters<Chat['sendDocument']>>
+      sendLocation: jest.Mock<ReturnType<Chat['sendLocation']>, Parameters<Chat['sendLocation']>>
+      sendReaction: jest.Mock<ReturnType<Chat['sendReaction']>, Parameters<Chat['sendReaction']>>
+      sendContact: jest.Mock<ReturnType<Chat['sendContact']>, Parameters<Chat['sendContact']>>
+      sendInteractiveList: jest.Mock<
+        ReturnType<Chat['sendInteractiveList']>,
+        Parameters<Chat['sendInteractiveList']>
       >
-      sendImageMessage: jest.Mock<
-        ReturnType<Chat['sendImageMessage']>,
-        Parameters<Chat['sendImageMessage']>
+      sendInteractiveButton: jest.Mock<
+        ReturnType<Chat['sendInteractiveButton']>,
+        Parameters<Chat['sendInteractiveButton']>
       >
-      sendDocumentMessage: jest.Mock<
-        ReturnType<Chat['sendDocumentMessage']>,
-        Parameters<Chat['sendDocumentMessage']>
+      sendInteractiveCtaUrl: jest.Mock<
+        ReturnType<Chat['sendInteractiveCtaUrl']>,
+        Parameters<Chat['sendInteractiveCtaUrl']>
       >
     }
     storage: {

@@ -6,15 +6,12 @@ import {
   MediaHashMismatchError,
   ResponseDeliveryError,
 } from '../errors'
-import { getFileExtensionFromMimeType } from '../utils/getFileExtensionFromMimeType'
+import { getExtFromMimeType } from '../utils/getExtFromMimeType'
 import type { Chat, IncomingMessage } from './chat'
 
 const { META_API_TOKEN, WA_API_VERSION } = import.meta.env
 
 const logger = getLogger(['infra', 'chat'])
-
-function test() {}
-test()
 
 export namespace Whatsapp {
   export const chat: Chat = {
@@ -87,7 +84,7 @@ export namespace Whatsapp {
       }
     },
 
-    acknowledgeProcessingMessage: async (messageId) => {
+    acknowledgeMessage: async (messageId) => {
       const businessPhoneNumberId = getContext().var.businessPhoneNumberId
 
       if (!businessPhoneNumberId) {
@@ -135,240 +132,220 @@ export namespace Whatsapp {
       })
     },
 
-    sendTextMessage: async ({ text, replyingTo: replyToMessage }) => {
-      const businessPhoneNumberId = getContext().var.businessPhoneNumberId
-      const userWhatsappId = getContext().var.userWhatsappId
+    sendText: async ({ text, replyingTo }) => {
+      const { userWhatsappId, businessPhoneNumberId } = getWhatsappIds()
 
-      if (!businessPhoneNumberId || !userWhatsappId) {
-        throw new ResponseDeliveryError('Business number or user WhatsApp ID not found')
-      }
-
-      const requestBody: OutgoingTextMessage = {
+      const requestBody: WaOutgoingText = {
         messaging_product: 'whatsapp',
         to: userWhatsappId,
-        text: { body: text },
-        ...(replyToMessage && { context: { message_id: replyToMessage } }),
+        type: 'text',
+        text: { body: text, preview_url: true },
+        ...(replyingTo && { context: { message_id: replyingTo } }),
       }
 
-      const httpResponse = await fetch(
-        `https://graph.facebook.com/${WA_API_VERSION}/${businessPhoneNumberId}/messages`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${META_API_TOKEN}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(requestBody),
-        }
-      )
-
-      if (!httpResponse.ok) {
-        logger.error('Failed to send message: {status} {statusText}', {
-          status: httpResponse.status,
-          statusText: httpResponse.statusText,
-          body: await httpResponse.text(),
-        })
-        throw new ResponseDeliveryError('Failed to send message')
-      }
-
-      const response = (await httpResponse.json()) as OutgoingMessageResponse
-
-      if (!response.messages?.[0]?.id) {
-        logger.error('Send message request succeeded but no message ID was returned', {
-          ...response,
-        })
-        throw new ResponseDeliveryError('Failed to send message')
-      }
-
-      return response.messages[0].id
+      return sendMessageRequest(businessPhoneNumberId, requestBody)
     },
 
-    sendImageMessage: async ({ data, caption, mimeType, replyingTo: replyToMessage }) => {
-      const businessPhoneNumberId = getContext().get('businessPhoneNumberId')
-      const to = getContext().get('userWhatsappId')
+    sendImage: async ({ data, caption, mimeType, replyingTo }) => {
+      const { userWhatsappId, businessPhoneNumberId } = getWhatsappIds()
 
-      if (!businessPhoneNumberId || !to) {
-        logger.error('Missing context for sending image message')
-        throw new ResponseDeliveryError('Missing context for sending message')
-      }
+      const mediaId = await uploadMedia(businessPhoneNumberId, data, mimeType)
 
-      const formData = new FormData()
-      formData.append(
-        'file',
-        new Blob([data], { type: mimeType }),
-        `image.${getFileExtensionFromMimeType(mimeType)}`
-      )
-      formData.append('type', mimeType)
-      formData.append('messaging_product', 'whatsapp')
-
-      const uploadResponse = await fetch(
-        `https://graph.facebook.com/${WA_API_VERSION}/${businessPhoneNumberId}/media`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${META_API_TOKEN}`,
-          },
-          body: formData,
-        }
-      )
-
-      if (!uploadResponse.ok) {
-        logger.error(
-          `Failed to upload image: [${uploadResponse.status} ${
-            uploadResponse.statusText
-          }] ${await uploadResponse.text()}`,
-          {
-            status: uploadResponse.status,
-            statusText: uploadResponse.statusText,
-          }
-        )
-        throw new ResponseDeliveryError('Failed to upload image')
-      }
-
-      const uploadResult = (await uploadResponse.json()) as { id: string }
-      const mediaId = uploadResult.id
-
-      // Now send the image message
-      const message = {
-        messaging_product: 'whatsapp' as const,
-        to,
+      const message: WaOutgoingImage = {
+        messaging_product: 'whatsapp',
+        to: userWhatsappId,
         type: 'image',
         image: {
           id: mediaId,
           caption: caption || undefined,
         },
-        ...(replyToMessage && { context: { message_id: replyToMessage } }),
+        ...(replyingTo && { context: { message_id: replyingTo } }),
       }
 
-      const response = await fetch(
-        `https://graph.facebook.com/${WA_API_VERSION}/${businessPhoneNumberId}/messages`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${META_API_TOKEN}`,
-          },
-          body: JSON.stringify(message),
-        }
-      )
-
-      logger.debug('Image message API response {status}', { status: response.status })
-
-      if (!response.ok) {
-        logger.error(
-          `Failed to send image message: [${response.status} ${
-            response.statusText
-          }] ${await response.text()}`,
-          {
-            status: response.status,
-            statusText: response.statusText,
-          }
-        )
-        throw new ResponseDeliveryError('Failed to send image message')
-      }
-
-      const messageResponse = (await response.json()) as OutgoingMessageResponse
-      if (!messageResponse.messages?.[0]?.id) {
-        logger.error('Send image message request succeeded but no message ID was returned', {
-          response: messageResponse,
-        })
-        throw new ResponseDeliveryError('Failed to send image message')
-      }
-
-      return messageResponse.messages[0].id
+      return sendMessageRequest(businessPhoneNumberId, message)
     },
 
-    sendDocumentMessage: async ({
-      data,
-      filename,
-      caption,
-      mimeType,
-      replyingTo: replyToMessage,
-    }) => {
-      const businessPhoneNumberId = getContext().get('businessPhoneNumberId')
-      const to = getContext().get('userWhatsappId')
+    sendDocument: async ({ data, filename, caption, mimeType, replyingTo }) => {
+      const { userWhatsappId, businessPhoneNumberId } = getWhatsappIds()
 
-      if (!businessPhoneNumberId || !to) {
-        logger.error('Missing context for sending document message')
-        throw new ResponseDeliveryError('Missing context for sending message')
-      }
+      const mediaId = await uploadMedia(businessPhoneNumberId, data, mimeType, filename)
 
-      const formData = new FormData()
-      formData.append('file', new Blob([data], { type: mimeType }), filename)
-      formData.append('type', mimeType)
-      formData.append('messaging_product', 'whatsapp')
-
-      const uploadResponse = await fetch(
-        `https://graph.facebook.com/${WA_API_VERSION}/${businessPhoneNumberId}/media`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${META_API_TOKEN}`,
-          },
-          body: formData,
-        }
-      )
-
-      if (!uploadResponse.ok) {
-        const body = await uploadResponse.text()
-        logger.error(
-          `Failed to upload document: [${uploadResponse.status} ${uploadResponse.statusText}] ${body}`,
-          {
-            status: uploadResponse.status,
-            statusText: uploadResponse.statusText,
-            body,
-          }
-        )
-        throw new ResponseDeliveryError('Failed to upload document')
-      }
-
-      const uploadResult = (await uploadResponse.json()) as { id: string }
-      const mediaId = uploadResult.id
-
-      const message = {
-        messaging_product: 'whatsapp' as const,
-        to,
+      const message: WaOutgoingDocument = {
+        messaging_product: 'whatsapp',
+        to: userWhatsappId,
         type: 'document',
         document: {
           id: mediaId,
-          filename,
+          filename: filename ?? `file.${getExtFromMimeType(mimeType)}`,
           caption: caption || undefined,
         },
-        ...(replyToMessage && { context: { message_id: replyToMessage } }),
+        ...(replyingTo && { context: { message_id: replyingTo } }),
       }
 
-      const response = await fetch(
-        `https://graph.facebook.com/${WA_API_VERSION}/${businessPhoneNumberId}/messages`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${META_API_TOKEN}`,
+      return sendMessageRequest(businessPhoneNumberId, message)
+    },
+
+    sendLocation: async ({ latitude, longitude, name, address, replyingTo }) => {
+      const { userWhatsappId, businessPhoneNumberId } = getWhatsappIds()
+
+      const requestBody: WaOutgoingLocation = {
+        messaging_product: 'whatsapp',
+        to: userWhatsappId,
+        type: 'location',
+        location: {
+          latitude,
+          longitude,
+          name,
+          address,
+        },
+        ...(replyingTo && { context: { message_id: replyingTo } }),
+      }
+
+      return sendMessageRequest(businessPhoneNumberId, requestBody)
+    },
+
+    sendReaction: async ({ externalChatId, emoji }) => {
+      const { userWhatsappId, businessPhoneNumberId } = getWhatsappIds()
+
+      const requestBody: WaOutgoingReaction = {
+        messaging_product: 'whatsapp',
+        to: userWhatsappId,
+        type: 'reaction',
+        reaction: {
+          message_id: externalChatId,
+          emoji,
+        },
+      }
+
+      return sendMessageRequest(businessPhoneNumberId, requestBody)
+    },
+
+    sendContact: async ({ contacts }) => {
+      const { userWhatsappId, businessPhoneNumberId } = getWhatsappIds()
+
+      const requestBody: WaOutgoingContact = {
+        messaging_product: 'whatsapp',
+        to: userWhatsappId,
+        type: 'contacts',
+        contacts: contacts.map((contact) => ({
+          name: {
+            formatted_name: contact.name.formattedName,
+            first_name: contact.name.firstName,
+            last_name: contact.name.lastName,
           },
-          body: JSON.stringify(message),
-        }
-      )
-
-      logger.debug('Document message API response {status}', { status: response.status })
-
-      if (!response.ok) {
-        logger.error('Failed to send document message: {status} {statusText}', {
-          status: response.status,
-          statusText: response.statusText,
-          body: await response.text(),
-        })
-        throw new ResponseDeliveryError('Failed to send document message')
+          phones: contact.phones.map((phone) => ({
+            phone: phone.phone,
+            type: phone.type,
+            wa_id: phone.externalId,
+          })),
+        })),
       }
 
-      const messageResponse = (await response.json()) as OutgoingMessageResponse
-      if (!messageResponse.messages?.[0]?.id) {
-        logger.error('Send document message request succeeded but no message ID was returned', {
-          response: messageResponse,
-        })
-        throw new ResponseDeliveryError('Failed to send document message')
+      return sendMessageRequest(businessPhoneNumberId, requestBody)
+    },
+
+    sendInteractiveList: async ({ header, body, footer, action, replyingTo }) => {
+      const { userWhatsappId, businessPhoneNumberId } = getWhatsappIds()
+
+      const requestBody: WaOutgoingInteractiveList = {
+        messaging_product: 'whatsapp',
+        to: userWhatsappId,
+        type: 'interactive',
+        interactive: {
+          type: 'list',
+          ...(header && { header }),
+          body,
+          ...(footer && { footer }),
+          action,
+        },
+        ...(replyingTo && { context: { message_id: replyingTo } }),
       }
 
-      return messageResponse.messages[0].id
+      return sendMessageRequest(businessPhoneNumberId, requestBody)
+    },
+
+    sendInteractiveButton: async ({ header, body, footer, action, replyingTo }) => {
+      const { userWhatsappId, businessPhoneNumberId } = getWhatsappIds()
+
+      const requestBody: WaOutgoingInteractiveButton = {
+        messaging_product: 'whatsapp',
+        to: userWhatsappId,
+        type: 'interactive',
+        interactive: {
+          type: 'button',
+          ...(header && { header }),
+          body,
+          ...(footer && { footer }),
+          action,
+        },
+        ...(replyingTo && { context: { message_id: replyingTo } }),
+      }
+
+      return sendMessageRequest(businessPhoneNumberId, requestBody)
+    },
+
+    sendInteractiveCtaUrl: async ({ header, body, footer, action, replyingTo }) => {
+      const { userWhatsappId, businessPhoneNumberId } = getWhatsappIds()
+
+      const requestBody: WaOutgoingInteractiveCtaUrl = {
+        messaging_product: 'whatsapp',
+        to: userWhatsappId,
+        type: 'interactive',
+        interactive: {
+          type: 'cta_url',
+          ...(header && { header }),
+          body,
+          ...(footer && { footer }),
+          action,
+        },
+        ...(replyingTo && { context: { message_id: replyingTo } }),
+      }
+
+      return sendMessageRequest(businessPhoneNumberId, requestBody)
+    },
+    sendTemplate: async ({
+      name,
+      language,
+      headerParameters,
+      bodyParameters,
+      footerParameters,
+    }) => {
+      const { userWhatsappId, businessPhoneNumberId } = getWhatsappIds()
+
+      const components: Array<WaTemplateComponent> = []
+      if (headerParameters) {
+        components.push({
+          type: 'header',
+          parameters: headerParameters.map((parameter) => ({ type: 'text', text: parameter })),
+        })
+      }
+      if (bodyParameters) {
+        components.push({
+          type: 'body',
+          parameters: bodyParameters.map((parameter) => ({ type: 'text', text: parameter })),
+        })
+      }
+      if (footerParameters) {
+        components.push({
+          type: 'footer',
+          parameters: footerParameters.map((parameter) => ({ type: 'text', text: parameter })),
+        })
+      }
+      const requestBody: WaOutgoingTemplate = {
+        messaging_product: 'whatsapp',
+        to: userWhatsappId,
+        type: 'template',
+        template: {
+          name,
+          language: {
+            policy: 'deterministic',
+            code: language,
+          },
+          components,
+        },
+      }
+
+      return sendMessageRequest(businessPhoneNumberId, requestBody)
     },
   }
 
@@ -408,6 +385,94 @@ export namespace Whatsapp {
     return media
   }
 
+  async function uploadMedia(
+    businessPhoneNumberId: string,
+    data: ArrayBuffer,
+    mimeType: string,
+    filename?: string
+  ): Promise<string> {
+    const formData = new FormData()
+    const blobFilename = filename || `media.${getExtFromMimeType(mimeType)}`
+    formData.append('file', new Blob([data], { type: mimeType }), blobFilename)
+    formData.append('type', mimeType)
+    formData.append('messaging_product', 'whatsapp')
+
+    const uploadResponse = await fetch(
+      `https://graph.facebook.com/${WA_API_VERSION}/${businessPhoneNumberId}/media`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${META_API_TOKEN}`,
+        },
+        body: formData,
+      }
+    )
+
+    if (!uploadResponse.ok) {
+      const body = await uploadResponse.text()
+      logger.error(
+        `Failed to upload media: [${uploadResponse.status} ${uploadResponse.statusText}] ${body}`,
+        {
+          status: uploadResponse.status,
+          statusText: uploadResponse.statusText,
+          body,
+          mimeType,
+        }
+      )
+      throw new ResponseDeliveryError('Failed to upload media')
+    }
+
+    const uploadResult = (await uploadResponse.json()) as { id: string }
+    return uploadResult.id
+  }
+
+  async function sendMessageRequest<T extends Whatsapp.WaOutgoingMessageUnion>(
+    businessPhoneNumberId: string,
+    requestBody: T
+  ) {
+    const httpResponse = await fetch(
+      `https://graph.facebook.com/${WA_API_VERSION}/${businessPhoneNumberId}/messages`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${META_API_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      }
+    )
+
+    if (!httpResponse.ok) {
+      logger.error('Failed to send message: {status} {statusText}', {
+        status: httpResponse.status,
+        statusText: httpResponse.statusText,
+        body: await httpResponse.text(),
+      })
+      throw new ResponseDeliveryError('Failed to send message')
+    }
+
+    const response = (await httpResponse.json()) as OutgoingMessageResponse
+
+    if (!response.messages?.[0]?.id) {
+      logger.error('Send message request succeeded but no message ID was returned', {
+        ...response,
+      })
+      throw new ResponseDeliveryError('Failed to send message')
+    }
+
+    return response.messages[0].id
+  }
+
+  function getWhatsappIds() {
+    const businessPhoneNumberId = getContext().var.businessPhoneNumberId
+    const userWhatsappId = getContext().var.userWhatsappId
+
+    if (!businessPhoneNumberId || !userWhatsappId) {
+      throw new ResponseDeliveryError('Business number or user WhatsApp ID not found')
+    }
+    return { userWhatsappId, businessPhoneNumberId }
+  }
+
   export type AcknowledgeMessageResponse = {
     success?: boolean
     error?: {
@@ -425,13 +490,6 @@ export namespace Whatsapp {
   export type Notification = {
     object: 'whatsapp_business_account'
     entry: Array<Entry>
-  }
-
-  export type OutgoingTextMessage = {
-    messaging_product: 'whatsapp'
-    to: string
-    text: { body: string }
-    context?: { message_id: string }
   }
 
   export type OutgoingMessageResponse = {
@@ -571,6 +629,273 @@ export namespace Whatsapp {
       emoji: string
     }
   }
+
+  export interface WaOutgoingMessage {
+    messaging_product: 'whatsapp'
+    to: string
+    context?: { message_id: string }
+  }
+
+  export interface WaOutgoingText extends WaOutgoingMessage {
+    type: 'text'
+    text: { body: string; preview_url: true }
+  }
+
+  export interface WaOutgoingImage extends WaOutgoingMessage {
+    type: 'image'
+    image: {
+      id: string
+      caption?: string
+    }
+  }
+
+  export interface WaOutgoingDocument extends WaOutgoingMessage {
+    type: 'document'
+    document: {
+      id: string
+      filename: string
+      caption?: string
+    }
+  }
+
+  export interface WaOutgoingLocation extends WaOutgoingMessage {
+    type: 'location'
+    location: {
+      latitude: number
+      longitude: number
+      name?: string
+      address?: string
+    }
+  }
+
+  export interface WaOutgoingReaction extends WaOutgoingMessage {
+    type: 'reaction'
+    reaction: {
+      message_id: string
+      emoji: string
+    }
+  }
+
+  export interface WaOutgoingContact extends WaOutgoingMessage {
+    type: 'contacts'
+    contacts: Array<{
+      name: {
+        formatted_name: string
+        first_name?: string
+        last_name?: string
+      }
+      phones: Array<{
+        phone: string
+        type: 'HOME' | 'WORK' | 'CELL' | 'MAIN' | 'IPHONE'
+        wa_id?: string
+      }>
+    }>
+  }
+
+  export interface WaOutgoingInteractiveList extends WaOutgoingMessage {
+    type: 'interactive'
+    interactive: {
+      type: 'list'
+      header?: {
+        type: 'text'
+        text: string
+      }
+      body: {
+        text: string
+      }
+      footer?: {
+        text: string
+      }
+      action: {
+        button: string
+        sections: Array<{
+          title: string
+          rows: Array<{
+            id: string
+            title: string
+            description?: string
+          }>
+        }>
+      }
+    }
+  }
+
+  export interface WaOutgoingInteractiveButton extends WaOutgoingMessage {
+    type: 'interactive'
+    interactive: {
+      type: 'button'
+      header?:
+        | {
+            type: 'text'
+            text: string
+          }
+        | {
+            type: 'image'
+            image: {
+              id?: string
+              link?: string
+            }
+          }
+        | {
+            type: 'document'
+            document: {
+              id?: string
+              link?: string
+              filename?: string
+            }
+          }
+        | {
+            type: 'video'
+            video: {
+              id?: string
+              link?: string
+            }
+          }
+      body: {
+        text: string
+      }
+      footer?: {
+        text: string
+      }
+      action: {
+        buttons: Array<{
+          type: 'reply'
+          reply: {
+            id: string
+            title: string
+          }
+        }>
+      }
+    }
+  }
+
+  export interface WaOutgoingInteractiveCtaUrl extends WaOutgoingMessage {
+    type: 'interactive'
+    interactive: {
+      type: 'cta_url'
+      header?:
+        | {
+            type: 'text'
+            text: string
+          }
+        | {
+            type: 'image'
+            image: {
+              id?: string
+              link?: string
+            }
+          }
+        | {
+            type: 'document'
+            document: {
+              id?: string
+              link?: string
+              filename?: string
+            }
+          }
+        | {
+            type: 'video'
+            video: {
+              id?: string
+              link?: string
+            }
+          }
+      body: {
+        text: string
+      }
+      footer?: {
+        text: string
+      }
+      action: {
+        name: 'cta_url'
+        parameters: {
+          display_text: string
+          url: string
+        }
+      }
+    }
+  }
+
+  export interface WaOutgoingTemplate extends WaOutgoingMessage {
+    type: 'template'
+    template: {
+      name: string
+      language: {
+        code: string
+        policy: 'deterministic'
+      }
+      components: Array<WaTemplateComponent>
+    }
+  }
+
+  export type WaTemplateComponent =
+    | WaTemplateBodyComponent
+    | WaTemplateHeaderComponent
+    | WaTemplateFooterComponent
+
+  export interface WaTemplateBodyComponent {
+    type: 'body'
+    parameters: Array<WaTemplateParameter>
+  }
+
+  export interface WaTemplateHeaderComponent {
+    type: 'header'
+    parameters: Array<WaTemplateParameter>
+  }
+
+  export interface WaTemplateFooterComponent {
+    type: 'footer'
+    parameters: Array<WaTemplateParameter>
+  }
+
+  export type WaTemplateParameter =
+    | WaTemplateTextParameter
+    | WaTemplateCurrencyParameter
+    | WaTemplateDateTimeParameter
+
+  export interface WaTemplateTextParameter {
+    type: 'text'
+    text: string
+  }
+
+  export interface WaTemplateCurrencyParameter {
+    type: 'currency'
+    currency: {
+      fallback_value: string
+      code: string
+      amount_1000: number
+    }
+  }
+
+  export interface WaTemplateDateTimeParameter {
+    type: 'date_time'
+    date_time:
+      | {
+          fallback_value: string
+          day_of_week: number
+          day_of_month: number
+          year: number
+          month: number
+          hour: number
+          minute: number
+        }
+      | {
+          fallback_value: string
+          timestamp: number
+        }
+  }
+
+  export type WaOutgoingMessageUnion =
+    | WaOutgoingText
+    | WaOutgoingImage
+    | WaOutgoingDocument
+    | WaOutgoingLocation
+    | WaOutgoingReaction
+    | WaOutgoingContact
+    | WaOutgoingInteractiveList
+    | WaOutgoingInteractiveButton
+    | WaOutgoingInteractiveCtaUrl
+    | WaOutgoingTemplate
 
   export type Entry = {
     id: string

@@ -3,11 +3,16 @@ import type { ChunkData, MessageType, User } from '../infra/db'
 export class Frame {
   user?: User
   inbound?: FrameMessage
-  outbound?: FrameMessage
+  outbound?: Omit<FrameMessage, 'media'>
+  outboundFile?: {
+    externalChatId: string
+    type: 'image' | 'document'
+    storageKey: string
+    caption?: string
+  }
 }
 
 export interface FrameMessage {
-  messageId?: string
   externalChatId?: string
   type: MessageType
   text?: string

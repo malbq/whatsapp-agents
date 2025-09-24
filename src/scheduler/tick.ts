@@ -45,7 +45,7 @@ export async function runSchedulerTick({
       // will need to be handled when we implement the actual WhatsApp sending
       // For now, this is a placeholder that needs proper context setup
 
-      const waMessageId = await chat.sendTextMessage({
+      const waMessageId = await chat.sendText({
         text: reminder.message,
         // Note: This will need proper context setup for user-specific sending
       })

@@ -4,7 +4,6 @@ import { getLogger } from '@logtape/logtape'
 import {
   generateText,
   stepCountIs,
-  tool,
   experimental_transcribe as transcribe,
   type AssistantModelMessage,
   type LanguageModel,
@@ -14,17 +13,14 @@ import {
   type TranscriptionModel,
   type UserModelMessage,
 } from 'ai'
-import { z } from 'zod'
 
+import { analyzeImage } from '../agent/prompts/analyzeImage'
+import { system } from '../agent/prompts/system'
+import { transcribeDocument } from '../agent/prompts/transcribeDocument'
 import { EmbeddingsGenerationError } from '../errors'
-import { analyzeImage } from '../prompts/analyzeImage'
-import { retrieveFileToolDescription } from '../prompts/retrieveFileToolDescription'
-import { searchFilesToolDescription } from '../prompts/searchFilesToolDescription'
-import { system } from '../prompts/system'
-import { transcribeDocument } from '../prompts/transcribeDocument'
-import { updateUserProfile } from '../prompts/updateUserProfile'
 import { formatTokenUsage } from '../utils/formatTokenUsage'
-import type { FileSearchResult } from './db'
+import { splitIntoChunks } from '../utils/splitIntoChunks'
+import type { ChunkData } from './db'
 
 const logger = getLogger(['infra', 'ai'])
 
@@ -47,7 +43,7 @@ const DOCUMENT_TRANSCRIPTION_MODEL = google('gemini-2.5-flash-lite')
 const EMBEDDING_MODEL = '@cf/baai/bge-m3'
 const IMAGE_ANALYSIS_TEMP = 0.1
 const TRANSCRIPTION_GEN_TEMP = 0
-const MAX_STEPS = 5
+const MAX_STEPS = 6
 
 export type AIMessage = SystemModelMessage | UserModelMessage | AssistantModelMessage
 
@@ -55,8 +51,7 @@ export interface AI {
   respond: (params: {
     instructions?: string
     messages: AIMessage[]
-    searchFilesCallback: () => Promise<Array<Omit<FileSearchResult, 'messageId'>>>
-  }) => Promise<{ text: string; usage: LanguageModelUsage; storageKey?: string }>
+  }) => Promise<{ text: string; usage: LanguageModelUsage }>
   transcribeAudio: (params: { instructions?: string; audio: ArrayBuffer }) => Promise<string>
   analyzeImage: (params: {
     instructions?: string
@@ -69,30 +64,17 @@ export interface AI {
     mimeType: string
     filename: string
   }) => Promise<string>
-  improveUserProfile: (params: {
-    instructions?: (profile: string, message: string) => string
-    profile: string
-    message: string
-  }) => Promise<string>
-  generateEmbeddings: (params: { text: string[] }) => Promise<number[][]>
+  generateEmbeddings: (text: string) => Promise<Array<ChunkData>>
 }
 
 type AiToolSet = {
-  search_files: ReturnType<typeof searchFilesTool>
-  retrieve_file: ReturnType<typeof retrieveFileTool>
   google_search?: ReturnType<typeof google.tools.googleSearch>
   web_search_preview?: ReturnType<typeof openai.tools.webSearchPreview>
 }
 
 export const AIProvider: AI = {
-  respond: async ({ instructions = system, messages, searchFilesCallback }) => {
-    let storageKey: string | undefined
-    let tools: AiToolSet = {
-      search_files: searchFilesTool(searchFilesCallback),
-      retrieve_file: retrieveFileTool((key) => {
-        storageKey = key
-      }),
-    }
+  respond: async ({ instructions = system, messages }) => {
+    let tools: AiToolSet = {}
     switch (TEXT_MODEL.provider) {
       case 'google.generative-ai':
         tools.google_search = google.tools.googleSearch({})
@@ -134,7 +116,6 @@ export const AIProvider: AI = {
     return {
       text: result.text,
       usage: result.usage,
-      storageKey,
     }
   },
 
@@ -263,20 +244,8 @@ export const AIProvider: AI = {
     return response.text
   },
 
-  improveUserProfile: async ({ instructions = updateUserProfile, profile, message }) => {
-    const response = await generateText({
-      model: TEXT_MODEL,
-      maxOutputTokens: 2000,
-      prompt: instructions(profile, message),
-    })
-    logger.debug(`Update user profile with ${TEXT_MODEL.provider}/${TEXT_MODEL.modelId}`, {
-      text: response.text,
-      usage: formatTokenUsage(response.usage),
-    })
-    return response.text
-  },
-
-  generateEmbeddings: async ({ text }: { text: string[] }) => {
+  generateEmbeddings: async (text) => {
+    const chunks = await splitIntoChunks(text)
     const httpResponse = await fetch(
       `https://api.cloudflare.com/client/v4/accounts/${
         import.meta.env.CF_ACCOUNT_ID
@@ -284,7 +253,7 @@ export const AIProvider: AI = {
       {
         headers: { Authorization: `Bearer ${import.meta.env.CF_API_TOKEN}` },
         method: 'POST',
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text: chunks }),
       }
     )
 
@@ -315,31 +284,12 @@ export const AIProvider: AI = {
       shape: response.result.shape,
       pooling: response.result.pooling,
     })
-    return response.result.data
+    return response.result.data.map<ChunkData>((embedding, i) => ({
+      content: chunks[i]!,
+      embedding,
+    }))
   },
 }
-
-const searchFilesTool = (
-  searchFilesCallback: () => Promise<Array<Omit<FileSearchResult, 'messageId'>>>
-) =>
-  tool({
-    description: searchFilesToolDescription,
-    inputSchema: z.object({}),
-    execute: searchFilesCallback,
-  })
-
-const retrieveFileTool = (cb: (storageKey: string) => void) =>
-  tool({
-    description: retrieveFileToolDescription,
-    inputSchema: z.object({
-      storageKey: z.string().describe('The storage key of the file to retrieve'),
-    }),
-    execute: async ({ storageKey }) => {
-      cb(storageKey)
-      // TODO: should we check if the file exists?
-      return `File with storage key ${storageKey} has been found and will be sent to the user.`
-    },
-  })
 
 interface EmbeddingsResponseBody {
   result: {
