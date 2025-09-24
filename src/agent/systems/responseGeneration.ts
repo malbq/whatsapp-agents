@@ -21,7 +21,7 @@ function formatWithTag(type: MessageType, content: string, filename?: string) {
   }
 }
 
-export async function ResponseGeneration(frame: Frame, deps: Deps) {
+export async function responseGeneration(frame: Frame, deps: Deps) {
   if (!frame.user) throw new ResponseGenerationError('User not found')
   if (!frame.inbound?.text && !frame.inbound?.media?.transcription)
     throw new ResponseGenerationError('User message not found')

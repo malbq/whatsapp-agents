@@ -3,7 +3,7 @@ import { getExtFromMimeType } from '../../utils/getExtFromMimeType'
 import { sanitizeFilename } from '../../utils/sanitizeFilename'
 import { Frame } from '../frame'
 
-const logger = getLogger(['app', 'agent', 'mediaStorage'])
+const logger = getLogger(['app', 'agent', 'storeMedia'])
 
 export async function storeMedia(frame: Frame, deps: Deps) {
   if (

@@ -14,7 +14,7 @@ import {
 import { Frame, type FrameMessage } from '../src/agent/frame'
 import { recentMessages } from '../src/agent/prompts/recentMessages'
 import { userProfile } from '../src/agent/prompts/userProfile'
-import { ResponseGeneration } from '../src/agent/systems/responseGeneration'
+import { responseGeneration } from '../src/agent/systems/responseGeneration'
 import { ResponseGenerationError } from '../src/errors'
 import type { Chat } from '../src/infra/chat'
 import type { DB, MessageType, User } from '../src/infra/db'
@@ -109,23 +109,23 @@ describe('ResponseGeneration Module', () => {
   describe('Error Handling', () => {
     test('should throw error when user is not found', async () => {
       const frame = new Frame()
-      await expect(ResponseGeneration(frame, deps)).rejects.toThrow(ResponseGenerationError)
-      await expect(ResponseGeneration(frame, deps)).rejects.toThrow(/User not found/)
+      await expect(responseGeneration(frame, deps)).rejects.toThrow(ResponseGenerationError)
+      await expect(responseGeneration(frame, deps)).rejects.toThrow(/User not found/)
     })
 
     test('should throw error when user message is not found', async () => {
       const frame = new Frame()
       frame.user = createTestUser()
-      await expect(ResponseGeneration(frame, deps)).rejects.toThrow(ResponseGenerationError)
-      await expect(ResponseGeneration(frame, deps)).rejects.toThrow(/User message not found/)
+      await expect(responseGeneration(frame, deps)).rejects.toThrow(ResponseGenerationError)
+      await expect(responseGeneration(frame, deps)).rejects.toThrow(/User message not found/)
     })
 
     test('should throw error when both text and transcription are missing', async () => {
       const frame = new Frame()
       frame.user = createTestUser()
       frame.inbound = { type: 'text' as MessageType }
-      await expect(ResponseGeneration(frame, deps)).rejects.toThrow(ResponseGenerationError)
-      await expect(ResponseGeneration(frame, deps)).rejects.toThrow(/User message not found/)
+      await expect(responseGeneration(frame, deps)).rejects.toThrow(ResponseGenerationError)
+      await expect(responseGeneration(frame, deps)).rejects.toThrow(/User message not found/)
     })
   })
 
@@ -147,7 +147,7 @@ describe('ResponseGeneration Module', () => {
       const frame = new Frame()
       frame.user = user
       frame.inbound = { type: 'text' as MessageType, text: 'Current message' }
-      await ResponseGeneration(frame, deps)
+      await responseGeneration(frame, deps)
       expect(ai.respond).toHaveBeenCalledWith({
         messages: [
           { role: 'system', content: userProfile(user.profile) },
@@ -217,7 +217,7 @@ describe('ResponseGeneration Module', () => {
       const frame = new Frame()
       frame.user = user
       frame.inbound = inbound
-      await ResponseGeneration(frame, deps)
+      await responseGeneration(frame, deps)
       expect(ai.respond).toHaveBeenCalledWith({
         messages: expectedMessages,
       })
@@ -238,7 +238,7 @@ describe('ResponseGeneration Module', () => {
         text: 'Hello back!',
         usage: { totalTokens: 10, inputTokens: 5, outputTokens: 5 } as LanguageModelUsage,
       }))
-      await ResponseGeneration(frame, deps)
+      await responseGeneration(frame, deps)
       expect(frame.outbound).toEqual({
         externalChatId: 'external-id',
         type: 'text',
@@ -253,7 +253,7 @@ describe('ResponseGeneration Module', () => {
       ai.respond = mock(async () => {
         throw new Error('AI service error')
       })
-      await expect(ResponseGeneration(frame, deps)).rejects.toThrow('AI service error')
+      await expect(responseGeneration(frame, deps)).rejects.toThrow('AI service error')
       expect(frame.outbound).toEqual({
         type: 'text',
         text: 'Desculpe, tive algum problema ao tentar te responder.',

@@ -4,7 +4,7 @@ import type { Frame, FrameMessage } from '../frame'
 
 const logger = getLogger(['app', 'agent', 'storeMessageExchange'])
 
-export async function StoreMessageExchange(frame: Frame, deps: Deps): Promise<void> {
+export async function storeMessageExchange(frame: Frame, deps: Deps): Promise<void> {
   if (!frame.user || !frame.inbound || !frame.outbound) return
 
   const messagesToStore: DbMessageInput[] = []

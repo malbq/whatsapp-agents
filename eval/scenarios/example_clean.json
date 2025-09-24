@@ -1,6 +1,5 @@
 {
   "systemPrompt": "You are role-playing as a human user in a conversation with a personal assistant AI.",
-  "model": "gpt-5-2025-08-07",
   "conversation": [],
   "maxMessages": 2
 }

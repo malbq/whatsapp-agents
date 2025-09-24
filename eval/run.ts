@@ -31,7 +31,7 @@
  *   bun run eval/run.ts scenarios/customer_support.json
  */
 
-import { openai } from '@ai-sdk/openai'
+import { xai } from '@ai-sdk/xai'
 import { createClient, type Client } from '@libsql/client'
 import { generateText } from 'ai'
 import crypto from 'node:crypto'
@@ -44,7 +44,6 @@ import { AIProvider } from '../src/infra/ai'
 import type { Chat, IncomingMessage } from '../src/infra/chat'
 import { LibSql } from '../src/infra/dbLibSql'
 import { FilesystemStorage } from '../src/infra/storageFilesystem'
-import { splitIntoChunks } from '../src/utils/splitIntoChunks'
 
 async function main() {
   const configFile = process.argv[2]
@@ -77,26 +76,14 @@ async function main() {
   let predefinedMessageIds = new Set<string>()
   let lastUserMessageContent: string | undefined
   if (config.conversation && config.conversation.length > 0) {
-    const cache = await readEmbeddingsCache(configFile, {
-      systemPrompt: config.systemPrompt,
-      model: config.model,
-      conversation: config.conversation,
-    })
+    const cache = await readEmbeddingsCache(configFile, config)
     const result = await insertPredefinedMessages(
       client,
       config.conversation,
       userExternalId,
       cache,
       async (items) => {
-        await writeEmbeddingsCache(
-          configFile,
-          {
-            systemPrompt: config.systemPrompt,
-            model: config.model,
-            conversation: config.conversation,
-          },
-          items
-        )
+        await writeEmbeddingsCache(configFile, config, items)
       }
     )
     predefinedMessageIds = result.messageIds
@@ -223,9 +210,16 @@ async function insertPredefinedMessages(
       chunks = cached.chunks
       embeddings = cached.embeddings
     } else {
-      chunks = await splitIntoChunks(message.content)
-      embeddings = await AIProvider.generateEmbeddings({ text: chunks })
-      cacheItemsToPersist.push({ role: message.role, content: message.content, chunks, embeddings })
+      const messageEmbeddings = await AIProvider.generateEmbeddings(message.content)
+      chunks = messageEmbeddings.map((e) => e.content)
+      embeddings = messageEmbeddings.map((e) => e.embedding)
+
+      cacheItemsToPersist.push({
+        role: message.role,
+        content: message.content,
+        chunks,
+        embeddings,
+      })
     }
 
     if (!isLastUserMessage) {
@@ -266,7 +260,6 @@ function createUserMessage(userMessage: string, userExternalId: string): Incomin
 
 const SimulationConfigSchema = z.object({
   systemPrompt: z.string(),
-  model: z.string(),
   maxMessages: z.number(),
   conversation: z.array(
     z.object({
@@ -297,14 +290,14 @@ type EmbeddingsCache = {
   items: CachedEmbedding[]
 }
 
-function hashScenarioPayload(payload: unknown): string {
+function hashScenarioPayload(payload: SimulationConfig): string {
   const text = JSON.stringify(payload)
   return crypto.createHash('sha256').update(text).digest('hex')
 }
 
 async function readEmbeddingsCache(
   configFile: string,
-  scenarioPayload: unknown
+  configPayload: SimulationConfig
 ): Promise<EmbeddingsCache | undefined> {
   try {
     const absPath = join(process.cwd(), configFile)
@@ -312,7 +305,7 @@ async function readEmbeddingsCache(
     const file = await readFile(cachePath, 'utf-8')
     const data = JSON.parse(file) as EmbeddingsCache
     if (data.version !== 1) return undefined
-    const expectedHash = hashScenarioPayload(scenarioPayload)
+    const expectedHash = hashScenarioPayload(configPayload)
     if (data.scenarioHash !== expectedHash) return undefined
     return data
   } catch {
@@ -322,7 +315,7 @@ async function readEmbeddingsCache(
 
 async function writeEmbeddingsCache(
   configFile: string,
-  scenarioPayload: unknown,
+  configPayload: SimulationConfig,
   items: CachedEmbedding[]
 ): Promise<void> {
   const absPath = join(process.cwd(), configFile)
@@ -330,7 +323,7 @@ async function writeEmbeddingsCache(
   const payload: EmbeddingsCache = {
     version: 1,
     scenarioPath: absPath,
-    scenarioHash: hashScenarioPayload(scenarioPayload),
+    scenarioHash: hashScenarioPayload(configPayload),
     items,
   }
   await writeFile(cachePath, JSON.stringify(payload, null, 2), 'utf-8')
@@ -339,7 +332,7 @@ async function writeEmbeddingsCache(
 function createUserMessageGenerator(
   config: SimulationConfig
 ): (message?: string) => Promise<string | null> {
-  const modelConfig = openai.responses(config.model)
+  const modelConfig = xai('grok-4-fast-reasoning')
   let previousResponseId: string | undefined
   let isFirstCall = true
 
@@ -349,12 +342,6 @@ function createUserMessageGenerator(
     const params: Parameters<typeof generateText>[0] = {
       model: modelConfig,
       system: config.systemPrompt,
-      providerOptions: {
-        openai: {
-          reasoningEffort: 'high',
-          textVerbosity: 'low',
-        },
-      },
     }
 
     if (previousResponseId && message) {
@@ -419,6 +406,10 @@ const evalChat: Chat & { lastAssistantMessage?: string } = {
   },
   sendInteractiveCtaUrl: async (params) => {
     evalChat.lastAssistantMessage = params.body.text
+    return newExternalId()
+  },
+  sendTemplate: async (params) => {
+    evalChat.lastAssistantMessage = params.bodyParameters.join(' ')
     return newExternalId()
   },
   acknowledgeMessage: async (_) => {},

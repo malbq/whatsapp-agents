@@ -2,9 +2,9 @@ import { getLogger } from '@logtape/logtape'
 import { spreadError } from '../../utils/spreadError'
 import type { Frame } from '../frame'
 
-const logger = getLogger(['app', 'agent', 'userSystem'])
+const logger = getLogger(['app', 'agent', 'persistUser'])
 
-export async function PersistUser(
+export async function persistUser(
   frame: Frame,
   deps: Deps,
   incomingUser: { externalId: string; name: string }
