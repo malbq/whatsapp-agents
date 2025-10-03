@@ -123,7 +123,7 @@ export namespace LibSql {
 
       async findRecentMessages({ userId }) {
         const selectResult = await client.execute({
-          sql: `SELECT m.id, m.role, m.type,
+          sql: `SELECT m.id, m.role, m.type, m.media_storage_key,
           CASE 
             WHEN m.type IN ('document') THEN SUBSTR(GROUP_CONCAT(e.content, ' '), 1, 200)
             ELSE GROUP_CONCAT(e.content, ' ')
@@ -143,6 +143,7 @@ export namespace LibSql {
             role: row.role as RecentMessage['role'],
             content: row.content as RecentMessage['content'],
             type: row.type as RecentMessage['type'],
+            storageKey: row.media_storage_key as RecentMessage['storageKey'],
           }))
           .toReversed()
       },
@@ -189,17 +190,52 @@ export namespace LibSql {
           timestamp: new Date(row.timestamp as string),
           chunkSequence: row.chunk_sequence as number,
           totalChunks: row.total_chunks as number,
+          storageKey: row.media_storage_key as SimilarMessage['storageKey'],
         }))
       },
 
       async updateUserProfile({ userId, profile }) {
         profile = profile.trim()
-        if (profile.length === 0) return
+        if (profile.length === 0) return null
+        const profileVersionId = Bun.randomUUIDv7()
         await client.execute({
           sql: `INSERT INTO user_profile_version (id, user_id, profile)
           VALUES (?, ?, ?)`,
-          args: [Bun.randomUUIDv7(), userId, profile],
+          args: [profileVersionId, userId, profile],
         })
+        return profileVersionId
+      },
+
+      async updateProfileVersionMessageId({ profileVersionId, messageId }) {
+        await client.execute({
+          sql: `UPDATE user_profile_version SET message_id = ? WHERE id = ?`,
+          args: [messageId, profileVersionId],
+        })
+      },
+
+      async findStorageKeyById({ userId, messageId }) {
+        const result = await client.execute({
+          sql: `SELECT media_storage_key FROM message WHERE user_id = ? AND id = ?`,
+          args: [userId, messageId],
+        })
+
+        if (result.rows.length === 0) {
+          return null
+        }
+
+        const row = result.rows[0]
+        if (!row) {
+          return null
+        }
+
+        const storageKey = row.media_storage_key as string | null
+        if (!storageKey) {
+          return null
+        }
+
+        return {
+          storageKey,
+        }
       },
 
       async searchFiles({ userId, queryEmbedding }) {

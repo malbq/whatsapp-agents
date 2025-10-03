@@ -1,6 +1,6 @@
 import { getLogger } from '@logtape/logtape'
-import type { DbMessageInput, MessageRole } from '../../infra/db'
-import type { Frame, FrameMessage } from '../frame'
+import type { DbMessageInput } from '../../infra/db'
+import type { Frame } from '../frame'
 
 const logger = getLogger(['app', 'agent', 'storeMessageExchange'])
 
@@ -18,41 +18,46 @@ export async function storeMessageExchange(frame: Frame, deps: Deps): Promise<vo
       storageKey: frame.inbound.media.storageKey,
       content: frame.inbound.media.transcriptionEmbedding,
     })
-
-    if (frame.inbound.textEmbedding) {
-      messagesToStore.push({
-        userId: frame.user.id,
-        role: 'user',
-        externalId: frame.inbound.externalChatId,
-        type: 'text',
-        content: frame.inbound.textEmbedding,
-      })
-    }
-  } else {
-    messagesToStore.push(mapMessageToDb(frame.inbound, frame.user.id, 'user'))
   }
-  messagesToStore.push(mapMessageToDb(frame.outbound, frame.user.id, 'assistant'))
+
+  if (frame.inbound.textEmbedding) {
+    messagesToStore.push({
+      userId: frame.user.id,
+      role: 'user',
+      externalId: frame.inbound.externalChatId,
+      // when media has transcription we already stored a message with inbound.type
+      // Then we store this one as text message (may be doc/image caption)
+      type: frame.inbound.media?.transcriptionEmbedding ? 'text' : frame.inbound.type,
+      content: frame.inbound.textEmbedding,
+    })
+  }
+
+  messagesToStore.push({
+    userId: frame.user.id,
+    role: 'assistant',
+    externalId: frame.outbound.externalChatId,
+    type: frame.outbound.type,
+    content: frame.outbound.textEmbedding ?? [],
+  })
 
   const messageIds = await deps.db.storeMessage(messagesToStore)
 
-  if (frame.inbound.textEmbedding) {
-    // either [0] for text/voice or [1] for media caption
-    frame.inbound.messageId = messageIds.at(-2)
+  switch (messageIds.length) {
+    case 0:
+      logger.warn(`Stored no messages`)
+      break
+    case 1:
+      logger.warn(`Stored only 1 message (${messagesToStore[0]?.role}/${messagesToStore[0]?.type})`)
+      break
+    default:
+      logger.info(
+        `Stored ${messageIds.length} messages (${messagesToStore
+          .map((m) => `${m.role}/${m.type}`)
+          .join(', ')})`
+      )
+      break
   }
 
-  logger.info(`Stored ${messageIds.length} messages`)
-}
-
-function mapMessageToDb(message: FrameMessage, userId: string, role: MessageRole): DbMessageInput {
-  const content = message.textEmbedding ??
-    message.media?.transcriptionEmbedding ?? [{ content: message.text ?? '', embedding: [] }]
-
-  return {
-    userId,
-    role,
-    externalId: message.externalChatId,
-    type: message.type,
-    content,
-    storageKey: message.media?.storageKey,
-  }
+  frame.inbound.messageId = messageIds.at(-2)
+  frame.outbound.messageId = messageIds.at(-1)
 }

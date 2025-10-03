@@ -9,7 +9,8 @@ import {
 import { getExtFromMimeType } from '../utils/getExtFromMimeType'
 import type { Chat, IncomingMessage } from './chat'
 
-const { META_API_TOKEN, WA_API_VERSION } = import.meta.env
+const { META_API_TOKEN, WA_API_VERSION, WA_BUSINESS_PHONE_ID } = import.meta.env
+const AuthorizationHeader = `Bearer ${META_API_TOKEN}`
 
 const logger = getLogger(['infra', 'chat'])
 
@@ -26,7 +27,6 @@ export namespace Whatsapp {
       const waMessage = change.value.messages?.[0]
       if (!contact || !waMessage) return {}
 
-      getContext().set('businessPhoneNumberId', change.value.metadata.phone_number_id)
       getContext().set('userWhatsappId', contact.wa_id)
 
       const message: Pick<IncomingMessage, 'userExternalId' | 'userName' | 'externalId'> = {
@@ -85,19 +85,12 @@ export namespace Whatsapp {
     },
 
     acknowledgeMessage: async (messageId) => {
-      const businessPhoneNumberId = getContext().var.businessPhoneNumberId
-
-      if (!businessPhoneNumberId) {
-        logger.error`Business phone number ID not found`
-        return
-      }
-
       const response = (await fetch(
-        `https://graph.facebook.com/${WA_API_VERSION}/${businessPhoneNumberId}/messages`,
+        `https://graph.facebook.com/${WA_API_VERSION}/${WA_BUSINESS_PHONE_ID}/messages`,
         {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${META_API_TOKEN}`,
+            Authorization: AuthorizationHeader,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
@@ -133,7 +126,7 @@ export namespace Whatsapp {
     },
 
     sendText: async ({ text, replyingTo }) => {
-      const { userWhatsappId, businessPhoneNumberId } = getWhatsappIds()
+      const { userWhatsappId } = getWhatsappIds()
 
       const requestBody: WaOutgoingText = {
         messaging_product: 'whatsapp',
@@ -143,13 +136,13 @@ export namespace Whatsapp {
         ...(replyingTo && { context: { message_id: replyingTo } }),
       }
 
-      return sendMessageRequest(businessPhoneNumberId, requestBody)
+      return sendMessageRequest(requestBody)
     },
 
     sendImage: async ({ data, caption, mimeType, replyingTo }) => {
-      const { userWhatsappId, businessPhoneNumberId } = getWhatsappIds()
+      const { userWhatsappId } = getWhatsappIds()
 
-      const mediaId = await uploadMedia(businessPhoneNumberId, data, mimeType)
+      const mediaId = await uploadMedia(data, mimeType)
 
       const message: WaOutgoingImage = {
         messaging_product: 'whatsapp',
@@ -162,13 +155,13 @@ export namespace Whatsapp {
         ...(replyingTo && { context: { message_id: replyingTo } }),
       }
 
-      return sendMessageRequest(businessPhoneNumberId, message)
+      return sendMessageRequest(message)
     },
 
     sendDocument: async ({ data, filename, caption, mimeType, replyingTo }) => {
-      const { userWhatsappId, businessPhoneNumberId } = getWhatsappIds()
+      const { userWhatsappId } = getWhatsappIds()
 
-      const mediaId = await uploadMedia(businessPhoneNumberId, data, mimeType, filename)
+      const mediaId = await uploadMedia(data, mimeType, filename)
 
       const message: WaOutgoingDocument = {
         messaging_product: 'whatsapp',
@@ -182,11 +175,11 @@ export namespace Whatsapp {
         ...(replyingTo && { context: { message_id: replyingTo } }),
       }
 
-      return sendMessageRequest(businessPhoneNumberId, message)
+      return sendMessageRequest(message)
     },
 
     sendLocation: async ({ latitude, longitude, name, address, replyingTo }) => {
-      const { userWhatsappId, businessPhoneNumberId } = getWhatsappIds()
+      const { userWhatsappId } = getWhatsappIds()
 
       const requestBody: WaOutgoingLocation = {
         messaging_product: 'whatsapp',
@@ -201,11 +194,11 @@ export namespace Whatsapp {
         ...(replyingTo && { context: { message_id: replyingTo } }),
       }
 
-      return sendMessageRequest(businessPhoneNumberId, requestBody)
+      return sendMessageRequest(requestBody)
     },
 
     sendReaction: async ({ externalChatId, emoji }) => {
-      const { userWhatsappId, businessPhoneNumberId } = getWhatsappIds()
+      const { userWhatsappId } = getWhatsappIds()
 
       const requestBody: WaOutgoingReaction = {
         messaging_product: 'whatsapp',
@@ -217,11 +210,11 @@ export namespace Whatsapp {
         },
       }
 
-      return sendMessageRequest(businessPhoneNumberId, requestBody)
+      return sendMessageRequest(requestBody)
     },
 
     sendContact: async ({ contacts }) => {
-      const { userWhatsappId, businessPhoneNumberId } = getWhatsappIds()
+      const { userWhatsappId } = getWhatsappIds()
 
       const requestBody: WaOutgoingContact = {
         messaging_product: 'whatsapp',
@@ -241,11 +234,11 @@ export namespace Whatsapp {
         })),
       }
 
-      return sendMessageRequest(businessPhoneNumberId, requestBody)
+      return sendMessageRequest(requestBody)
     },
 
     sendInteractiveList: async ({ header, body, footer, action, replyingTo }) => {
-      const { userWhatsappId, businessPhoneNumberId } = getWhatsappIds()
+      const { userWhatsappId } = getWhatsappIds()
 
       const requestBody: WaOutgoingInteractiveList = {
         messaging_product: 'whatsapp',
@@ -261,11 +254,11 @@ export namespace Whatsapp {
         ...(replyingTo && { context: { message_id: replyingTo } }),
       }
 
-      return sendMessageRequest(businessPhoneNumberId, requestBody)
+      return sendMessageRequest(requestBody)
     },
 
     sendInteractiveButton: async ({ header, body, footer, action, replyingTo }) => {
-      const { userWhatsappId, businessPhoneNumberId } = getWhatsappIds()
+      const { userWhatsappId } = getWhatsappIds()
 
       const requestBody: WaOutgoingInteractiveButton = {
         messaging_product: 'whatsapp',
@@ -281,11 +274,11 @@ export namespace Whatsapp {
         ...(replyingTo && { context: { message_id: replyingTo } }),
       }
 
-      return sendMessageRequest(businessPhoneNumberId, requestBody)
+      return sendMessageRequest(requestBody)
     },
 
     sendInteractiveCtaUrl: async ({ header, body, footer, action, replyingTo }) => {
-      const { userWhatsappId, businessPhoneNumberId } = getWhatsappIds()
+      const { userWhatsappId } = getWhatsappIds()
 
       const requestBody: WaOutgoingInteractiveCtaUrl = {
         messaging_product: 'whatsapp',
@@ -301,7 +294,7 @@ export namespace Whatsapp {
         ...(replyingTo && { context: { message_id: replyingTo } }),
       }
 
-      return sendMessageRequest(businessPhoneNumberId, requestBody)
+      return sendMessageRequest(requestBody)
     },
     sendTemplate: async ({
       name,
@@ -310,7 +303,7 @@ export namespace Whatsapp {
       bodyParameters,
       footerParameters,
     }) => {
-      const { userWhatsappId, businessPhoneNumberId } = getWhatsappIds()
+      const { userWhatsappId } = getWhatsappIds()
 
       const components: Array<WaTemplateComponent> = []
       if (headerParameters) {
@@ -345,14 +338,14 @@ export namespace Whatsapp {
         },
       }
 
-      return sendMessageRequest(businessPhoneNumberId, requestBody)
+      return sendMessageRequest(requestBody)
     },
   }
 
   async function fetchReceivedMedia(mediaId: string, sha256: string) {
     const init: RequestInit = {
       headers: {
-        Authorization: `Bearer ${META_API_TOKEN}`,
+        Authorization: AuthorizationHeader,
       },
     }
     const urlData = (await fetch(
@@ -386,7 +379,6 @@ export namespace Whatsapp {
   }
 
   async function uploadMedia(
-    businessPhoneNumberId: string,
     data: ArrayBuffer,
     mimeType: string,
     filename?: string
@@ -398,11 +390,11 @@ export namespace Whatsapp {
     formData.append('messaging_product', 'whatsapp')
 
     const uploadResponse = await fetch(
-      `https://graph.facebook.com/${WA_API_VERSION}/${businessPhoneNumberId}/media`,
+      `https://graph.facebook.com/${WA_API_VERSION}/${WA_BUSINESS_PHONE_ID}/media`,
       {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${META_API_TOKEN}`,
+          Authorization: AuthorizationHeader,
         },
         body: formData,
       }
@@ -426,16 +418,13 @@ export namespace Whatsapp {
     return uploadResult.id
   }
 
-  async function sendMessageRequest<T extends Whatsapp.WaOutgoingMessageUnion>(
-    businessPhoneNumberId: string,
-    requestBody: T
-  ) {
+  async function sendMessageRequest<T extends Whatsapp.WaOutgoingMessageUnion>(requestBody: T) {
     const httpResponse = await fetch(
-      `https://graph.facebook.com/${WA_API_VERSION}/${businessPhoneNumberId}/messages`,
+      `https://graph.facebook.com/${WA_API_VERSION}/${WA_BUSINESS_PHONE_ID}/messages`,
       {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${META_API_TOKEN}`,
+          Authorization: AuthorizationHeader,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(requestBody),
@@ -464,13 +453,12 @@ export namespace Whatsapp {
   }
 
   function getWhatsappIds() {
-    const businessPhoneNumberId = getContext().var.businessPhoneNumberId
     const userWhatsappId = getContext().var.userWhatsappId
 
-    if (!businessPhoneNumberId || !userWhatsappId) {
-      throw new ResponseDeliveryError('Business number or user WhatsApp ID not found')
+    if (!userWhatsappId) {
+      throw new ResponseDeliveryError('User WhatsApp ID not found')
     }
-    return { userWhatsappId, businessPhoneNumberId }
+    return { userWhatsappId }
   }
 
   export type AcknowledgeMessageResponse = {

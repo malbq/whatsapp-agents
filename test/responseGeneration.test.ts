@@ -156,6 +156,7 @@ describe('ResponseGeneration Module', () => {
           { role: 'assistant', content: 'Previous response' },
           { role: 'user', content: 'Current message' },
         ],
+        tools: expect.any(Array),
       })
     })
   })
@@ -220,6 +221,7 @@ describe('ResponseGeneration Module', () => {
       await responseGeneration(frame, deps)
       expect(ai.respond).toHaveBeenCalledWith({
         messages: expectedMessages,
+        tools: expect.any(Array),
       })
     })
   })

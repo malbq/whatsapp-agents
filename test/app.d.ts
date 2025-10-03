@@ -64,6 +64,10 @@ declare global {
         ReturnType<DB['updateUserProfile']>,
         Parameters<DB['updateUserProfile']>
       >
+      updateProfileVersionMessageId: jest.Mock<
+        ReturnType<DB['updateProfileVersionMessageId']>,
+        Parameters<DB['updateProfileVersionMessageId']>
+      >
       storeMessage: jest.Mock<ReturnType<DB['storeMessage']>, Parameters<DB['storeMessage']>>
       storeWebhookEvent: jest.Mock<
         ReturnType<DB['storeWebhookEvent']>,
@@ -74,6 +78,10 @@ declare global {
         Parameters<DB['findSimilarMessages']>
       >
       searchFiles: jest.Mock<ReturnType<DB['searchFiles']>, Parameters<DB['searchFiles']>>
+      findStorageKeyById: jest.Mock<
+        ReturnType<DB['findStorageKeyById']>,
+        Parameters<DB['findStorageKeyById']>
+      >
       createReminder: jest.Mock<ReturnType<DB['createReminder']>, Parameters<DB['createReminder']>>
       cancelReminder: jest.Mock<ReturnType<DB['cancelReminder']>, Parameters<DB['cancelReminder']>>
       listUpcomingReminders: jest.Mock<

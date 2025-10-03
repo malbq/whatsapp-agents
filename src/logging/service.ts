@@ -1,10 +1,6 @@
-import { getLogger } from '@logtape/logtape'
 import { Hono } from 'hono'
 import { upgradeWebSocket } from 'hono/bun'
-import { spreadError } from '../utils/spreadError'
 import { createLoggingDB, type LogEntry } from './db'
-
-const logger = getLogger(['logging', 'service'])
 
 const wsClients = new Set<WebSocket>()
 const db = await createLoggingDB()
@@ -36,11 +32,14 @@ app.get(
 
 app.post('/', async (c) => {
   try {
-    const logData: Omit<LogEntry, 'id'> = await c.req.json()
-    await storeLog(logData)
+    const logData: Omit<LogEntry, 'id' | 'timestamp'> & { timestamp: number } = await c.req.json()
+    await storeLog({
+      ...logData,
+      timestamp: new Date(logData.timestamp),
+    })
     return c.json({ success: true })
   } catch (error) {
-    logger.error('Failed to store log', { ...spreadError(error) })
+    console.error('Failed to store log', error)
     return c.json({ error: 'Failed to store log' }, 500)
   }
 })
@@ -50,7 +49,7 @@ app.get('/', async (c) => {
   for (const log of logs) {
     for (const property in log.properties) {
       try {
-        log.properties[property] = JSON.parse(log.properties[property])
+        log.properties[property] = JSON.parse(log.properties[property] as string)
       } catch {}
     }
   }
@@ -60,97 +59,105 @@ app.get('/', async (c) => {
         <title>Log Viewer</title>
         <style>
           :root {
-            --color-text: 0, 0%, 100%;
-            --color-debug: 0, 0%, 30%;
-            --color-info: 190, 50%, 30%;
-            --color-warn: 33, 100%, 40%;
-            --color-error: 0, 60%, 50%;
-            --entry-opacity: 0.2;
+            --color-text: hsl(0, 0%, 100%);
+            --color-debug: hsl(0, 0%, 30%);
+            --color-info: hsl(190, 50%, 30%);
+            --color-warn: hsl(33, 100%, 40%);
+            --color-error: hsl(0, 60%, 50%);
+            --entry-bg-opacity: 0.2;
+            --entry-bg-hover-opacity: 0.4;
+          }
+          @function --opacity(--color, --opacity) {
+            result: oklch(from var(--color) l c h / var(--opacity));
           }
           body {
             font-family: monospace;
-            margin: 8px;
+            margin: 0;
             background:hsl(0, 0%, 10%);
-            color: hsl(var(--color-text));
+            color: var(--color-text);
             font-size: 12px;
             line-height: 1;
           }
-          #logs {
+          .logs {
             display: flex;
             flex-direction: column;
             gap: 4px;
+            padding: 8px 8px 80px;
           }
           .log-entry {
-            display: flex;
-            align-items: center;
+            display: grid;
+            grid-template-columns: auto auto 1fr;
+            grid-template-rows: auto 1fr;
+            grid-template-areas: "timestamp category message" "properties properties properties";
+            align-items: flex-start;
             flex-wrap: wrap;
             padding: 4px;
             border-radius: 4px;
             border-left: 2px solid;
-
-            &[data-visible='false'] {
-              display: none;
-            }
+            line-height: 16px;
+            cursor: pointer;
           }
           .info {
-            border-left-color:hsl(var(--color-info));
-            background:hsla(var(--color-info), var(--entry-opacity));
+            border-left-color: var(--color-info);
+            background: --opacity(var(--color-info), var(--entry-bg-opacity));
+            &:hover {
+              background: --opacity(var(--color-info), var(--entry-bg-hover-opacity));
+            }
           }
           .warn {
-            border-left-color: hsl(var(--color-warn));
-            background: hsla(var(--color-warn), var(--entry-opacity));
+            border-left-color: var(--color-warn);
+            background: --opacity(var(--color-warn), var(--entry-bg-opacity));
+            &:hover {
+              background: --opacity(var(--color-warn), var(--entry-bg-hover-opacity));
+            }
           }
           .error {
-            border-left-color:hsl(var(--color-error));
-            background:hsla(var(--color-error), var(--entry-opacity));
+            border-left-color: var(--color-error);
+            background: --opacity(var(--color-error), var(--entry-bg-opacity));
+            &:hover {
+              background: --opacity(var(--color-error), var(--entry-bg-hover-opacity));
+            }
           }
           .debug {
-            border-left-color:hsl(var(--color-debug));
-            background:hsla(var(--color-debug), var(--entry-opacity));
+            border-left-color: var(--color-debug);
+            background: --opacity(var(--color-debug), var(--entry-bg-opacity));
+            &:hover {
+              background: --opacity(var(--color-debug), var(--entry-bg-hover-opacity));
+            }
           }
           .timestamp {
+            grid-area: timestamp;
             font-size: 10px;
-            color: hsla(var(--color-text), 0.6);
+            color: --opacity(var(--color-text), 0.6);
             margin-inline-end: 8px;
           }
           .category {
+            grid-area: category;
             font-size: 10px;
             font-weight: bold;
-            color: hsla(var(--color-text), 1);
+            color: var(--color-text);
             margin-inline-end: 8px;
           }
           .message {
-            margin: 5px 0;
-            white-space: pre-wrap;
-            flex: 1 0;
+            grid-area: message;
+            overflow: auto;
           }
-          .properties-toggle {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            height: 16px;
-            width: 16px;
-            border-radius: 2px;
-            color: #fff;
-            margin-inline-end: 4px;
-            &:hover {
-              background-color: rgba(255 255 255 / 0.1);
-            }
+          .message::-webkit-scrollbar {
+            display: none;
           }
           .properties-content {
-            flex: 1 0 90%;
-            display: none;
-            background:rgba(255 249 250 / 0.05);
+            grid-area: properties;
+            background: --opacity(var(--color-text), 0.05);
             padding: 10px;
             border-radius: 2px;
             margin: 2px 0 0;
+            white-space: pre-wrap;
           }
           .filters {
-            margin-bottom: 8px;
-            padding: 4px 8px;
-            background:hsl(0, 0%, 25%);
-            border-radius: 4px;
+            position: sticky;
+            top: 0;
+            padding: 8px 16px;
+            background: hsl(0, 0%, 25%);
             display: flex;
             gap: 8px;
           }
@@ -164,6 +171,7 @@ app.get('/', async (c) => {
           }
           .ws-status {
             position: fixed;
+            z-index: 1;
             top: 4px;
             right: 4px;
             display: flex;
@@ -182,12 +190,13 @@ app.get('/', async (c) => {
             background: #721c24;
             color: #f8d7da;
           }
+          [data-visible='false'], .hidden {
+            display: none;
+          }
         </style>
       </head>
       <body>
-        <div id="ws-status" class="ws-status ws-disconnected">
-          󰖪
-        </div>
+        <div id="ws-status" class="ws-status ws-disconnected">󰖪</div>
         <div class="filters">
           <label>Level: <select id="level-filter">
               <option value="">All</option>
@@ -198,41 +207,19 @@ app.get('/', async (c) => {
             </select></label>
           <label>Filter: <input type="text" id="category-filter"/></label>
         </div>
-        <div id="logs">
-          ${logs
-            .map(
-              (log) => `
-                <div
-                  class="log-entry ${log.level}"
-                  data-level="${log.level}"
-                  data-category="${log.category}"
-                  data-message="${log.message || ''}"
-                >
-                  <div class="timestamp">${log.timestamp.getHours()}:${log.timestamp.getMinutes()}:${log.timestamp.getSeconds()}</div>
-                  ${
-                    log.properties
-                      ? `<span class="properties-toggle" onclick="toggleProperties(this)"></span>`
-                      : ''
-                  }
-                  <div class="category">${log.category}</div>
-                  ${log.message ? `<div class="message">${log.message}</div>` : ''}
-                  ${
-                    log.properties
-                      ? `<pre class="properties-content">${JSON.stringify(
-                          log.properties,
-                          null,
-                          2
-                        )}</pre>`
-                      : ''
-                  }
-                </div>
-              `
-            )
-            .join('')}
-        </div>
+        <div id="logs" class="logs"></div>
+        <script type="application/json" id="initial-logs">
+          ${JSON.stringify(logs)}
+        </script>
         <script>
           let ws
           let reconnectInterval
+
+          function formatTime(date) {
+            return date.getHours().toString().padStart(2, '0') + ':' +
+                   date.getMinutes().toString().padStart(2, '0') + ':' +
+                   date.getSeconds().toString().padStart(2, '0')
+          }
 
           function connectWebSocket() {
             ws = new WebSocket('ws://' + window.location.host + '/logs/ws')
@@ -260,44 +247,42 @@ app.get('/', async (c) => {
           }
 
           function addLogEntry(log) {
+            if (typeof log.timestamp === 'string') {
+              log.timestamp = new Date(log.timestamp)
+            }
             const logsDiv = document.getElementById('logs')
             const logEntry = document.createElement('div')
             logEntry.className = 'log-entry ' + log.level
             logEntry.setAttribute('data-level', log.level)
             logEntry.setAttribute('data-category', log.category)
             logEntry.setAttribute('data-message', log.message || '')
+            logEntry.addEventListener('click', () => {
+              toggleProperties(logEntry)
+            })
 
-            logEntry.innerHTML = \`
-    <span class="properties-toggle" onclick="toggleProperties(this)"></span>
-    <div class="timestamp">\${log.timestamp.getHours()}:\${log.timestamp.getMinutes()}:\${log.timestamp.getSeconds()}</div>
-    <div class="category">\${log.category}</div>
-    \${log.message ? \`<div class="message">\${log.message}</div>\` : ''}
-    \${
-      log.properties
-        ? \`
-        <pre class="properties-content">\${JSON.stringify(log.properties, null, 2)}</pre>
-    \`
-        : ''
-    }
-  \`
-
+            logEntry.textContent = \`
+              <div class="timestamp"></div>
+              <div class="category"></div>
+              <div class="message"></div>
+              <pre class="properties-content hidden"></pre>
+            \`
+            logEntry.querySelector('.timestamp').textContent = formatTime(log.timestamp)
+            logEntry.querySelector('.category').textContent = log.category
+            logEntry.querySelector('.message').textContent = log.message
+            logEntry.querySelector('.properties-content').textContent = JSON.stringify(log.properties, null, 2)
             logsDiv.appendChild(logEntry)
-            window.scrollTo(0, document.body.scrollHeight)
+            logEntry.scrollIntoView({ behavior: 'smooth', block: 'start' })
           }
 
           function toggleProperties(element) {
-            const content = element.parentElement.querySelector('.properties-content')
-            if (content.style.display === 'block') {
-              content.style.display = 'none'
-              element.textContent = ''
-            } else {
-              content.style.display = 'block'
-              element.textContent = ''
-            }
+            const content = element.querySelector('.properties-content')
+            console.log('toggleProperties', element, content)
+            if (!content) return
+            content.classList.toggle('hidden')
           }
 
           function applyFilters() {
-            const levelFilter = document.getElementById('level-filter').value
+            const levelFilter = document.getElementById('level-filter')?.value || ''
             const categoryFilter = document.getElementById('category-filter').value.toLowerCase()
 
             const entries = document.querySelectorAll('.log-entry')
@@ -317,9 +302,21 @@ app.get('/', async (c) => {
             })
           }
 
+          function hydrateLogs() {
+            const initialLogsElement = document.getElementById('initial-logs')
+            if (initialLogsElement?.textContent) {
+              const initialLogs = JSON.parse(initialLogsElement.textContent)
+              initialLogs.forEach(log => {
+                addLogEntry(log)
+              })
+              document.getElementById('initial-logs')?.remove()
+            }
+          }
+
           document.getElementById('level-filter').addEventListener('change', applyFilters)
           document.getElementById('category-filter').addEventListener('input', applyFilters)
 
+          hydrateLogs()
           connectWebSocket()
         </script>
       </body>

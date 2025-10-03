@@ -2,11 +2,11 @@ import { createClient } from '@libsql/client'
 
 export interface LogEntry {
   id: string
-  timestamp: number
+  timestamp: Date
   level: string
   category: string
-  message?: string
-  properties?: Record<string, unknown>
+  message: string
+  properties: Record<string, unknown>
 }
 
 export async function createLoggingDB(dbPath: string = './storage/logging.db') {
@@ -19,8 +19,8 @@ export async function createLoggingDB(dbPath: string = './storage/logging.db') {
       timestamp TEXT NOT NULL,
       level TEXT NOT NULL,
       category TEXT NOT NULL,
-      message TEXT,
-      properties JSONB
+      message TEXT NOT NULL,
+      properties TEXT NOT NULL
     )
   `)
 
@@ -36,18 +36,18 @@ export async function createLoggingDB(dbPath: string = './storage/logging.db') {
     CREATE INDEX IF NOT EXISTS idx_logs_category ON logs (category)
   `)
 
-  const storeLog = async (log: Omit<LogEntry, 'id'>) => {
+  const storeLog = async (log: Omit<LogEntry, 'id'>): Promise<void> => {
     try {
       await client.execute({
         sql: `INSERT INTO logs (id, timestamp, level, category, message, properties)
               VALUES (?, ?, ?, ?, ?, ?)`,
         args: [
           Bun.randomUUIDv7(),
-          new Date(log.timestamp).toISOString(),
+          log.timestamp.toISOString(),
           log.level,
           log.category,
-          log.message || null,
-          log.properties ? JSON.stringify(log.properties) : null,
+          log.message,
+          JSON.stringify(log.properties),
         ],
       })
     } catch (error) {
@@ -63,7 +63,7 @@ export async function createLoggingDB(dbPath: string = './storage/logging.db') {
       level?: string
       category?: string
     } = {}
-  ) => {
+  ): Promise<LogEntry[]> => {
     const { limit = 100, offset = 0, level, category } = params
 
     let whereClause = ''
@@ -92,8 +92,8 @@ export async function createLoggingDB(dbPath: string = './storage/logging.db') {
       timestamp: new Date(row.timestamp as string),
       level: row.level as string,
       category: row.category as string,
-      message: row.message as string | undefined,
-      properties: row.properties ? JSON.parse(row.properties as string) : undefined,
+      message: row.message as string,
+      properties: JSON.parse(row.properties as string),
     }))
   }
 

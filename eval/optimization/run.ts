@@ -31,6 +31,8 @@
  *     --population 12
  */
 
+// @ts-nocheck
+
 import { readFile } from 'node:fs/promises'
 import { parseArgs } from 'node:util'
 

@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { validateEnvVars } from '../src/utils/validateEnv'
 
-// cast to a mutable record so delete is allowed (avoids TS2790)
 const env = import.meta.env as unknown as Record<string, any>
 const originalEnv = Object.assign({}, env)
 
@@ -18,10 +17,10 @@ describe('validateEnv', () => {
     expect(() => validateEnvVars()).not.toThrow()
   })
 
-  test('throws error when WEBHOOK_VERIFY_TOKEN is missing', () => {
-    delete env.WEBHOOK_VERIFY_TOKEN
+  test('throws error when META_WEBHOOK_VERIFY_TOKEN is missing', () => {
+    delete env.META_WEBHOOK_VERIFY_TOKEN
     expect(() => validateEnvVars()).toThrow(
-      'Missing required environment variables: WEBHOOK_VERIFY_TOKEN'
+      'Missing required environment variables: META_WEBHOOK_VERIFY_TOKEN'
     )
   })
 
@@ -39,7 +38,7 @@ describe('validateEnv', () => {
       delete import.meta.env[key]
     })
     expect(() => validateEnvVars()).toThrow(
-      'Missing required environment variables: WEBHOOK_VERIFY_TOKEN, META_API_TOKEN, META_APP_SECRET, WA_API_VERSION, OPENAI_API_KEY, GOOGLE_GENERATIVE_AI_API_KEY, CF_ACCOUNT_ID, CF_API_TOKEN, MAX_RECENT_MESSAGES, VECTOR_DISTANCE_THRESHOLD, MAX_SIMILAR_MESSAGES, TEXT_GENERATION_PROVIDER, AUDIO_TRANSCRIPTION_PROVIDER, IMAGE_ANALYSIS_PROVIDER'
+      'Missing required environment variables: META_WEBHOOK_VERIFY_TOKEN, META_API_TOKEN, META_APP_SECRET, WA_API_VERSION, WA_BUSINESS_PHONE_ID, OPENAI_API_KEY, GOOGLE_GENERATIVE_AI_API_KEY, CF_ACCOUNT_ID, CF_API_TOKEN, MAX_RECENT_MESSAGES, VECTOR_DISTANCE_THRESHOLD, MAX_SIMILAR_MESSAGES, TEXT_GENERATION_PROVIDER, AUDIO_TRANSCRIPTION_PROVIDER, IMAGE_ANALYSIS_PROVIDER'
     )
   })
 })

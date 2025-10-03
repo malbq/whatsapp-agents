@@ -2,9 +2,15 @@ import { getLogger } from '@logtape/logtape'
 import { ResponseGenerationError } from '../../errors'
 import type { AIMessage } from '../../infra/ai'
 import type { MessageType } from '../../infra/db'
+import { extractFilename } from '../../utils/storageKey'
 import type { Frame } from '../frame'
 import { recentMessages as recentMessagesPrompt } from '../prompts/recentMessages'
 import { userProfile } from '../prompts/userProfile'
+import { fetchMemoryToolDefinition } from '../tools/fetchMemory'
+import { searchFilesTool } from '../tools/searchFiles'
+import { sendFileToolDefinition } from '../tools/sendFile'
+import { sendReactionToolDefinition } from '../tools/sendReaction'
+import { updateUserProfileToolDefinition } from '../tools/updateUserProfile'
 
 const logger = getLogger(['app', 'agent', 'responseGeneration'])
 
@@ -42,7 +48,7 @@ export async function responseGeneration(frame: Frame, deps: Deps) {
     recentMessages.forEach((message) => {
       messagesForAgent.push({
         role: message.role,
-        content: formatWithTag(message.type, message.content),
+        content: formatWithTag(message.type, message.content, extractFilename(message.storageKey)),
       })
     })
     logger.info(`Context: recent messages (${recentMessages.length})`)
@@ -64,7 +70,17 @@ export async function responseGeneration(frame: Frame, deps: Deps) {
   }
 
   try {
-    const response = await deps.ai.respond({ messages: messagesForAgent })
+    const response = await deps.ai.respond({
+      messages: messagesForAgent,
+      tools: [
+        fetchMemoryToolDefinition(frame, deps),
+        searchFilesTool(frame, deps),
+        sendFileToolDefinition(frame, deps),
+        sendReactionToolDefinition(frame, deps),
+        updateUserProfileToolDefinition(frame, deps),
+      ],
+    })
+
     const externalChatId = await deps.chat.sendText({ text: response.text })
 
     logger.info(`Text response sent to ${frame.user.name} (${frame.user.externalId})`)

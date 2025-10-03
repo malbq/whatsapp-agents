@@ -2,15 +2,16 @@
 
 ## Next
 
-- **Tool Integration**: Refactor to LLM-centric agent with tools
+- **Deployment**
 
-  - enable all tools in AIProvider
-  - how to bind profile update to the message that triggered it if we have not saved it yet?
+  - make logs page accessible only from local network/tailscale
+  - turn into systemd service with package.json scripts for intall/start/stop/restart
 
 - **User Management**: Complete user management system
 
   - Subscription plan management
   - Usage tracking and limits
+  - Onboarding
 
 - **Privacy & Compliance**: Data management features
 
@@ -36,6 +37,7 @@
 
 ## Future (after MVP)
 
+- Encryption at rest
 - TTS: Answer with audio message
 - Cost Monitoring: Set up alerts for AI provider usage thresholds (e.g., via OpenAI dashboard hooks)
 - Automated DB backups

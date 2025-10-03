@@ -21,6 +21,8 @@
  *   # Generates 5 prompt variants, tests with 4-message scenarios
  */
 
+// @ts-nocheck
+
 import { openai } from '@ai-sdk/openai'
 import { generateObject } from 'ai'
 import { existsSync, mkdirSync } from 'node:fs'

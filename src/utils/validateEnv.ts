@@ -1,9 +1,10 @@
 export function validateEnvVars() {
   const requiredEnvVars = [
-    'WEBHOOK_VERIFY_TOKEN',
+    'META_WEBHOOK_VERIFY_TOKEN',
     'META_API_TOKEN',
     'META_APP_SECRET',
     'WA_API_VERSION',
+    'WA_BUSINESS_PHONE_ID',
     'OPENAI_API_KEY',
     'GOOGLE_GENERATIVE_AI_API_KEY',
     'CF_ACCOUNT_ID',

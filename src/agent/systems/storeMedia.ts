@@ -1,6 +1,5 @@
 import { getLogger } from '@logtape/logtape'
-import { getExtFromMimeType } from '../../utils/getExtFromMimeType'
-import { sanitizeFilename } from '../../utils/sanitizeFilename'
+import { newStorageKey } from '../../utils/storageKey'
 import { Frame } from '../frame'
 
 const logger = getLogger(['app', 'agent', 'storeMedia'])
@@ -15,9 +14,9 @@ export async function storeMedia(frame: Frame, deps: Deps) {
     return
 
   const uuid = Bun.randomUUIDv7('base64url')
-  const sanitizedFilename = sanitizeFilename(frame.inbound.media.filename || 'unnamed')
-  const extension = getExtFromMimeType(frame.inbound.media.mimeType)
-  const storageKey = `${frame.user.id}/${uuid}_${sanitizedFilename}.${extension}`
+  const filename = newStorageKey(uuid, frame.inbound.media.filename, frame.inbound.media.mimeType)
+
+  const storageKey = `${frame.user.id}/${filename}`
 
   await deps.storage.store({
     key: storageKey,

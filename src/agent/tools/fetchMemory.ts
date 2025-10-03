@@ -1,6 +1,7 @@
 import { getLogger } from '@logtape/logtape'
 import { tool } from 'ai'
 import { z } from 'zod'
+import { extractFilename } from '../../utils/storageKey'
 import type { Frame } from '../frame'
 
 const logger = getLogger(['app', 'agent', 'tool', 'fetchMemory'])
@@ -32,6 +33,7 @@ export const fetchMemoryToolDefinition = (frame: Frame, deps: Deps) =>
         content: message.content,
         chunk: `${message.chunkSequence} of ${message.totalChunks}`,
         timestamp: message.timestamp.toISOString(),
+        filename: extractFilename(message.storageKey),
       }))
     },
   })

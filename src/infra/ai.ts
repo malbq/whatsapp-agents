@@ -10,10 +10,12 @@ import {
   type LanguageModelUsage,
   type SystemModelMessage,
   type TextPart,
+  type Tool,
   type TranscriptionModel,
   type UserModelMessage,
 } from 'ai'
 
+import { xai } from '@ai-sdk/xai'
 import { analyzeImage } from '../agent/prompts/analyzeImage'
 import { system } from '../agent/prompts/system'
 import { transcribeDocument } from '../agent/prompts/transcribeDocument'
@@ -27,6 +29,8 @@ const logger = getLogger(['infra', 'ai'])
 const TEXT_MODEL =
   import.meta.env.TEXT_GENERATION_PROVIDER === 'google'
     ? google('gemini-2.5-flash')
+    : import.meta.env.TEXT_GENERATION_PROVIDER === 'xai'
+    ? xai('grok-4-fast-non-reasoning')
     : openai('gpt-5-mini')
 
 const AUDIO_TRANSCRIPTION_MODEL =
@@ -51,6 +55,7 @@ export interface AI {
   respond: (params: {
     instructions?: string
     messages: AIMessage[]
+    tools?: Tool[]
   }) => Promise<{ text: string; usage: LanguageModelUsage }>
   transcribeAudio: (params: { instructions?: string; audio: ArrayBuffer }) => Promise<string>
   analyzeImage: (params: {
@@ -67,14 +72,9 @@ export interface AI {
   generateEmbeddings: (text: string) => Promise<Array<ChunkData>>
 }
 
-type AiToolSet = {
-  google_search?: ReturnType<typeof google.tools.googleSearch>
-  web_search_preview?: ReturnType<typeof openai.tools.webSearchPreview>
-}
-
 export const AIProvider: AI = {
-  respond: async ({ instructions = system, messages }) => {
-    let tools: AiToolSet = {}
+  respond: async ({ instructions = system, messages, tools: customTools = [] }) => {
+    const tools: Record<string, Tool> = {}
     switch (TEXT_MODEL.provider) {
       case 'google.generative-ai':
         tools.google_search = google.tools.googleSearch({})
@@ -85,7 +85,11 @@ export const AIProvider: AI = {
       default:
     }
 
-    const result = await generateText<AiToolSet>({
+    customTools.forEach((tool) => {
+      tools[(tool as { name: string }).name] = tool
+    })
+
+    const result = await generateText({
       model: TEXT_MODEL,
       system: instructions,
       messages,
@@ -95,11 +99,10 @@ export const AIProvider: AI = {
     const toolResults = result.steps?.flatMap((step) => step.toolResults) ?? []
 
     const ctxLogger = logger.with({
-      responseId: result.response.id,
+      providerResponseId: result.response.id,
     })
-    ctxLogger.debug(`Text generated from ${TEXT_MODEL.provider}/${TEXT_MODEL.modelId}`, {
+    ctxLogger.debug(`Text generated with ${TEXT_MODEL.provider}/${TEXT_MODEL.modelId}`, {
       usage: formatTokenUsage(result.usage),
-      tools: (result.request.body as any).tools,
       stepsCount: result.steps?.length || 0,
       input: (result.request.body as any)?.input,
       output: result.content,

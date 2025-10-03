@@ -37,6 +37,7 @@ export type RecentMessage = {
   role: MessageRole
   content: string
   type: MessageType
+  storageKey?: string
 }
 
 export type SimilarMessage = {
@@ -47,6 +48,7 @@ export type SimilarMessage = {
   timestamp: Date
   chunkSequence: number
   totalChunks: number
+  storageKey?: string
 }
 
 export interface FileSearchResult {
@@ -99,7 +101,11 @@ export interface DueReminderItem {
 export interface DB {
   storeWebhookEvent: (payload: string, externalId: string) => Promise<boolean>
   persistUser: (params: { externalId: string; name: string }) => Promise<User>
-  updateUserProfile: (params: { userId: string; profile: string }) => Promise<void>
+  updateUserProfile: (params: { userId: string; profile: string }) => Promise<string | null>
+  updateProfileVersionMessageId: (params: {
+    profileVersionId: string
+    messageId: string
+  }) => Promise<void>
   storeMessage: (messages: Array<DbMessageInput>) => Promise<Array<string>>
   findRecentMessages: (params: { userId: string }) => Promise<Array<RecentMessage>>
   findSimilarMessages: (params: {
@@ -111,6 +117,10 @@ export interface DB {
     userId: string
     queryEmbedding: Array<number>
   }) => Promise<Array<FileSearchResult>>
+  findStorageKeyById: (params: {
+    userId: string
+    messageId: string
+  }) => Promise<{ storageKey: string } | null>
   createReminder: (params: ReminderCreateParams) => Promise<{ id: string }>
   cancelReminder: (params: { id: string }) => Promise<boolean>
   listUpcomingReminders: (params: {

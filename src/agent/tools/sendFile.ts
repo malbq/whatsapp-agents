@@ -10,15 +10,29 @@ export const sendFileToolDefinition = (frame: Frame, deps: Deps) =>
   tool({
     name: 'send_file',
     description:
-      'Retrieve a specific file from storage and deliver it to the user. Only use this after searching for files.',
+      'Retrieve a specific file from storage and deliver it to the user. Only call this after using search_files tool. Only pass a messageId returned in the last search_files results. Do not pass filenames.',
     inputSchema: z.object({
-      storageKey: z.string().describe('The storage key of the file to send'),
+      messageId: z.string().describe('The message ID of the file to send from search results'),
       caption: z.string().optional().describe('Optional caption (only used for images)'),
     }),
-    execute: async ({ storageKey, caption }) => {
+    execute: async ({ messageId, caption }) => {
       if (!frame.user) return 'Could not send file due to missing user'
 
-      const fileInfo = await deps.storage.retrieve(storageKey)
+      if (!frame.lastSearchFiles?.some((result) => result.messageId === messageId)) {
+        logger.warn(
+          `Invalid send_file attempt: messageId ${messageId} not found in last search results`,
+          { messageId, lastSearchFiles: frame.lastSearchFiles }
+        )
+        return 'Please run search_files first and select a file from the results.'
+      }
+
+      const message = await deps.db.findStorageKeyById({ userId: frame.user.id, messageId })
+      if (!message) {
+        logger.warn(`Message not found: ${messageId}`)
+        return 'File not found. Please run search_files again.'
+      }
+
+      const fileInfo = await deps.storage.retrieve(message.storageKey)
       const messageType = getMessageTypeFromMimeType(fileInfo.mimeType)
 
       if (!messageType) {
@@ -34,7 +48,7 @@ export const sendFileToolDefinition = (frame: Frame, deps: Deps) =>
         frame.outboundFile = {
           externalChatId,
           type: 'image',
-          storageKey,
+          storageKey: message.storageKey,
           caption,
         }
         logger.info(`Sent image response to ${frame.user.name} (${frame.user.externalId})`)
@@ -51,7 +65,7 @@ export const sendFileToolDefinition = (frame: Frame, deps: Deps) =>
       frame.outboundFile = {
         externalChatId,
         type: 'document',
-        storageKey,
+        storageKey: message.storageKey,
         caption,
       }
       logger.info(`Sent document response to ${frame.user.name} (${frame.user.externalId})`)

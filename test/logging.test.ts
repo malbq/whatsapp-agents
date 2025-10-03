@@ -32,10 +32,10 @@ describe('LoggingDB operations', () => {
 
     const logs = await db.getLogs()
     expect(logs.length).toBe(1)
-    expect(logs[0].level).toBe('info')
-    expect(logs[0].category).toBe('test')
-    expect(logs[0].message).toBe('Test log message')
-    expect(logs[0].properties).toEqual({ key: 'value' })
+    expect(logs[0]?.level).toBe('info')
+    expect(logs[0]?.category).toBe('test')
+    expect(logs[0]?.message).toBe('Test log message')
+    expect(logs[0]?.properties).toEqual({ key: 'value' })
   })
 
   test('filter logs by level', async () => {
@@ -44,6 +44,7 @@ describe('LoggingDB operations', () => {
       level: 'info',
       category: 'filter-test',
       message: 'Info log',
+      properties: {},
     }
 
     const errorLog: Omit<LogEntry, 'id'> = {
@@ -51,6 +52,7 @@ describe('LoggingDB operations', () => {
       level: 'error',
       category: 'filter-test',
       message: 'Error log',
+      properties: {},
     }
 
     await db.storeLog(infoLog)
@@ -58,7 +60,7 @@ describe('LoggingDB operations', () => {
 
     const errorLogs = await db.getLogs({ level: 'error' })
     expect(errorLogs.length).toBe(1)
-    expect(errorLogs[0].level).toBe('error')
+    expect(errorLogs[0]?.level).toBe('error')
   })
 
   test('filter logs by category', async () => {
@@ -67,13 +69,14 @@ describe('LoggingDB operations', () => {
       level: 'info',
       category: 'category-test',
       message: 'Category test log',
+      properties: {},
     }
 
     await db.storeLog(testLog)
 
     const categoryLogs = await db.getLogs({ category: 'category-test' })
     expect(categoryLogs.length).toBe(1)
-    expect(categoryLogs[0].category).toBe('category-test')
+    expect(categoryLogs[0]?.category).toBe('category-test')
   })
 
   test('pagination', async () => {

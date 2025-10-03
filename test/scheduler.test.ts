@@ -40,6 +40,7 @@ describe('Scheduler', () => {
       sendInteractiveList: mock(),
       sendInteractiveButton: mock(),
       sendInteractiveCtaUrl: mock(),
+      sendTemplate: mock(),
     }
   })
 

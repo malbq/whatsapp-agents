@@ -3,7 +3,7 @@ import { tool } from 'ai'
 import { z } from 'zod'
 import type { Frame } from '../frame'
 
-const logger = getLogger(['app', 'agent', 'updateUserProfile'])
+const logger = getLogger(['app', 'agent', 'tool', 'updateUserProfile'])
 
 export const updateUserProfileToolDefinition = (frame: Frame, deps: Deps) =>
   tool({
@@ -69,11 +69,14 @@ Output requirements:
         return 'You cannot update the profile to the same profile'
       }
 
-      await deps.db.updateUserProfile({
+      const profileVersionId = await deps.db.updateUserProfile({
         userId: frame.user.id,
         profile: improvedProfile,
-        // TODO: where the messageId comes from?
       })
+
+      if (profileVersionId) {
+        frame.profileVersionId = profileVersionId
+      }
 
       logger.info('Profile improved')
       logger.debug('Profile diff', { current: frame.user.profile, improved: improvedProfile })

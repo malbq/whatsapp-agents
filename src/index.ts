@@ -98,7 +98,7 @@ app.get('/webhook', function webhookVerificationRequest(c) {
   const token = c.req.query('hub.verify_token')
   const challenge = c.req.query('hub.challenge')
 
-  if (mode === 'subscribe' && token === import.meta.env.WEBHOOK_VERIFY_TOKEN && challenge) {
+  if (mode === 'subscribe' && token === import.meta.env.META_WEBHOOK_VERIFY_TOKEN && challenge) {
     logger.info('Webhook verified successfully')
     return c.text(challenge)
   }

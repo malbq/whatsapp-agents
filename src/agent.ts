@@ -6,6 +6,7 @@ import { persistUser } from './agent/systems/persistUser'
 import { responseGeneration } from './agent/systems/responseGeneration'
 import { storeMedia } from './agent/systems/storeMedia'
 import { storeMessageExchange } from './agent/systems/storeMessageExchange'
+import { updateProfileVersionMessageId } from './agent/systems/updateProfileVersionMessageId'
 import type { IncomingMessage } from './infra/chat'
 import { spreadError } from './utils/spreadError'
 
@@ -43,6 +44,7 @@ export async function agent(deps: Deps, message: IncomingMessage): Promise<void>
     try {
       await Promise.all([storeMedia(frame, deps), embedMessages(frame, deps)])
       await storeMessageExchange(frame, deps)
+      await updateProfileVersionMessageId(frame, deps)
     } catch (error) {
       logger.error(`Error after agent's response: ${String(error)}`, { ...spreadError(error) })
     }
