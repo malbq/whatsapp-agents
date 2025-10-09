@@ -9,7 +9,7 @@ export async function persistUser(
   deps: Deps,
   incomingUser: { externalId: string; name: string }
 ): Promise<void> {
-  logger.info(`Incoming user ${incomingUser.name} (${incomingUser.externalId})`, incomingUser)
+  logger.info(`Incoming user '${incomingUser.externalId}'`, incomingUser)
   await deps.db
     .persistUser(incomingUser)
     .then((user) => {

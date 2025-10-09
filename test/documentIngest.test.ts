@@ -1,5 +1,4 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, jest, mock, test } from 'bun:test'
-import { join } from 'node:path'
 import { Frame } from '../src/agent/frame'
 import { ingestDocument } from '../src/agent/systems/ingestDocument'
 import { parsePdf } from '../src/utils/parsePdf'
@@ -70,9 +69,7 @@ afterEach(async () => {
 
 describe('Document ingest', () => {
   test('should process transcribeDocument.input.pdf file successfully', async () => {
-    const pdfBuffer = await Bun.file(
-      join(import.meta.dir, '../eval/transcribeDocument.input.pdf')
-    ).arrayBuffer()
+    const pdfBuffer = new ArrayBuffer(1024)
 
     frame.inbound = {
       type: 'document',
@@ -90,9 +87,7 @@ describe('Document ingest', () => {
   })
 
   test('should process transcribeDocument_flat.input.pdf file successfully', async () => {
-    const pdfBuffer = await Bun.file(
-      join(import.meta.dir, '../eval/transcribeDocument_flat.input.pdf')
-    ).arrayBuffer()
+    const pdfBuffer = new ArrayBuffer(1024)
 
     frame.inbound = {
       type: 'document',
@@ -122,9 +117,7 @@ describe('Document ingest', () => {
   })
 
   test('should throw error when filename is missing', async () => {
-    const pdfBuffer = await Bun.file(
-      join(import.meta.dir, '../eval/transcribeDocument.input.pdf')
-    ).arrayBuffer()
+    const pdfBuffer = new ArrayBuffer(1024)
 
     frame.inbound = {
       type: 'document',

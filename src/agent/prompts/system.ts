@@ -32,7 +32,10 @@ const formatting = `Formatting options (use sparingly):
 - Numbered list: 1. text
 - Quote: > text
 - Monospace: \`\`\`text\`\`\`
-- Inline code: \`text\``
+- Inline code: \`text\`
+
+This is the only formatting options you can use.
+Do not format your response with anything else, like markdown, HTML, or typographic emphasis.`
 
 export const system = `${identity}
 

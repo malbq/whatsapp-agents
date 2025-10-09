@@ -4,9 +4,7 @@ import { FailedToPersistUserError } from '../errors'
 import type { DB, FileSearchResult, RecentMessage, SimilarMessage, User } from './db'
 
 const MAX_RECENT_MESSAGES = parseInt(import.meta.env.MAX_RECENT_MESSAGES ?? '100')
-const VECTOR_DISTANCE_THRESHOLD = parseFloat(
-  import.meta.env.FILE_VECTOR_DISTANCE_THRESHOLD ?? '0.50'
-)
+const VECTOR_DISTANCE_THRESHOLD = parseFloat(import.meta.env.VECTOR_DISTANCE_THRESHOLD ?? '0.50')
 const MAX_SIMILAR_MESSAGES = parseInt(import.meta.env.MAX_SIMILAR_MESSAGES ?? '10')
 const MAX_FILES = parseInt(import.meta.env.FILE_SEARCH_LIMIT ?? '10')
 const SENDING_STALE_SECONDS = parseInt(import.meta.env.REMINDER_SENDING_STALE_SECONDS ?? '300')
@@ -51,7 +49,6 @@ export namespace LibSql {
           })
 
         if (insertResult.rows.length === 0) {
-          console.log('Failed to persist user: no result')
           throw new FailedToPersistUserError('No user persisted')
         }
 
@@ -292,7 +289,7 @@ export namespace LibSql {
             const score =
               1 - group.chunks.reduce((sum, chunk) => sum + chunk.distance, 0) / group.chunks.length
             const rawSnippet = group.chunks
-              .sort((a, b) => a.distance - b.distance)
+              .toSorted((a, b) => a.distance - b.distance)
               .slice(0, 3)
               .map((chunk) => chunk.content)
               .join('\n\n')
@@ -307,7 +304,7 @@ export namespace LibSql {
               snippet,
             }
           })
-          .sort((a, b) => b.score - a.score)
+          .toSorted((a, b) => b.score - a.score)
           .slice(0, MAX_FILES)
 
         return fileResults

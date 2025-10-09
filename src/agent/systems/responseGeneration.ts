@@ -83,7 +83,7 @@ export async function responseGeneration(frame: Frame, deps: Deps) {
 
     const externalChatId = await deps.chat.sendText({ text: response.text })
 
-    logger.info(`Text response sent to ${frame.user.name} (${frame.user.externalId})`)
+    logger.info(`Text response sent to '${frame.user.externalId}'`)
 
     frame.outbound = {
       externalChatId,

@@ -32,7 +32,7 @@ async function loadMessagesFromFile(filePath: string): Promise<MessageInput[]> {
   } catch (error) {
     if (error instanceof z.ZodError) {
       console.error('Invalid JSON structure:', error.errors)
-      throw new Error('JSON validation failed')
+      throw new Error('JSON validation failed', { cause: error })
     }
     throw error
   }

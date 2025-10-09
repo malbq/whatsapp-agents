@@ -5,16 +5,15 @@ export function validateEnvVars() {
     'META_APP_SECRET',
     'WA_API_VERSION',
     'WA_BUSINESS_PHONE_ID',
-    'OPENAI_API_KEY',
-    'GOOGLE_GENERATIVE_AI_API_KEY',
+    'GOOGLE_AI_STUDIO_API_KEY',
     'CF_ACCOUNT_ID',
+    'CF_GATEWAY_ID',
     'CF_API_TOKEN',
     'MAX_RECENT_MESSAGES',
     'VECTOR_DISTANCE_THRESHOLD',
+    'FILE_SEARCH_LIMIT',
     'MAX_SIMILAR_MESSAGES',
-    'TEXT_GENERATION_PROVIDER',
-    'AUDIO_TRANSCRIPTION_PROVIDER',
-    'IMAGE_ANALYSIS_PROVIDER',
+    'REMINDER_SENDING_STALE_SECONDS',
   ]
 
   const missingVars = requiredEnvVars.filter((varName) => !import.meta.env[varName])

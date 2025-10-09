@@ -222,7 +222,8 @@ app.get('/', async (c) => {
           }
 
           function connectWebSocket() {
-            ws = new WebSocket('ws://' + window.location.host + '/logs/ws')
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+            ws = new WebSocket(protocol + '//' + window.location.host + '/logs/ws')
 
             ws.onopen = () => {
               document.getElementById('ws-status').className = 'ws-status ws-connected'
@@ -260,7 +261,7 @@ app.get('/', async (c) => {
               toggleProperties(logEntry)
             })
 
-            logEntry.textContent = \`
+            logEntry.innerHTML = \`
               <div class="timestamp"></div>
               <div class="category"></div>
               <div class="message"></div>
@@ -276,7 +277,6 @@ app.get('/', async (c) => {
 
           function toggleProperties(element) {
             const content = element.querySelector('.properties-content')
-            console.log('toggleProperties', element, content)
             if (!content) return
             content.classList.toggle('hidden')
           }

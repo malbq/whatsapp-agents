@@ -96,7 +96,7 @@ Card means a Physical Card or Virtual Card as the context requires Card Details 
 
 test('Splits PDF document into chunks', async () => {
   const pdfBuffer = await Bun.file(
-    join(import.meta.dir, '../eval/transcribeDocument.input.pdf')
+    join(import.meta.dir, '../eval/test/transcribeDocument.input.pdf')
   ).arrayBuffer()
   const text = await parsePdf(pdfBuffer)
   const chunks = await splitIntoChunks(text)

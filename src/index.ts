@@ -109,7 +109,7 @@ app.get('/webhook', function webhookVerificationRequest(c) {
 app.route('/logs', loggingRoutes)
 
 export default {
-  port: 8080,
+  port: parseInt(import.meta.env.PORT),
   fetch: app.fetch,
   websocket,
 }

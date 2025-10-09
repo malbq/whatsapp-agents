@@ -12,24 +12,22 @@ declare global {
   }
 
   interface ImportMetaEnv {
+    PORT: string
     META_WEBHOOK_VERIFY_TOKEN: string
     META_API_TOKEN: string
     META_APP_SECRET: string
     WA_API_VERSION: string
     WA_BUSINESS_PHONE_ID: string
-    OPENAI_API_KEY: string
-    GOOGLE_GENERATIVE_AI_API_KEY: string
     CF_ACCOUNT_ID: string
+    CF_GATEWAY_ID: string
     CF_API_TOKEN: string
+    GOOGLE_AI_STUDIO_API_KEY: string
     MAX_RECENT_MESSAGES: string
     VECTOR_DISTANCE_THRESHOLD: string
     FILE_SEARCH_LIMIT: string
     MAX_SIMILAR_MESSAGES: string
     REMINDER_SENDING_STALE_SECONDS: string
-    TEXT_GENERATION_PROVIDER: string
-    AUDIO_TRANSCRIPTION_PROVIDER: string
-    IMAGE_ANALYSIS_PROVIDER: string
-    LOKI_PUSH_URL?: string
+    NODE_ENV?: string
     TEST_AI?: string
   }
 }

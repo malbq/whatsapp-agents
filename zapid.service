@@ -7,24 +7,32 @@ After=network-online.target
 Type=simple
 User=zapid
 Group=zapid
+SyslogIdentifier=zapid
 WorkingDirectory=/opt/zapid
-EnvironmentFile=/opt/zapid/production.env
+EnvironmentFile=/opt/zapid/.env
 Environment=NODE_ENV=production
+ExecStartPre=/usr/local/bin/bun run db:init
 ExecStart=/usr/local/bin/bun run src/index.ts
+ReadWritePaths=/opt/zapid/storage
 Restart=on-failure
 RestartSec=5
 KillSignal=SIGINT
 TimeoutStopSec=15
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+PrivateDevices=yes
+ProtectClock=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+LockPersonality=yes
+RestrictRealtime=yes
 NoNewPrivileges=yes
 ProtectSystem=strict
 ProtectHome=yes
 PrivateTmp=yes
-ReadWritePaths=/opt/zapid/storage
 UMask=0077
 LimitNOFILE=16384
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=zapid
 
 [Install]
 WantedBy=multi-user.target

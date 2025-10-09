@@ -4,12 +4,15 @@
 
 - **User Management**: Complete user management system
 
+  - https://getlago.com/docs/welcome
   - Subscription plan management
   - Usage tracking and limits
   - Onboarding
 
 - **Privacy & Compliance**: Data management features
 
+  - Write Privacy policy
+  - Write Terms of Service
   - Privacy controls and onboarding through WhatsApp custom messages
   - Privacy policy notice and TOS acceptance in first interaction
   - Data export functionality
@@ -50,6 +53,12 @@
 - Users can only delete messages for themselves in business chats
 - [Cloud API does not notify about message deletion](https://developers.facebook.com/docs/whatsapp/cloud-api/webhooks/payload-examples#status--message-deleted)
 - Cloud API does not notify when user is typing
+- Registration:
+  - Buy number
+  - Verify number
+  - Register phone number with account (via API)
+  - Add webhook
+  - Subscribe app to whatsapp account
 
 ### AI
 

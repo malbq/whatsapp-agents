@@ -1,53 +1,61 @@
-import { google } from '@ai-sdk/google'
-import { openai } from '@ai-sdk/openai'
+import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { getLogger } from '@logtape/logtape'
 import {
+  embedMany,
   generateText,
   stepCountIs,
-  experimental_transcribe as transcribe,
   type AssistantModelMessage,
-  type LanguageModel,
   type LanguageModelUsage,
   type SystemModelMessage,
   type TextPart,
   type Tool,
-  type TranscriptionModel,
   type UserModelMessage,
 } from 'ai'
 
-import { xai } from '@ai-sdk/xai'
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { analyzeImage } from '../agent/prompts/analyzeImage'
 import { system } from '../agent/prompts/system'
 import { transcribeDocument } from '../agent/prompts/transcribeDocument'
-import { EmbeddingsGenerationError } from '../errors'
-import { formatTokenUsage } from '../utils/formatTokenUsage'
 import { splitIntoChunks } from '../utils/splitIntoChunks'
 import type { ChunkData } from './db'
 
 const logger = getLogger(['infra', 'ai'])
 
-const TEXT_MODEL =
-  import.meta.env.TEXT_GENERATION_PROVIDER === 'google'
-    ? google('gemini-2.5-flash')
-    : import.meta.env.TEXT_GENERATION_PROVIDER === 'xai'
-    ? xai('grok-4-fast-non-reasoning')
-    : openai('gpt-5-mini')
+const gatewayBaseURL = `https://gateway.ai.cloudflare.com/v1/${import.meta.env.CF_ACCOUNT_ID}/${
+  import.meta.env.CF_GATEWAY_ID
+}`
 
-const AUDIO_TRANSCRIPTION_MODEL =
-  import.meta.env.AUDIO_TRANSCRIPTION_PROVIDER === 'google'
-    ? google('gemini-2.5-flash')
-    : openai.transcription('whisper-1')
+const textProvider = createOpenAICompatible({
+  name: 'cf-aig',
+  baseURL: `${gatewayBaseURL}/compat`,
+  headers: { 'cf-aig-authorization': `Bearer ${import.meta.env.CF_API_TOKEN}` },
+})
+const textModel = textProvider('grok/grok-4-fast-non-reasoning')
+// const textModel = cgAiGatewayProvider('openai/gpt-5-mini')
 
-const IMAGE_ANALYSIS_MODEL =
-  import.meta.env.IMAGE_ANALYSIS_PROVIDER === 'google'
-    ? google('gemini-2.5-flash')
-    : openai('gpt-4.1-mini-2025-04-14')
+const embeddingProvider = createOpenAICompatible({
+  name: 'cf-aig',
+  baseURL: `${gatewayBaseURL}/compat`,
+  headers: {
+    authorization: `Bearer ${import.meta.env.CF_API_TOKEN}`,
+    'cf-aig-authorization': `Bearer ${import.meta.env.CF_API_TOKEN}`,
+  },
+})
+const embeddingModel = embeddingProvider.textEmbeddingModel('workers-ai/@cf/baai/bge-m3')
 
-const DOCUMENT_TRANSCRIPTION_MODEL = google('gemini-2.5-flash-lite')
-const EMBEDDING_MODEL = '@cf/baai/bge-m3'
+const google = createGoogleGenerativeAI({
+  baseURL: `${gatewayBaseURL}/google-ai-studio/v1beta`,
+  apiKey: import.meta.env.GOOGLE_AI_STUDIO_API_KEY,
+  headers: { 'cf-aig-authorization': `Bearer ${import.meta.env.CF_API_TOKEN}` },
+})
+
+const transcriptionModel = google('gemini-2.5-flash')
+const imageAnalysisModel = google('gemini-2.5-flash')
+const documentTranscriptionModel = google('gemini-2.5-flash-lite')
+
 const IMAGE_ANALYSIS_TEMP = 0.1
 const TRANSCRIPTION_GEN_TEMP = 0
-const MAX_STEPS = 6
+const MAX_STEPS = 15
 
 export type AIMessage = SystemModelMessage | UserModelMessage | AssistantModelMessage
 
@@ -75,22 +83,22 @@ export interface AI {
 export const AIProvider: AI = {
   respond: async ({ instructions = system, messages, tools: customTools = [] }) => {
     const tools: Record<string, Tool> = {}
-    switch (TEXT_MODEL.provider) {
-      case 'google.generative-ai':
-        tools.google_search = google.tools.googleSearch({})
-        break
-      case 'openai':
-        tools.web_search_preview = openai.tools.webSearchPreview({})
-        break
-      default:
-    }
+    // switch (textModel.provider) {
+    //   case 'google.generative-ai':
+    //     tools.google_search = google.tools.googleSearch({})
+    //     break
+    //   case 'openai':
+    //     tools.web_search_preview = openai.tools.webSearchPreview({})
+    //     break
+    //   default:
+    // }
 
     customTools.forEach((tool) => {
       tools[(tool as { name: string }).name] = tool
     })
 
     const result = await generateText({
-      model: TEXT_MODEL,
+      model: textModel,
       system: instructions,
       messages,
       tools,
@@ -99,14 +107,14 @@ export const AIProvider: AI = {
     const toolResults = result.steps?.flatMap((step) => step.toolResults) ?? []
 
     const ctxLogger = logger.with({
-      providerResponseId: result.response.id,
+      gatewayLogId: result.response.headers?.['cf-aig-log-id'],
     })
-    ctxLogger.debug(`Text generated with ${TEXT_MODEL.provider}/${TEXT_MODEL.modelId}`, {
-      usage: formatTokenUsage(result.usage),
-      stepsCount: result.steps?.length || 0,
-      input: (result.request.body as any)?.input,
-      output: result.content,
-      toolResults,
+    ctxLogger.debug(`Text generated with ${textModel.modelId}`, {
+      finishReason: result.finishReason,
+      totalUsage: result.totalUsage,
+      steps: result.steps,
+      // stepsCount: result.steps?.length || 0,
+      // toolResults,
     })
 
     if ((result.providerMetadata?.google?.groundingMetadata as any | undefined)?.webSearchQueries) {
@@ -123,93 +131,36 @@ export const AIProvider: AI = {
   },
 
   transcribeAudio: async ({ instructions = 'Transcribe the audio file', audio }) => {
-    let text = ''
-    let usage: LanguageModelUsage | undefined
-    switch (AUDIO_TRANSCRIPTION_MODEL.provider) {
-      case 'google.generative-ai':
-        {
-          const response = await generateText({
-            model: AUDIO_TRANSCRIPTION_MODEL as LanguageModel,
-            temperature: TRANSCRIPTION_GEN_TEMP,
-            system: instructions,
-            messages: [
-              {
-                role: 'user',
-                content: [
-                  {
-                    type: 'file',
-                    data: audio,
-                    mediaType: 'audio/ogg',
-                  },
-                ],
-              },
-            ],
-          })
-          text = response.text
-          usage = response.usage
-        }
-        break
-      case 'openai.transcription':
-        {
-          const response = await transcribe({
-            model: AUDIO_TRANSCRIPTION_MODEL as TranscriptionModel,
-            providerOptions: {
-              openai: {
-                response_format: 'json',
-                temperature: TRANSCRIPTION_GEN_TEMP,
-              },
-            },
-            audio,
-          })
-          text = response.text
-        }
-        break
-      default:
-        throw new Error(`Unsupported provider: ${AUDIO_TRANSCRIPTION_MODEL.provider}`)
-    }
-    logger.debug(
-      `Audio transcription from ${AUDIO_TRANSCRIPTION_MODEL.provider}/${AUDIO_TRANSCRIPTION_MODEL.modelId}`,
-      {
-        text,
-        usage: formatTokenUsage(usage),
-      }
-    )
+    const response = await generateText({
+      model: transcriptionModel,
+      temperature: TRANSCRIPTION_GEN_TEMP,
+      system: instructions,
+      messages: [
+        { role: 'user', content: [{ type: 'file', data: audio, mediaType: 'audio/ogg' }] },
+      ],
+    })
+    const { text, usage } = response
+    logger.debug(`Audio transcribed with ${transcriptionModel.modelId}`, { text, usage })
     return text
   },
 
   analyzeImage: async ({ instructions = analyzeImage, imageUrl, caption }) => {
-    const response = await generateText({
-      model: IMAGE_ANALYSIS_MODEL,
+    const { text, usage } = await generateText({
+      model: imageAnalysisModel,
       temperature: IMAGE_ANALYSIS_TEMP,
       system: instructions,
       messages: [
         {
           role: 'user',
           content: [
-            {
-              type: 'image',
-              image: imageUrl,
-            },
-            ...(caption
-              ? [
-                  {
-                    type: 'text',
-                    text: caption,
-                  } as TextPart,
-                ]
-              : []),
+            { type: 'image', image: imageUrl },
+            ...(caption ? [{ type: 'text', text: caption } as TextPart] : []),
           ],
         },
       ],
     })
-    logger.debug(
-      `Image analysis from ${IMAGE_ANALYSIS_MODEL.provider}/${IMAGE_ANALYSIS_MODEL.modelId}`,
-      {
-        text: response.text,
-        usage: formatTokenUsage(response.usage),
-      }
-    )
-    return response.text
+    logger.debug(`Image analyzed with ${imageAnalysisModel.modelId}`, { text, usage })
+    return text
   },
 
   transcribeDocument: async ({
@@ -219,8 +170,8 @@ export const AIProvider: AI = {
     filename,
   }) => {
     const copy = document.slice(0)
-    const response = await generateText({
-      model: DOCUMENT_TRANSCRIPTION_MODEL,
+    const { text, usage } = await generateText({
+      model: documentTranscriptionModel,
       temperature: 0,
       system: instructions,
       messages: [
@@ -237,70 +188,28 @@ export const AIProvider: AI = {
         },
       ],
     })
-    logger.debug(
-      `Document transcription ${DOCUMENT_TRANSCRIPTION_MODEL.provider}/${DOCUMENT_TRANSCRIPTION_MODEL.modelId}`,
-      {
-        text: response.text,
-        usage: formatTokenUsage(response.usage),
-      }
-    )
-    return response.text
+    logger.debug(`Document transcribed with ${documentTranscriptionModel.modelId}`, { text, usage })
+    return text
   },
 
   generateEmbeddings: async (text) => {
     const chunks = await splitIntoChunks(text)
-    const httpResponse = await fetch(
-      `https://api.cloudflare.com/client/v4/accounts/${
-        import.meta.env.CF_ACCOUNT_ID
-      }/ai/run/${EMBEDDING_MODEL}`,
-      {
-        headers: { Authorization: `Bearer ${import.meta.env.CF_API_TOKEN}` },
-        method: 'POST',
-        body: JSON.stringify({ text: chunks }),
-      }
-    )
 
-    if (!httpResponse.ok) {
-      throw new EmbeddingsGenerationError(
-        `Embeddings API request failedn${JSON.stringify({
-          status: httpResponse.status,
-          statusText: httpResponse.statusText,
-          body: await httpResponse.text(),
-        })}`
-      )
-    }
-
-    const response = (await httpResponse.json()) as EmbeddingsResponseBody
-
-    if (!response.success) {
-      throw new EmbeddingsGenerationError(
-        `Embeddings generation failed\n${response.error.join(', ')}`
-      )
-    }
-
-    if (!response.result?.data) {
-      throw new EmbeddingsGenerationError('Invalid embeddings response\nmissing result data')
-    }
-
-    logger.debug(`Embeddings generated with ${EMBEDDING_MODEL}`, {
-      input: text,
-      shape: response.result.shape,
-      pooling: response.result.pooling,
+    const { embeddings, usage, providerMetadata } = await embedMany({
+      model: embeddingModel,
+      values: chunks,
     })
-    return response.result.data.map<ChunkData>((embedding, i) => ({
+
+    logger.debug(`Embeddings generated with ${embeddingModel.modelId}`, {
+      chunks,
+      embeddingsCount: embeddings.length,
+      usage,
+      providerMetadata,
+    })
+
+    return embeddings.map<ChunkData>((embedding, i) => ({
       content: chunks[i]!,
       embedding,
     }))
   },
-}
-
-interface EmbeddingsResponseBody {
-  result: {
-    shape: number[]
-    data: number[][]
-    pooling: 'mean' | 'cls'
-  }
-  success: boolean
-  error: string[]
-  messages: string[]
 }
