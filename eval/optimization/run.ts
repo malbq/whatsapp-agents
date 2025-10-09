@@ -466,7 +466,7 @@ Integrate these memories to provide context-aware answers and maintain conversat
       }
     }
 
-    return candidates.sort((a, b) => {
+    return candidates.toSorted((a, b) => {
       const scoreA = candidateAverages.get(a.id) || 0
       const scoreB = candidateAverages.get(b.id) || 0
 

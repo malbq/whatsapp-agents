@@ -1,0 +1,31 @@
+[Unit]
+Description=WhatsApp AI Assistant Service
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=zapid
+Group=zapid
+WorkingDirectory=/opt/zapid
+EnvironmentFile=/opt/zapid/production.env
+Environment=NODE_ENV=production
+ExecStart=/usr/local/bin/bun run src/index.ts
+Restart=on-failure
+RestartSec=5
+KillSignal=SIGINT
+TimeoutStopSec=15
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ReadWritePaths=/opt/zapid/storage
+UMask=0077
+LimitNOFILE=16384
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=zapid
+
+[Install]
+WantedBy=multi-user.target
+

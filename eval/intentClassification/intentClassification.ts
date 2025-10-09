@@ -23,10 +23,10 @@ const results: string[][] = await Promise.all(
       prompt: item.input,
     })
     const classification = JSON.stringify(
-      response.object.context.sort((a: string, b: string) => a.localeCompare(b)) ?? []
+      response.object.context.toSorted((a: string, b: string) => a.localeCompare(b)) ?? []
     )
 
-    const expected = JSON.stringify(item.output.sort((a: string, b: string) => a.localeCompare(b)))
+    const expected = JSON.stringify(item.output.toSorted((a: string, b: string) => a.localeCompare(b)))
 
     const isEqual = classification === expected
 

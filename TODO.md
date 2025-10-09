@@ -2,11 +2,6 @@
 
 ## Next
 
-- **Deployment**
-
-  - make logs page accessible only from local network/tailscale
-  - turn into systemd service with package.json scripts for intall/start/stop/restart
-
 - **User Management**: Complete user management system
 
   - Subscription plan management

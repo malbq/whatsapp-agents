@@ -414,7 +414,7 @@ export class PromptGenerator {
 
   private getComponentSignature(components: string[]): string {
     // Create a consistent signature by sorting component IDs
-    return components.slice().sort().join('|')
+    return components.slice().toSorted().join('|')
   }
 
   private buildDefaultContextPresets(): ContextPreset[] {

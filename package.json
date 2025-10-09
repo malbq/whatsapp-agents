@@ -4,7 +4,10 @@
   "packageManager": "bun",
   "scripts": {
     "dev": "bun --hot --no-clear-screen run src/index.ts",
-    "start": "bun run src/index.ts",
+    "service:sync": "./script/sync.sh",
+    "service:restart": "sudo systemctl restart zapid",
+    "service:status": "sudo systemctl status zapid",
+    "service:logs": "sudo journalctl -u zapid -f",
     "typecheck": "tsc",
     "db:init": "bun run src/infra/dbSetup/init.ts",
     "lint": "oxlint --fix"

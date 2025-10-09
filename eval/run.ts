@@ -31,7 +31,7 @@
  *   bun run eval/run.ts scenarios/customer_support.json
  */
 
-import { xai } from '@ai-sdk/xai'
+import { createXai } from '@ai-sdk/xai'
 import { createClient, type Client } from '@libsql/client'
 import { generateText } from 'ai'
 import crypto from 'node:crypto'
@@ -44,6 +44,10 @@ import { AIProvider } from '../src/infra/ai'
 import type { Chat, IncomingMessage } from '../src/infra/chat'
 import { LibSql } from '../src/infra/dbLibSql'
 import { FilesystemStorage } from '../src/infra/storageFilesystem'
+
+const xai = createXai({
+  apiKey: import.meta.env.XAI_EVAL_API_KEY,
+})
 
 async function main() {
   const configFile = process.argv[2]
@@ -342,6 +346,7 @@ function createUserMessageGenerator(
     const params: Parameters<typeof generateText>[0] = {
       model: modelConfig,
       system: config.systemPrompt,
+      prompt: '',
     }
 
     if (previousResponseId && message) {

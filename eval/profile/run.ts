@@ -345,7 +345,7 @@ async function runEvaluation(variantCount: number, messageCount: number): Promis
   console.log('\nRanked Results:')
 
   allResults
-    .sort((a, b) => b.judge.score - a.judge.score)
+    .toSorted((a, b) => b.judge.score - a.judge.score)
     .forEach((variant, index) => {
       console.log(
         `${index + 1}. ${variant.id}: ${variant.judge.score}/10 - ${variant.judge.feedback}`

@@ -52,7 +52,7 @@ export class OptimizationStorage {
         }
       }
 
-      return candidates.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+      return candidates.toSorted((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
     } catch {
       return []
     }
@@ -162,7 +162,7 @@ export class OptimizationStorage {
         }
       }
 
-      return runs.sort()
+      return runs.toSorted()
     } catch {
       return []
     }
