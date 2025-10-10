@@ -1,0 +1,31 @@
+services:
+  zapid:
+    build:
+      context: .
+      target: production
+    container_name: zapid
+    restart: on-failure:5
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - /var/lib/zapid:/opt/zapid/storage
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    stop_grace_period: 15s
+    stop_signal: SIGINT
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 1G
+        reservations:
+          cpus: "0.5"
+          memory: 256M
