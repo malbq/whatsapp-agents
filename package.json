@@ -7,7 +7,7 @@
     "docker:setup": "./setup-docker-host.sh",
     "docker:logs": "docker compose logs -f",
     "typecheck": "tsc",
-    "db:init": "bun run src/infra/dbSetup/init.ts",
+    "db:migrate": "atlas schema apply --env local --auto-approve",
     "lint": "oxlint --fix"
   },
   "dependencies": {
