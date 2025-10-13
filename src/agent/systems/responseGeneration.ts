@@ -14,6 +14,7 @@ import { sendFileTool } from '../tools/sendFile'
 import { sendLocationTool } from '../tools/sendLocation'
 import { sendReactionTool } from '../tools/sendReaction'
 import { updateUserProfileTool } from '../tools/updateUserProfile'
+import { webFetchTool } from '../tools/webFetch'
 import { webSearchTool } from '../tools/webSearch'
 
 const logger = getLogger(['app', 'agent', 'responseGeneration'])
@@ -80,6 +81,7 @@ export async function responseGeneration(frame: Frame, deps: Deps) {
         fetchMemoryTool(frame, deps),
         searchFilesTool(frame, deps),
         webSearchTool(frame, deps),
+        webFetchTool(frame, deps),
         googlePlacesTool(frame, deps),
         sendFileTool(frame, deps),
         sendReactionTool(frame, deps),

@@ -5,7 +5,8 @@
     "suspicious": "warn"
   },
   "rules": {
-    "prefer-node-protocol": "error"
+    "prefer-node-protocol": "error",
+    "unicorn/require-module-specifiers": "off"
   },
   "ignorePatterns": ["node_modules"]
 }

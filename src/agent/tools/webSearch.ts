@@ -26,7 +26,9 @@ export const webSearchTool = (_frame: Frame, _deps: Deps) =>
     - Business information, contact details, or locations
     - Product prices, availability, or reviews
     - Weather, sports scores, or other real-time data
-    - Any question that requires up-to-date information from the internet`,
+    - Any question that requires up-to-date information from the internet
+    
+    Returns a summary answer and a "Sources:" list of URLs. Use the web_fetch tool to retrieve full content from those URLs if you need more detail.`,
     inputSchema: z.object({
       query: z.string().describe('The search query to find relevant information on the web'),
     }),
