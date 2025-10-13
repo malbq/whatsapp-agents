@@ -32,4 +32,5 @@ declare global {
   }
 }
 
+// oxlint-disable-next-line
 export {}

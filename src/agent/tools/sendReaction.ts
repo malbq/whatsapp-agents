@@ -5,7 +5,7 @@ import type { Frame } from '../frame'
 
 const logger = getLogger(['app', 'agent', 'tool', 'sendReaction'])
 
-export const sendReactionToolDefinition = (frame: Frame, deps: Deps) =>
+export const sendReactionTool = (frame: Frame, deps: Deps) =>
   tool({
     name: 'send_reaction',
     description:

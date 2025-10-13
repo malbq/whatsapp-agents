@@ -126,7 +126,7 @@ export namespace Whatsapp {
     },
 
     sendText: async ({ text, replyingTo }) => {
-      const { userWhatsappId } = getWhatsappIds()
+      const { userWhatsappId } = getUserWaId()
 
       const requestBody: WaOutgoingText = {
         messaging_product: 'whatsapp',
@@ -140,7 +140,7 @@ export namespace Whatsapp {
     },
 
     sendImage: async ({ data, caption, mimeType, replyingTo }) => {
-      const { userWhatsappId } = getWhatsappIds()
+      const { userWhatsappId } = getUserWaId()
 
       const mediaId = await uploadMedia(data, mimeType)
 
@@ -159,7 +159,7 @@ export namespace Whatsapp {
     },
 
     sendDocument: async ({ data, filename, caption, mimeType, replyingTo }) => {
-      const { userWhatsappId } = getWhatsappIds()
+      const { userWhatsappId } = getUserWaId()
 
       const mediaId = await uploadMedia(data, mimeType, filename)
 
@@ -179,7 +179,7 @@ export namespace Whatsapp {
     },
 
     sendLocation: async ({ latitude, longitude, name, address, replyingTo }) => {
-      const { userWhatsappId } = getWhatsappIds()
+      const { userWhatsappId } = getUserWaId()
 
       const requestBody: WaOutgoingLocation = {
         messaging_product: 'whatsapp',
@@ -198,7 +198,7 @@ export namespace Whatsapp {
     },
 
     sendReaction: async ({ externalChatId, emoji }) => {
-      const { userWhatsappId } = getWhatsappIds()
+      const { userWhatsappId } = getUserWaId()
 
       const requestBody: WaOutgoingReaction = {
         messaging_product: 'whatsapp',
@@ -213,32 +213,32 @@ export namespace Whatsapp {
       return sendMessageRequest(requestBody)
     },
 
-    sendContact: async ({ contacts }) => {
-      const { userWhatsappId } = getWhatsappIds()
+    sendContact: async (contact) => {
+      const name = contact.name.trim()
+      const phone = contact.phone.trim()
+      if (name.length === 0 || phone.length === 0) {
+        throw new ResponseDeliveryError('Name and phone are required')
+      }
+
+      const { userWhatsappId } = getUserWaId()
 
       const requestBody: WaOutgoingContact = {
         messaging_product: 'whatsapp',
         to: userWhatsappId,
         type: 'contacts',
-        contacts: contacts.map((contact) => ({
-          name: {
-            formatted_name: contact.name.formattedName,
-            first_name: contact.name.firstName,
-            last_name: contact.name.lastName,
+        contacts: [
+          {
+            name: { formatted_name: name, first_name: name.split(' ')[0]! },
+            phones: [{ phone: phone, wa_id: phone }],
           },
-          phones: contact.phones.map((phone) => ({
-            phone: phone.phone,
-            type: phone.type,
-            wa_id: phone.externalId,
-          })),
-        })),
+        ],
       }
 
       return sendMessageRequest(requestBody)
     },
 
     sendInteractiveList: async ({ header, body, footer, action, replyingTo }) => {
-      const { userWhatsappId } = getWhatsappIds()
+      const { userWhatsappId } = getUserWaId()
 
       const requestBody: WaOutgoingInteractiveList = {
         messaging_product: 'whatsapp',
@@ -258,7 +258,7 @@ export namespace Whatsapp {
     },
 
     sendInteractiveButton: async ({ header, body, footer, action, replyingTo }) => {
-      const { userWhatsappId } = getWhatsappIds()
+      const { userWhatsappId } = getUserWaId()
 
       const requestBody: WaOutgoingInteractiveButton = {
         messaging_product: 'whatsapp',
@@ -278,7 +278,7 @@ export namespace Whatsapp {
     },
 
     sendInteractiveCtaUrl: async ({ header, body, footer, action, replyingTo }) => {
-      const { userWhatsappId } = getWhatsappIds()
+      const { userWhatsappId } = getUserWaId()
 
       const requestBody: WaOutgoingInteractiveCtaUrl = {
         messaging_product: 'whatsapp',
@@ -303,7 +303,7 @@ export namespace Whatsapp {
       bodyParameters,
       footerParameters,
     }) => {
-      const { userWhatsappId } = getWhatsappIds()
+      const { userWhatsappId } = getUserWaId()
 
       const components: Array<WaTemplateComponent> = []
       if (headerParameters) {
@@ -452,7 +452,7 @@ export namespace Whatsapp {
     return response.messages[0].id
   }
 
-  function getWhatsappIds() {
+  function getUserWaId() {
     const userWhatsappId = getContext().var.userWhatsappId
 
     if (!userWhatsappId) {
@@ -669,13 +669,11 @@ export namespace Whatsapp {
     contacts: Array<{
       name: {
         formatted_name: string
-        first_name?: string
-        last_name?: string
+        first_name: string
       }
       phones: Array<{
         phone: string
-        type: 'HOME' | 'WORK' | 'CELL' | 'MAIN' | 'IPHONE'
-        wa_id?: string
+        wa_id: string
       }>
     }>
   }

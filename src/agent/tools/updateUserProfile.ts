@@ -5,7 +5,7 @@ import type { Frame } from '../frame'
 
 const logger = getLogger(['app', 'agent', 'tool', 'updateUserProfile'])
 
-export const updateUserProfileToolDefinition = (frame: Frame, deps: Deps) =>
+export const updateUserProfileTool = (frame: Frame, deps: Deps) =>
   tool({
     name: 'update_user_profile',
     description: `Goal: Enrich the user profile with only explicit, minimal facts that aid personalization, strictly following Brazil'S GPD and privacy rules.

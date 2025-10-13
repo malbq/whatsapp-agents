@@ -49,18 +49,8 @@ export interface OutgoingReactionMessage {
   emoji: string
 }
 export interface OutgoingContactMessage {
-  contacts: Array<{
-    name: {
-      formattedName: string
-      firstName?: string
-      lastName?: string
-    }
-    phones: Array<{
-      phone: string
-      type: 'HOME' | 'WORK' | 'CELL' | 'MAIN' | 'IPHONE'
-      externalId?: string
-    }>
-  }>
+  name: string
+  phone: string
 }
 export interface OutgoingInteractiveListMessage {
   header?: {

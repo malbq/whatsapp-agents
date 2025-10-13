@@ -6,11 +6,15 @@ import { extractFilename } from '../../utils/storageKey'
 import type { Frame } from '../frame'
 import { recentMessages as recentMessagesPrompt } from '../prompts/recentMessages'
 import { userProfile } from '../prompts/userProfile'
-import { fetchMemoryToolDefinition } from '../tools/fetchMemory'
+import { fetchMemoryTool } from '../tools/fetchMemory'
+import { googlePlacesTool } from '../tools/googlePlaces'
 import { searchFilesTool } from '../tools/searchFiles'
-import { sendFileToolDefinition } from '../tools/sendFile'
-import { sendReactionToolDefinition } from '../tools/sendReaction'
-import { updateUserProfileToolDefinition } from '../tools/updateUserProfile'
+import { sendContactTool } from '../tools/sendContact'
+import { sendFileTool } from '../tools/sendFile'
+import { sendLocationTool } from '../tools/sendLocation'
+import { sendReactionTool } from '../tools/sendReaction'
+import { updateUserProfileTool } from '../tools/updateUserProfile'
+import { webSearchTool } from '../tools/webSearch'
 
 const logger = getLogger(['app', 'agent', 'responseGeneration'])
 
@@ -73,11 +77,15 @@ export async function responseGeneration(frame: Frame, deps: Deps) {
     const response = await deps.ai.respond({
       messages: messagesForAgent,
       tools: [
-        fetchMemoryToolDefinition(frame, deps),
+        fetchMemoryTool(frame, deps),
         searchFilesTool(frame, deps),
-        sendFileToolDefinition(frame, deps),
-        sendReactionToolDefinition(frame, deps),
-        updateUserProfileToolDefinition(frame, deps),
+        webSearchTool(frame, deps),
+        googlePlacesTool(frame, deps),
+        sendFileTool(frame, deps),
+        sendReactionTool(frame, deps),
+        sendLocationTool(frame, deps),
+        sendContactTool(frame, deps),
+        updateUserProfileTool(frame, deps),
       ],
     })
 

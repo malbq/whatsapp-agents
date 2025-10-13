@@ -6,7 +6,7 @@ import type { Frame } from '../frame'
 
 const logger = getLogger(['app', 'agent', 'tool', 'sendFile'])
 
-export const sendFileToolDefinition = (frame: Frame, deps: Deps) =>
+export const sendFileTool = (frame: Frame, deps: Deps) =>
   tool({
     name: 'send_file',
     description:

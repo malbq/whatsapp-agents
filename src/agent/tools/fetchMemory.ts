@@ -6,7 +6,7 @@ import type { Frame } from '../frame'
 
 const logger = getLogger(['app', 'agent', 'tool', 'fetchMemory'])
 
-export const fetchMemoryToolDefinition = (frame: Frame, deps: Deps) =>
+export const fetchMemoryTool = (frame: Frame, deps: Deps) =>
   tool({
     name: 'fetch_memory',
     description: `Fetch relevant memories from conversation history to provide context-aware and personalized responses.
