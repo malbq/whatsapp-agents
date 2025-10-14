@@ -2,12 +2,24 @@
 
 ## Next
 
+- **Fix**
+
+  - Agent is not calling send_location and send_contact after google_places.
+  - Keep messages under 500 characters. Tell the agent in system prompt that it can use sendText as much as needed to split responses and send intermediate messages.
+  - Get agent intent on every tool call and send it with chat.sendText in tool hooks.
+  - Every message must be stored in the database.
+
+- **Loggingg**
+
+  - Configure posthog in docker container
+
 - **User Management**: Complete user management system
 
   - https://getlago.com/docs/welcome
   - Subscription plan management
   - Usage tracking and limits
   - Onboarding
+  - Generate unique code or token link, bound to the phone number, for payment and configuration
 
 - **Privacy & Compliance**: Data management features
 

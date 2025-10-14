@@ -1,10 +1,11 @@
 import { createClient } from '@libsql/client'
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
+import { join } from 'node:path'
 import { LibSql } from '../src/infra/dbLibSql'
 
 describe('User Profile Versioning', () => {
-  const dbPath = './test/userProfileVersioning.db'
-  const storagePath = './test/storage'
+  const dbPath = join(import.meta.dirname, 'userProfileVersioning.db')
+  const storagePath = join(import.meta.dirname, 'storage')
   let db: ReturnType<typeof LibSql.db>
   let dbClient: ReturnType<typeof createClient>
 
@@ -12,7 +13,7 @@ describe('User Profile Versioning', () => {
     await Bun.$`mkdir -p ${storagePath}`.nothrow()
     dbClient = createClient({ url: `file:${dbPath}` })
     db = LibSql.db(dbClient)
-    await Bun.$`bun run ./src/infra/dbSetup/init.ts ${dbPath}`
+    await Bun.$`atlas schema apply --env local --url sqlite://file:${dbPath} --auto-approve`.quiet()
   })
 
   afterAll(async () => {

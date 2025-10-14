@@ -77,7 +77,7 @@ export interface AI {
     mimeType: string
     filename: string
   }) => Promise<string>
-  generateEmbeddings: (text: string) => Promise<Array<ChunkData>>
+  generateEmbeddings: (text: Array<string>) => Promise<Array<Array<ChunkData>>>
 }
 
 export const AIProvider: AI = {
@@ -97,11 +97,8 @@ export const AIProvider: AI = {
       stopWhen: stepCountIs(MAX_STEPS),
     })
 
-    const ctxLogger = logger.with({
+    logger.debug(`Text generated with ${textModel.modelId}`, {
       gatewayLogId: result.response.headers?.['cf-aig-log-id'],
-    })
-    ctxLogger.debug(`Text generated with ${textModel.modelId}`, {
-      finishReason: result.finishReason,
       totalUsage: result.totalUsage,
       steps: result.steps.map(({ request: _, response: __, ...step }) => {
         return step
@@ -115,7 +112,7 @@ export const AIProvider: AI = {
   },
 
   transcribeAudio: async ({ instructions = 'Transcribe the audio file', audio }) => {
-    const response = await generateText({
+    const result = await generateText({
       model: transcriptionModel,
       temperature: TRANSCRIPTION_GEN_TEMP,
       system: instructions,
@@ -123,13 +120,19 @@ export const AIProvider: AI = {
         { role: 'user', content: [{ type: 'file', data: audio, mediaType: 'audio/ogg' }] },
       ],
     })
-    const { text, usage } = response
-    logger.debug(`Audio transcribed with ${transcriptionModel.modelId}`, { text, usage })
-    return text
+
+    logger.debug(`Audio transcribed with ${transcriptionModel.modelId}`, {
+      gatewayLogId: result.response.headers?.['cf-aig-log-id'],
+      totalUsage: result.totalUsage,
+      steps: result.steps.map(({ request: _, response: __, ...step }) => {
+        return step
+      }),
+    })
+    return result.text
   },
 
   analyzeImage: async ({ instructions = analyzeImage, imageUrl, caption }) => {
-    const { text, usage } = await generateText({
+    const result = await generateText({
       model: imageAnalysisModel,
       temperature: IMAGE_ANALYSIS_TEMP,
       system: instructions,
@@ -143,8 +146,14 @@ export const AIProvider: AI = {
         },
       ],
     })
-    logger.debug(`Image analyzed with ${imageAnalysisModel.modelId}`, { text, usage })
-    return text
+    logger.debug(`Image analyzed with ${imageAnalysisModel.modelId}`, {
+      gatewayLogId: result.response.headers?.['cf-aig-log-id'],
+      totalUsage: result.totalUsage,
+      steps: result.steps.map(({ request: _, response: __, ...step }) => {
+        return step
+      }),
+    })
+    return result.text
   },
 
   transcribeDocument: async ({
@@ -154,7 +163,7 @@ export const AIProvider: AI = {
     filename,
   }) => {
     const copy = document.slice(0)
-    const { text, usage } = await generateText({
+    const result = await generateText({
       model: documentTranscriptionModel,
       temperature: 0,
       system: instructions,
@@ -172,28 +181,52 @@ export const AIProvider: AI = {
         },
       ],
     })
-    logger.debug(`Document transcribed with ${documentTranscriptionModel.modelId}`, { text, usage })
-    return text
+    logger.debug(`Document transcribed with ${documentTranscriptionModel.modelId}`, {
+      gatewayLogId: result.response.headers?.['cf-aig-log-id'],
+      totalUsage: result.totalUsage,
+      steps: result.steps.map(({ request: _, response: __, ...step }) => {
+        return step
+      }),
+    })
+    return result.text
   },
 
-  generateEmbeddings: async (text) => {
-    const chunks = await splitIntoChunks(text)
+  generateEmbeddings: async (texts) => {
+    const groupedChunks = await Promise.all(
+      texts.map(async (text) => {
+        if (!text.trim()) {
+          return []
+        }
+        return await splitIntoChunks(text)
+      })
+    )
 
-    const { embeddings, usage, providerMetadata } = await embedMany({
+    const allChunks = groupedChunks.flat()
+    const result = await embedMany({
       model: embeddingModel,
-      values: chunks,
+      values: allChunks,
     })
 
-    logger.debug(`Embeddings generated with ${embeddingModel.modelId}`, {
-      chunks,
-      embeddingsCount: embeddings.length,
-      usage,
-      providerMetadata,
+    logger.debug(`Batch embeddings generated with ${embeddingModel.modelId}`, {
+      textsCount: texts.length,
+      totalChunks: allChunks.length,
+      embeddings: result.embeddings.map((e) => e.length),
+      usage: result.usage,
+      providerMetadata: result.providerMetadata,
     })
 
-    return embeddings.map<ChunkData>((embedding, i) => ({
-      content: chunks[i]!,
-      embedding,
-    }))
+    let embeddingIndex = 0
+    const embeddings = groupedChunks.map<Array<ChunkData>>((textChunks) => {
+      const embedding = result.embeddings
+        .slice(embeddingIndex, embeddingIndex + textChunks.length)
+        .map((embedding, e) => ({
+          content: textChunks[e]!,
+          embedding,
+        }))
+      embeddingIndex += textChunks.length
+      return embedding
+    })
+
+    return embeddings
   },
 }

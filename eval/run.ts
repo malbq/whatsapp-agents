@@ -103,7 +103,12 @@ async function main() {
     const lastMessage = config.conversation[config.conversation.length - 1]
     if (lastMessage && lastMessage.role === 'user') {
       console.log('Sending predefined user message to agent')
-      const incomingMessage = createUserMessage(lastMessage.content, userExternalId)
+      const incomingMessage = await createUserMessage(
+        lastMessage.content,
+        userExternalId,
+        lastMessage.type,
+        lastMessage.audioFile
+      )
       await agent(deps, incomingMessage)
     }
   }
@@ -117,7 +122,7 @@ async function main() {
     const userMessage = await generateUserMessage(evalChat.lastAssistantMessage)
     console.log('================================')
     if (!userMessage) break
-    const incomingMessage = createUserMessage(userMessage, userExternalId)
+    const incomingMessage = await createUserMessage(userMessage, userExternalId)
     await agent(deps, incomingMessage)
 
     messageCount++
@@ -243,14 +248,29 @@ async function insertPredefinedMessages(
   return { messageIds: predefinedMessageIds }
 }
 
-function createUserMessage(userMessage: string, userExternalId: string): IncomingMessage {
-  return {
+async function createUserMessage(
+  userMessage: string,
+  userExternalId: string,
+  type: 'text' | 'audio' = 'text',
+  audioFile?: string
+): Promise<IncomingMessage> {
+  const baseMessage: IncomingMessage = {
     externalId: newExternalId(),
     userExternalId,
     userName: 'Simulated User',
-    type: 'text',
-    text: userMessage,
+    type,
   }
+
+  if (type === 'text') {
+    baseMessage.text = userMessage
+  } else if (type === 'audio' && audioFile) {
+    const audioPath = join(process.cwd(), audioFile)
+    const audioData = await Bun.file(audioPath).arrayBuffer()
+    baseMessage.mediaData = audioData
+    baseMessage.mimeType = 'audio/ogg'
+  }
+
+  return baseMessage
 }
 
 const SimulationConfigSchema = z.object({
@@ -260,6 +280,8 @@ const SimulationConfigSchema = z.object({
     z.object({
       role: z.enum(['user', 'assistant']),
       content: z.string(),
+      type: z.enum(['text', 'audio']).default('text'),
+      audioFile: z.string().optional(),
     })
   ),
 })

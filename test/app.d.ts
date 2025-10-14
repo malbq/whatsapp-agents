@@ -15,6 +15,7 @@ declare global {
     CF_GATEWAY_ID: string
     CF_API_TOKEN: string
     GOOGLE_AI_STUDIO_API_KEY: string
+    GOOGLE_PLACES_API_KEY: string
     MAX_RECENT_MESSAGES: string
     VECTOR_DISTANCE_THRESHOLD: string
     FILE_SEARCH_LIMIT: string

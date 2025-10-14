@@ -4,22 +4,32 @@ import type { Frame } from '../frame'
 const logger = getLogger(['app', 'agent', 'messageEmbedding'])
 
 export async function embedMessages(frame: Frame, deps: Deps) {
-  if (!frame.inbound && !frame.outbound) {
+  const textsToEmbed: Array<string> = []
+
+  if (frame.inbound?.text) {
+    textsToEmbed.push(frame.inbound.text)
+  }
+  if (frame.inbound?.media?.transcription) {
+    textsToEmbed.push(frame.inbound.media.transcription)
+  }
+  if (frame.outbound?.text) {
+    textsToEmbed.push(frame.outbound.text)
+  }
+
+  if (textsToEmbed.length === 0) {
     logger.warn('No message to embed')
     return
   }
 
-  if (frame.inbound?.text && frame.inbound.text.trim()) {
-    frame.inbound.textEmbedding = await deps.ai.generateEmbeddings(frame.inbound.text)
-  }
+  const embeddings = await deps.ai.generateEmbeddings(textsToEmbed)
 
-  if (frame.inbound?.media?.transcription && frame.inbound.media.transcription.trim()) {
-    frame.inbound.media.transcriptionEmbedding = await deps.ai.generateEmbeddings(
-      frame.inbound.media.transcription
-    )
+  if (frame.outbound?.text) {
+    frame.outbound.textEmbedding = embeddings.pop()
   }
-
-  if (frame.outbound?.text && frame.outbound.text.trim()) {
-    frame.outbound.textEmbedding = await deps.ai.generateEmbeddings(frame.outbound.text)
+  if (frame.inbound?.media?.transcription) {
+    frame.inbound.media.transcriptionEmbedding = embeddings.pop()
+  }
+  if (frame.inbound?.text) {
+    frame.inbound.textEmbedding = embeddings.pop()
   }
 }

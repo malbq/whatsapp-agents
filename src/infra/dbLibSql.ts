@@ -76,15 +76,13 @@ export namespace LibSql {
       async storeMessage(messages) {
         if (messages.length === 0) return []
         logger.debug('Storing messages', {
-          messages: JSON.stringify(
-            messages.map((m) => ({
-              ...m,
-              content: m.content.map((c) => ({
-                ...c,
-                embedding: '...',
-              })),
-            }))
-          ),
+          messages: messages.map((m) => ({
+            ...m,
+            content: m.content.map((c) => ({
+              ...c,
+              embedding: '...',
+            })),
+          })),
         })
 
         const messageIds: string[] = []

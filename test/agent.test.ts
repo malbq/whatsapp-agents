@@ -38,7 +38,7 @@ beforeAll(async () => {
   storage = FilesystemStorage.storage(storagePath)
   dbClient = createClient({ url: `file:${dbPath}` })
   db = LibSql.db(dbClient)
-  await Bun.$`bun run ./src/infra/dbSetup/init.ts ${dbPath}`
+  await Bun.$`atlas schema apply --env local --url sqlite://file:${dbPath} --auto-approve`.quiet()
 
   deps = {
     db: {
@@ -80,7 +80,9 @@ beforeAll(async () => {
       })),
       transcribeAudio: mock(async () => audioTranscriptionResult),
       transcribeDocument: mock(async () => documentTranscriptionResult),
-      generateEmbeddings: mock(async (text) => [{ content: text, embedding: mockEmbeddings }]),
+      generateEmbeddings: mock(async (texts: string[]) =>
+        texts.map((text) => [{ content: text, embedding: mockEmbeddings }])
+      ),
     },
     storage: {
       store: mock(storage.store),

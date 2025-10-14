@@ -1,29 +1,35 @@
 import { getLogger } from '@logtape/logtape'
 import { tool } from 'ai'
 import { z } from 'zod'
+import { spreadError } from '../../utils/spreadError'
 import type { Frame } from '../frame'
 
 const logger = getLogger(['app', 'agent', 'tool', 'googlePlaces'])
 
-const GOOGLE_PLACES_API_KEY = import.meta.env.GOOGLE_PLACES_API_KEY
+interface PlacesSearchResponse {
+  places?: GooglePlace[]
+}
 
-interface PlaceResult {
-  name: string
-  formattedAddress: string
-  location: {
+interface GooglePlace {
+  displayName?: {
+    text: string
+    languageCode?: string
+  }
+  formattedAddress?: string
+  location?: {
     latitude: number
     longitude: number
   }
   rating?: number
   userRatingCount?: number
-  phoneNumber?: string
   internationalPhoneNumber?: string
-  website?: string
+  websiteUri?: string
   businessStatus?: string
   types?: string[]
-  openingHours?: {
+  currentOpeningHours?: {
     openNow?: boolean
-    weekdayText?: string[]
+    weekdayDescriptions?: string[]
+    nextOpenTime?: string
   }
 }
 
@@ -61,13 +67,6 @@ Follow-up actions:
         .describe('Maximum number of results to return (1-20, default: 5)'),
     }),
     execute: async ({ query, maxResults = 5 }) => {
-      if (!GOOGLE_PLACES_API_KEY) {
-        logger.error('Google Places API key not configured')
-        return 'Google Places search is not configured. Please set GOOGLE_PLACES_API_KEY environment variable.'
-      }
-
-      logger.info(`Google Places search: ${query}`, { maxResults })
-
       try {
         const searchUrl = 'https://places.googleapis.com/v1/places:searchText'
 
@@ -75,9 +74,20 @@ Follow-up actions:
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
+            'X-Goog-Api-Key': import.meta.env.GOOGLE_PLACES_API_KEY,
             'X-Goog-FieldMask':
-              'places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.nationalPhoneNumber,places.internationalPhoneNumber,places.websiteUri,places.businessStatus,places.types,places.currentOpeningHours,places.id',
+              'places.displayName,' +
+              'places.formattedAddress,' +
+              'places.location,' +
+              'places.rating,' +
+              'places.userRatingCount,' +
+              'places.internationalPhoneNumber,' +
+              'places.websiteUri,' +
+              'places.businessStatus,' +
+              'places.types,' +
+              'places.currentOpeningHours.openNow,' +
+              'places.currentOpeningHours.weekdayDescriptions,' +
+              'places.currentOpeningHours.nextOpenTime',
           },
           body: JSON.stringify({
             textQuery: query,
@@ -87,90 +97,27 @@ Follow-up actions:
 
         if (!searchResponse.ok) {
           const errorText = await searchResponse.text()
-          logger.error('Google Places API error', {
+          logger.error('Places API error', {
             status: searchResponse.status,
             statusText: searchResponse.statusText,
             error: errorText,
           })
-          return `Failed to search Google Places: ${searchResponse.status} ${searchResponse.statusText}`
+          return `Failed to search Google Places: [${searchResponse.status} ${searchResponse.statusText}] ${errorText}`
         }
 
-        const searchData = (await searchResponse.json()) as { places?: any[] }
-        const places = searchData.places || []
+        const response = (await searchResponse.json()) as PlacesSearchResponse
+        const places = response.places || []
 
-        logger.info(`Found ${places.length} places`, {
-          query,
-          count: places.length,
-        })
+        logger.info(`Places search`, { query, maxResults, resultsCount: places.length })
+        logger.debug('Google Places response', { response })
 
         if (places.length === 0) {
           return `No places found for query: "${query}"`
         }
 
-        // Format results
-        const results: PlaceResult[] = places.map((place: any) => ({
-          name: place.displayName?.text || 'Unknown',
-          formattedAddress: place.formattedAddress || 'Address not available',
-          location: {
-            latitude: place.location?.latitude || 0,
-            longitude: place.location?.longitude || 0,
-          },
-          rating: place.rating,
-          userRatingCount: place.userRatingCount,
-          phoneNumber: place.nationalPhoneNumber,
-          internationalPhoneNumber: place.internationalPhoneNumber,
-          website: place.websiteUri,
-          businessStatus: place.businessStatus,
-          types: place.types,
-          openingHours: place.currentOpeningHours
-            ? {
-                openNow: place.currentOpeningHours.openNow,
-                weekdayText: place.currentOpeningHours.weekdayDescriptions,
-              }
-            : undefined,
-        }))
-
-        logger.debug('Places found', { results })
-
-        // Return formatted results
-        return results
-          .map((place, index) => {
-            const parts = [
-              `${index + 1}. **${place.name}**`,
-              `   Address: ${place.formattedAddress}`,
-              `   Coordinates: ${place.location.latitude}, ${place.location.longitude}`,
-            ]
-
-            if (place.phoneNumber) {
-              parts.push(`   Phone: ${place.phoneNumber}`)
-            }
-            if (
-              place.internationalPhoneNumber &&
-              place.internationalPhoneNumber !== place.phoneNumber
-            ) {
-              parts.push(`   International: ${place.internationalPhoneNumber}`)
-            }
-            if (place.website) {
-              parts.push(`   Website: ${place.website}`)
-            }
-            if (place.rating) {
-              parts.push(`   Rating: ${place.rating}/5 (${place.userRatingCount || 0} reviews)`)
-            }
-            if (place.businessStatus) {
-              parts.push(`   Status: ${place.businessStatus}`)
-            }
-            if (place.openingHours?.openNow !== undefined) {
-              parts.push(`   Currently: ${place.openingHours.openNow ? 'OPEN' : 'CLOSED'}`)
-            }
-            if (place.types && place.types.length > 0) {
-              parts.push(`   Type: ${place.types.slice(0, 3).join(', ')}`)
-            }
-
-            return parts.join('\n')
-          })
-          .join('\n\n')
+        return JSON.stringify(places)
       } catch (error) {
-        logger.error('Google Places search failed', { error })
+        logger.error('Places search failed', spreadError(error))
         return `Error searching Google Places: ${
           error instanceof Error ? error.message : 'Unknown error'
         }`

@@ -136,7 +136,9 @@ export namespace Whatsapp {
         ...(replyingTo && { context: { message_id: replyingTo } }),
       }
 
-      return sendMessageRequest(requestBody)
+      const messageId = await sendMessageRequest(requestBody)
+      logger.debug(`Sent 'text' response`, { messageId })
+      return messageId
     },
 
     sendImage: async ({ data, caption, mimeType, replyingTo }) => {
@@ -175,7 +177,9 @@ export namespace Whatsapp {
         ...(replyingTo && { context: { message_id: replyingTo } }),
       }
 
-      return sendMessageRequest(message)
+      const messageId = await sendMessageRequest(message)
+      logger.debug(`Sent 'document' response`, { messageId })
+      return messageId
     },
 
     sendLocation: async ({ latitude, longitude, name, address, replyingTo }) => {
@@ -194,7 +198,9 @@ export namespace Whatsapp {
         ...(replyingTo && { context: { message_id: replyingTo } }),
       }
 
-      return sendMessageRequest(requestBody)
+      const messageId = await sendMessageRequest(requestBody)
+      logger.debug(`Sent 'location' response`, { messageId })
+      return messageId
     },
 
     sendReaction: async ({ externalChatId, emoji }) => {
@@ -210,7 +216,9 @@ export namespace Whatsapp {
         },
       }
 
-      return sendMessageRequest(requestBody)
+      const messageId = await sendMessageRequest(requestBody)
+      logger.debug(`Sent 'reaction' response`, { messageId })
+      return messageId
     },
 
     sendContact: async (contact) => {
@@ -234,7 +242,9 @@ export namespace Whatsapp {
         ],
       }
 
-      return sendMessageRequest(requestBody)
+      const messageId = await sendMessageRequest(requestBody)
+      logger.debug(`Sent 'contacts' response`, { messageId })
+      return messageId
     },
 
     sendInteractiveList: async ({ header, body, footer, action, replyingTo }) => {
@@ -254,7 +264,9 @@ export namespace Whatsapp {
         ...(replyingTo && { context: { message_id: replyingTo } }),
       }
 
-      return sendMessageRequest(requestBody)
+      const messageId = await sendMessageRequest(requestBody)
+      logger.debug(`Sent 'interactive list' response`, { messageId })
+      return messageId
     },
 
     sendInteractiveButton: async ({ header, body, footer, action, replyingTo }) => {
@@ -294,7 +306,9 @@ export namespace Whatsapp {
         ...(replyingTo && { context: { message_id: replyingTo } }),
       }
 
-      return sendMessageRequest(requestBody)
+      const messageId = await sendMessageRequest(requestBody)
+      logger.debug(`Sent 'interactive button' response`, { messageId })
+      return messageId
     },
     sendTemplate: async ({
       name,
@@ -338,7 +352,9 @@ export namespace Whatsapp {
         },
       }
 
-      return sendMessageRequest(requestBody)
+      const messageId = await sendMessageRequest(requestBody)
+      logger.debug(`Sent 'template' response`, { messageId })
+      return messageId
     },
   }
 

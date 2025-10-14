@@ -55,7 +55,7 @@ const insertUserProfile = async (user: User) => {
 beforeAll(async () => {
   dbClient = createClient({ url: `file:${dbPath}` })
   db = LibSql.db(dbClient)
-  await Bun.$`bun run ./src/infra/dbSetup/init.ts ${dbPath}`
+  await Bun.$`atlas schema apply --env local --url sqlite://file:${dbPath} --auto-approve`.quiet()
 
   ai = {
     respond: mock(async () => ({

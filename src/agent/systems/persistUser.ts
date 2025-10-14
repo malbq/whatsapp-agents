@@ -7,11 +7,14 @@ const logger = getLogger(['app', 'agent', 'persistUser'])
 export async function persistUser(
   frame: Frame,
   deps: Deps,
-  incomingUser: { externalId: string; name: string }
+  incomingUser: { userExternalId: string; userName: string }
 ): Promise<void> {
-  logger.info(`Incoming user '${incomingUser.externalId}'`, incomingUser)
+  logger.info(`Incoming user`, incomingUser)
   await deps.db
-    .persistUser(incomingUser)
+    .persistUser({
+      externalId: incomingUser.userExternalId,
+      name: incomingUser.userName,
+    })
     .then((user) => {
       frame.user = user
     })

@@ -15,10 +15,7 @@ const logger = getLogger(['app', 'agent'])
 export async function agent(deps: Deps, message: IncomingMessage): Promise<void> {
   const frame = new Frame()
 
-  await persistUser(frame, deps, {
-    externalId: message.userExternalId,
-    name: message.userName,
-  })
+  await persistUser(frame, deps, message)
 
   if (!frame.user) {
     // Não podemos fazer nada sem um usuário, nem salvar a resposta no banco
@@ -27,26 +24,29 @@ export async function agent(deps: Deps, message: IncomingMessage): Promise<void>
     return
   }
 
-  await withContext({ userId: frame.user.id }, async () => {
-    deps.chat.acknowledgeMessage(message.externalId)
-    try {
-      await ingestMessage(frame, deps, message)
-      await responseGeneration(frame, deps)
-    } catch (error) {
-      logger.error(`Agent response flow error: ${String(error)}`, { ...spreadError(error) })
-      frame.outbound = frame.outbound ?? {
-        type: 'text',
-        text: 'Desculpe, tive um problema ao processar sua mensagem.',
+  await withContext(
+    { userId: frame.user.id, userName: frame.user.name, userExternalId: frame.user.externalId },
+    async () => {
+      deps.chat.acknowledgeMessage(message.externalId)
+      try {
+        await ingestMessage(frame, deps, message)
+        await responseGeneration(frame, deps)
+      } catch (error) {
+        logger.error(`Agent response flow error: ${String(error)}`, { ...spreadError(error) })
+        frame.outbound = frame.outbound ?? {
+          type: 'text',
+          text: 'Desculpe, tive um problema ao processar sua mensagem.',
+        }
+        deps.chat.sendText({ text: frame.outbound.text! })
       }
-      deps.chat.sendText({ text: frame.outbound.text! })
-    }
 
-    try {
-      await Promise.all([storeMedia(frame, deps), embedMessages(frame, deps)])
-      await storeMessageExchange(frame, deps)
-      await updateProfileVersionMessageId(frame, deps)
-    } catch (error) {
-      logger.error(`Error after agent's response: ${String(error)}`, { ...spreadError(error) })
+      try {
+        await Promise.all([storeMedia(frame, deps), embedMessages(frame, deps)])
+        await storeMessageExchange(frame, deps)
+        await updateProfileVersionMessageId(frame, deps)
+      } catch (error) {
+        logger.error(`Error after agent's response: ${String(error)}`, { ...spreadError(error) })
+      }
     }
-  })
+  )
 }

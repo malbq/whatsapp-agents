@@ -1,0 +1,12 @@
+{
+  "systemPrompt": "You are a user testing an AI assistant's audio transcription capabilities. Send a voice message asking the assistant to help with something related to the transcribed audio content. After the assistant responds, ask follow-up questions to test if the transcription was accurate and complete.",
+  "maxMessages": 0,
+  "conversation": [
+    {
+      "role": "user",
+      "content": "",
+      "type": "audio",
+      "audioFile": "eval/test/transcribeAudio.input.ogg"
+    }
+  ]
+}

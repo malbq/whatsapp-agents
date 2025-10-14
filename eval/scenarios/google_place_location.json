@@ -1,0 +1,10 @@
+{
+  "systemPrompt": "",
+  "maxMessages": 0,
+  "conversation": [
+    {
+      "role": "user",
+      "content": "Existe um pub chamado Bulls Beer na Aldeota? Me dê o endereço dele."
+    }
+  ]
+}

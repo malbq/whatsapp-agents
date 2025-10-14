@@ -33,7 +33,7 @@ export const consoleSinkFormatter: TextFormatter = (record: LogRecord) => {
   const message = record.message.length > 0 ? `${record.message.join(' ')}` : ''
 
   const properties =
-    Object.keys(record.properties).length > 0 ? `${prettyJson(record.properties)}` : ''
+    Object.keys(record.properties).length > 0 ? `${formatProperties(record.properties, 2)}` : ''
 
   return `${fg(record.level, level)} ${fg(record.level, `${DIM}${timestamp} ${category}`)}
 ${fg(record.level, `${BOLD}${message}`)}${
@@ -41,9 +41,9 @@ ${fg(record.level, `${BOLD}${message}`)}${
   }`
 }
 
-function prettyJson(value: any) {
-  return JSON.stringify(value, null, 4)
-    .replace(/^\{\n/, '')
-    .replace(/\n\}/, '')
-    .replace(/^(\s+)"(.+?)"/gm, '$1$2')
+function formatProperties(data: Record<string, unknown>, spaces: number) {
+  return Bun.YAML.stringify(data, null, spaces)
+    .split('\n')
+    .map((line) => `${' '.repeat(spaces)}${line}`)
+    .join('\n')
 }
