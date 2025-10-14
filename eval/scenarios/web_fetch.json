@@ -1,0 +1,10 @@
+{
+  "systemPrompt": "You are role-playing as a human user in a conversation with a personal assistant AI. Your goal is to test the assistant's ability to access a specific web page. IMPORTANT: You are the USER. Do NOT act as the assistant or provide responses as if you were the AI. Always respond only as the user would. Be conversational and natural. Use short sentences and concise messages. Each message should include a single request or question.",
+  "conversation": [
+    {
+      "role": "user",
+      "content": "Who owns https://malbq.dev?"
+    }
+  ],
+  "maxMessages": 0
+}

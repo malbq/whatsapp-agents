@@ -28,12 +28,27 @@ export const webSearchTool = (_frame: Frame, _deps: Deps) =>
     - Weather, sports scores, or other real-time data
     - Any question that requires up-to-date information from the internet
     
+    Routing:
+    - If the user's message contains a URL (http:// or https://), do not use this tool. Use web_fetch with that URL directly.
+    - Use this tool to discover sources and get fresh information when no specific URL is provided.
+    
     Returns a summary answer and a "Sources:" list of URLs. Use the web_fetch tool to retrieve full content from those URLs if you need more detail.`,
     inputSchema: z.object({
-      query: z.string().describe('The search query to find relevant information on the web'),
+      query: z
+        .string()
+        .describe(
+          'The search query to find relevant information on the web. Do not pass a URL here; if a URL is provided, call web_fetch instead.'
+        ),
     }),
     execute: async ({ query }) => {
       logger.info(`Web search query: ${query}`)
+
+      const urlMatch = query.match(/https?:\/\/\S+/i)
+      if (urlMatch) {
+        const url = urlMatch[0]
+        logger.debug('web_search: URL detected in query; deferring to web_fetch', { url })
+        return `Use web_fetch to open this URL directly:\n${url}`
+      }
 
       const systemPrompt = `You are a web search assistant. Search the web for information about the user's query and provide a comprehensive, accurate answer.
 
@@ -56,17 +71,7 @@ If you cannot find relevant information, state that clearly.`
         },
       })
 
-      logger.debug('Web search completed', {
-        answerLength: result.text.length,
-        usage: result.usage,
-      })
-
       const groundingMetadata = result.providerMetadata?.google?.groundingMetadata as any
-      if (groundingMetadata?.webSearchQueries) {
-        logger.debug('Google search queries', {
-          queries: groundingMetadata.webSearchQueries,
-        })
-      }
 
       let response = result.text
 
@@ -81,6 +86,12 @@ If you cannot find relevant information, state that clearly.`
             '\n\nSources:\n' + urls.map((url: string, i: number) => `${i + 1}. ${url}`).join('\n')
         }
       }
+      logger.debug('Web search completed', {
+        googleSearchQueries: groundingMetadata?.webSearchQueries,
+        answerLength: result.text.length,
+        usage: result.usage,
+        response,
+      })
 
       return response
     },

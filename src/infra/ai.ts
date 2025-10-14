@@ -31,7 +31,7 @@ const textProvider = createOpenAICompatible({
   headers: { 'cf-aig-authorization': `Bearer ${import.meta.env.CF_API_TOKEN}` },
 })
 const textModel = textProvider('grok/grok-4-fast-non-reasoning')
-// const textModel = cgAiGatewayProvider('openai/gpt-5-mini')
+// const textModel = textProvider('openai/gpt-5-mini')
 
 const embeddingProvider = createOpenAICompatible({
   name: 'cf-aig',
@@ -83,15 +83,6 @@ export interface AI {
 export const AIProvider: AI = {
   respond: async ({ instructions = system, messages, tools: customTools = [] }) => {
     const tools: Record<string, Tool> = {}
-    // switch (textModel.provider) {
-    //   case 'google.generative-ai':
-    //     tools.google_search = google.tools.googleSearch({})
-    //     break
-    //   case 'openai':
-    //     tools.web_search_preview = openai.tools.webSearchPreview({})
-    //     break
-    //   default:
-    // }
 
     customTools.forEach((tool) => {
       tools[(tool as { name: string }).name] = tool
@@ -102,9 +93,9 @@ export const AIProvider: AI = {
       system: instructions,
       messages,
       tools,
+      toolChoice: 'auto',
       stopWhen: stepCountIs(MAX_STEPS),
     })
-    const toolResults = result.steps?.flatMap((step) => step.toolResults) ?? []
 
     const ctxLogger = logger.with({
       gatewayLogId: result.response.headers?.['cf-aig-log-id'],
@@ -112,17 +103,10 @@ export const AIProvider: AI = {
     ctxLogger.debug(`Text generated with ${textModel.modelId}`, {
       finishReason: result.finishReason,
       totalUsage: result.totalUsage,
-      steps: result.steps,
-      // stepsCount: result.steps?.length || 0,
-      // toolResults,
+      steps: result.steps.map(({ request: _, response: __, ...step }) => {
+        return step
+      }),
     })
-
-    if ((result.providerMetadata?.google?.groundingMetadata as any | undefined)?.webSearchQueries) {
-      ctxLogger.debug(
-        'Google search {*}',
-        (result.providerMetadata?.google?.groundingMetadata as any)?.webSearchQueries
-      )
-    }
 
     return {
       text: result.text,

@@ -215,7 +215,7 @@ export namespace Whatsapp {
 
     sendContact: async (contact) => {
       const name = contact.name.trim()
-      const phone = contact.phone.trim()
+      const phone = contact.phone.trim().replace(/[\s-()+]/g, '')
       if (name.length === 0 || phone.length === 0) {
         throw new ResponseDeliveryError('Name and phone are required')
       }

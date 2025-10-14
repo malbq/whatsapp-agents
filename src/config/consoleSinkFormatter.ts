@@ -5,7 +5,7 @@ const BOLD = '\x1b[1m'
 const DIM = '\x1b[2m'
 
 const levelColor = {
-  info: '\x1b[0m',
+  info: '\x1b[32m',
   debug: '\x1b[34m',
   warning: '\x1b[33m',
   error: '\x1b[31m',

@@ -66,7 +66,7 @@ async function main() {
   await mkdir(runDir, { recursive: true })
 
   const dbPath = join(runDir, `${runId}.db`)
-  await Bun.$`bun run ./src/infra/dbSetup/init.ts ${dbPath}`
+  await Bun.$`atlas schema apply --env local --url sqlite://file:${dbPath} --auto-approve`.quiet()
 
   const client = createClient({ url: `file:${dbPath}` })
   const deps: Deps = {
@@ -99,35 +99,26 @@ async function main() {
   console.log(`Max messages: ${config.maxMessages}`)
   console.log('================================')
 
-  const generateUserMessage = createUserMessageGenerator(config)
-  let messageCount = 0
-  let shouldStartWithAgent = false
-
   if (config.conversation && config.conversation.length > 0) {
     const lastMessage = config.conversation[config.conversation.length - 1]
     if (lastMessage && lastMessage.role === 'user') {
-      shouldStartWithAgent = true
-      console.log('Starting with agent response to last user message')
+      console.log('Sending predefined user message to agent')
+      const incomingMessage = createUserMessage(lastMessage.content, userExternalId)
+      await agent(deps, incomingMessage)
     }
   }
+
+  const generateUserMessage = createUserMessageGenerator(config)
+  let messageCount = 0
 
   while (messageCount < config.maxMessages) {
     console.log(`Message ${messageCount + 1}`)
 
-    if (shouldStartWithAgent) {
-      const lastUserMessage = config.conversation![config.conversation!.length - 1]
-      if (lastUserMessage) {
-        const incomingMessage = createUserMessage(lastUserMessage.content, userExternalId)
-        await agent(deps, incomingMessage)
-      }
-      shouldStartWithAgent = false
-    } else {
-      const userMessage = await generateUserMessage(evalChat.lastAssistantMessage)
-      console.log('================================')
-      if (!userMessage) break
-      const incomingMessage = createUserMessage(userMessage, userExternalId)
-      await agent(deps, incomingMessage)
-    }
+    const userMessage = await generateUserMessage(evalChat.lastAssistantMessage)
+    console.log('================================')
+    if (!userMessage) break
+    const incomingMessage = createUserMessage(userMessage, userExternalId)
+    await agent(deps, incomingMessage)
 
     messageCount++
   }
@@ -396,9 +387,7 @@ const evalChat: Chat & { lastAssistantMessage?: string } = {
     return newExternalId()
   },
   sendContact: async (params) => {
-    evalChat.lastAssistantMessage = `contact: ${
-      params.contacts[0]?.name?.formattedName || 'contact'
-    }`
+    evalChat.lastAssistantMessage = `contact: ${params.name}, ${params.phone || 'contact'}`
     return newExternalId()
   },
   sendInteractiveList: async (params) => {

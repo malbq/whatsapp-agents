@@ -9,7 +9,7 @@ export const sendContactTool = (frame: Frame, deps: Deps) =>
   tool({
     name: 'send_contact',
     description:
-      'Send a contact card to the user. Use this to share business contacts found via google_places or share contact information.',
+      'Send a contact card to the user. Use right after google_places when a single business match is confident. Prefer international phone numbers. Provide digits only (strip spaces, dashes, parentheses, and leading +).',
     inputSchema: z.object({
       name: z.string().describe('Contact name'),
       phone: z

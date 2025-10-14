@@ -9,7 +9,7 @@ export const sendLocationTool = (frame: Frame, deps: Deps) =>
   tool({
     name: 'send_location',
     description:
-      'Send a location/map pin to the user. Use this to share business locations, meeting points, or addresses. Useful with results from google_places.',
+      'Send a location/map pin to the user. Use right after google_places when a single business match is confident. Include name and formatted address when available.',
     inputSchema: z.object({
       latitude: z.number().describe('Latitude coordinate'),
       longitude: z.number().describe('Longitude coordinate'),
