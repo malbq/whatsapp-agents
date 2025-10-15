@@ -6,7 +6,7 @@
 
   - Create precommit hook to increase package version to help identify container version from logs.
   - Keep messages under 500 characters. Tell the agent in system prompt that it can use sendText as much as needed to split responses and send intermediate messages.
-  - Get agent intent on every tool call and send it with chat.sendText in tool hooks.
+  - Agent should inform user with sendText of every action it performs with tools.
   - Every message must be stored in the database.
 
 - **Loggingg**

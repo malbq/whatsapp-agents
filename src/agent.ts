@@ -1,3 +1,43 @@
+/*
+Key concepts
+  - Frame: per-request state holder.
+  - Systems: small functions that read/write the Frame and use injected deps.
+  - ResponseGeneration assembles system prompt, profile, recent messages, and current input.
+  - Delivery happens inside responseGeneration.
+
+Agent Workflow
+  User -[send message]-> Agent
+  Agent: create Frame
+  Agent: persistUser
+    - if missing user: Agent -[Fallback]-> User (abort)
+  Agent -[send "status read" and "typing indicator"]-> User
+  Agent: ingestMessage
+    - text
+    - voice
+    - audio
+    - image
+    - document
+  Agent -[generate response]-> AI Provider
+  - tools may be called:
+    - fetch_memory
+    - search_files
+    - send_file: Server -[media message]-> User
+    - web_search
+    - web_fetch
+    - google_places: Server -[location/contact message]-> User
+    - send_reaction: Server -[reaction message]-> User
+    - update_user_profile
+  AI Provider -[text answer]-> Agent
+  Agent -[send text message]-> User
+  Post-response:
+    Agent: store media (document/image) + embed messages
+    Agent: store message exchange
+    Agent: add user's message id to updated profile version
+
+Error segmentation
+  - Response flow: on failure, log and send a polite fallback; continue.
+  - Post-tasks: best-effort; failures are logged and do not affect the user.
+*/
 import { getLogger, withContext } from '@logtape/logtape'
 import { Frame } from './agent/frame'
 import { embedMessages } from './agent/systems/embedMessages'
