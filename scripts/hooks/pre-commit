@@ -1,0 +1,41 @@
+#!/bin/bash
+
+set -e
+
+PKG="package.json"
+
+if [ ! -f "$PKG" ]; then
+  echo "Error: $PKG not found"
+  exit 1
+fi
+
+if git diff --cached --name-only | grep -q "^$PKG$"; then
+  staged_version=$(git diff --cached "$PKG" | grep '^\+.*"version"' | sed 's/.*"version": "\(.*\)".*/\1/')
+  
+  if [ -n "$staged_version" ]; then
+    echo "Version was manually changed to $staged_version, skipping auto-increment"
+    exit 0
+  fi
+fi
+
+current_version=$(grep '"version"' "$PKG" | sed 's/.*"version": "\(.*\)".*/\1/')
+
+if [ -z "$current_version" ]; then
+  echo "Error: Could not extract version from $PKG"
+  exit 1
+fi
+
+IFS='.' read -r major minor patch <<< "$current_version"
+
+patch=$((patch + 1))
+new_version="$major.$minor.$patch"
+
+sed -i "s/\"version\": \"$current_version\"/\"version\": \"$new_version\"/" "$PKG"
+sed -i "s/image: zapid:.*/image: zapid:$new_version/" docker-compose.yml
+
+git add "$PKG" docker-compose.yml
+
+echo "Version bumped: $current_version -> $new_version"
+
+exit 0
+
