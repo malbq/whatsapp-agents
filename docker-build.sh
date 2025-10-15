@@ -11,6 +11,9 @@ fi
 
 echo "Building and deploying Docker image with version: $VERSION"
 
+# Update docker-compose.yml with the current version
+sed -i "s/image: zapid:.*/image: zapid:$VERSION/" docker-compose.yml
+
 export VERSION
 docker compose build
 
