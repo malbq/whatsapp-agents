@@ -31,7 +31,7 @@
 
 ## Architecture patterns
 
-- Frame-based pipeline (ECS-inspired, minimalist): per-request Frame holds ephemeral state (user, inbound, outbound); no global mutable state.
+- Frame-based pipeline: per-request Frame holds ephemeral state (user, inbound, outbound); no global mutable state.
 - Systems as focused async functions: (frame, deps, ...args) mutate only the Frame and use injected deps (PersistUser, IngestMessage, MessageEmbedding, ResponseGeneration, ResponseDelivery, MediaStorage, StoreMessageExchange, ImproveUserProfile).
 - Phased flow:
   1. PersistUser ensures frame.user exists
@@ -44,7 +44,7 @@
 - Dual embedding strategy: inbound first (context + future memory), outbound after delivery prep (memory/personalization). Failures do not block other phases.
 - Logging context: withContext attaches userId for consistent structured logs across all systems.
 - Extensibility: add new capabilities by inserting a new System in the flow or post-response list; keep Frame minimal & data-only.
-- ECS note: simplified; Frame fields act as components; no registry/queries. Chosen for clarity & low overhead.
+- Note: Frame fields are simple data holders; no registry/queries or component model.
 - Testing: Systems remain unit-testable (pure-ish) due to explicit deps + narrow mutable surface (Frame).
 
 ## Agent workflow hints

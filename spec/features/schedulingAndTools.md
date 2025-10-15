@@ -1,5 +1,9 @@
 # Scheduling
 
+## Status
+
+- Proposed only. Not yet implemented in the agent's toolset; create/cancel/list tools are not wired. Use this doc as a plan/spec.
+
 ## Goals
 
 - Allow users to schedule minute-precision reminders via natural language.
@@ -254,7 +258,7 @@ Late delivery (optional)
 ## References
 
 - TODO.md: Scheduler System and Tool Integration
-- spec/features/systemPatterns.md (Scheduler node in diagram)
+- spec/systemPatterns.md (Scheduler node in diagram)
 - src/prompts/functions/create_reminder.json
 - src/prompts/functions/cancel_reminder.json
 - src/infra/dbLibSql.ts (patterns for DB methods and thresholds)

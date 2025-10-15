@@ -2,21 +2,22 @@
 
 ## System Architecture
 
-The system is a WhatsApp-based AI agent that processes multi-modal messages (text, audio, images, documents) and provides intelligent responses with memory, context, and tool capabilities. The architecture follows an **Entity-Component-System (ECS)** pattern with four main layers:
+The system is a WhatsApp-based AI agent that processes multi-modal messages (text, audio, images, documents) and provides intelligent responses with memory, context, and tool capabilities. The architecture follows a slim Frame-based pipeline with four main layers:
 
 1. **User Layer**: WhatsApp interface
 2. **Meta Infrastructure**: Meta WAB Server and WhatsApp Pay
 3. **Payment Layer**: Auth/Identity system with SQL user data storage
-4. **Agent Layer**: ECS-based processing engine with specialized systems for different concerns
+4. **Agent Layer**: Function-oriented processing pipeline where small systems mutate a per-request Frame
 
 ## Key Patterns
 
-- **Entity-Component-System Architecture:** Component-based entities with specialized systems for different concerns
+- **Frame-based Pipeline:** Per-request Frame mutated by small systems
 - **Multi-Modal Processing:** Unified handling of text, audio, images, and documents through specialized ingestion systems
 - **Context Orchestration:** Intelligent assembly of user profile, memory, chat history, and reminders
 - **Persistent Storage:** Distributed storage across Chat History, Memory (vector), User Profile, and Object Store
 - **Bi-directional Communication:** Inbound webhook processing and outbound reply delivery
 - **Scheduled Operations:** Cron-based scheduler for reminder delivery
+- **Tool-Oriented Reasoning:** LLM calls first-class tools (fetch_memory, search_files, send_file, web_search, web_fetch, google_places, send_reaction, update_user_profile) during response generation
 
 ```mermaid
 graph TD
@@ -36,27 +37,24 @@ graph TD
 
     subgraph "Agent"
         wh[Webhook<br/>Listener]
-        --> frame[Frame<br/>ECS Engine]
-        frame --> receive[ReceiveMessage<br/>System]
-        frame --> user[User<br/>System]
-        frame --> ingest[Ingestion<br/>System]
-        frame --> response[ResponseGeneration<br/>System]
-        frame --> delivery[ResponseDelivery<br/>System]
-        frame --> profile[ImproveUserProfile<br/>System]
-        frame --> storage[MediaStorage<br/>System]
-        frame --> embed[Embedding<br/>System]
-        frame --> store[StoreMessageExchange<br/>System]
+        --> frame[Frame<br/>(per-request struct)]
+        frame --> user[persistUser]
+        frame --> ingest[ingestMessage]
+        frame --> response[responseGeneration]
+        response --> delivery[sendText]
+        frame --> storage[storeMedia]
+        frame --> embed[embedMessages]
+        frame --> store[storeMessageExchange]
+        frame --> profile[updateProfileVersionMessageId]
 
-        ingest --> audio[AudioIngest<br/>System]
-        ingest --> voice[VoiceIngest<br/>System]
-        ingest --> text[TextIngest<br/>System]
-        ingest --> image[ImageIngest<br/>System]
-        ingest --> document[DocumentIngest<br/>System]
+        ingest --> audio[ingestAudio]
+        ingest --> voice[ingestVoice]
+        ingest --> image[ingestImage]
+        ingest --> document[ingestDocument]
 
         response --> chat[(Chat History)]
         response --> memory[(Memory)]
-        response --> profile[(User Profile)]
-        response --> obj[(Object Store)]
+        response --> tools[(Tools: fetch_memory, search_files, send_file, web_search, web_fetch, google_places, send_reaction, update_user_profile)]
 
         delivery --> reply[Reply]
         reply --> cron[Scheduler]
@@ -71,59 +69,12 @@ graph TD
     reply --> wab
 ```
 
-## ECS Architecture
+## Frame-based Processing Model
 
-The system uses an Entity-Component-System pattern for better separation of concerns, testability, and extensibility:
-
-### Core Components
-
-- **Frame**: Central ECS engine managing entities and components
-- **Components**: Data-only structures (Message, TextContent, Media, User, etc.)
-- **Systems**: Logic processors that operate on entities with specific components
-
-### Key Systems
-
-- **ReceiveMessageSystem**: Processes incoming webhook messages
-- **UserSystem**: Manages user creation and persistence
-- **IngestionSystem**: Routes messages to appropriate content processors
-- **ResponseGenerationSystem**: Generates AI responses with context
-- **ResponseDeliverySystem**: Sends responses via WhatsApp
-- **EmbeddingSystem**: Generates and stores vector embeddings
-- **MediaStorageSystem**: Handles file storage and retrieval
-
-### Component Types
-
-```mermaid
-graph TD
-    subgraph "Message Components"
-        Message[MessageComponent]
-        TextContent[TextContentComponent]
-        Media[MediaComponent]
-        StoredMedia[StoredMediaComponent]
-    end
-
-    subgraph "Content Components"
-        ImageContent[ImageContentComponent]
-        DocumentContent[DocumentContentComponent]
-        AudioContent[AudioContentComponent]
-    end
-
-    subgraph "Processing Components"
-        VectorEmbedding[VectorEmbeddingComponent]
-        ErrorComponent[ErrorComponent]
-        User[UserComponent]
-    end
-
-    Message --> TextContent
-    Message --> Media
-    Message --> StoredMedia
-    Media --> ImageContent
-    Media --> DocumentContent
-    Media --> AudioContent
-    TextContent --> VectorEmbedding
-    Message --> ErrorComponent
-    Message --> User
-```
+- Frame: per-request, data-only struct passed through the pipeline
+- Systems: small, focused async functions that mutate only the Frame and use injected deps
+- Tools: invoked during responseGeneration; side effects like sending messages or files happen inside systems/tools
+- No registry or component model; keep data structures simple and explicit
 
 ## Code Architecture
 
@@ -131,26 +82,23 @@ The codebase follows Domain-Driven Design principles with unidirectional depende
 
 ### Layered Structure
 
-- **Domain Layer** (`src/domain/`): Pure entities and types with no external dependencies
-- **Agent Layer** (`src/agent/`): ECS-based processing with systems and components
+- **Agent Layer** (`src/agent/`): Frame-based processing with focused systems and tools
 - **Infrastructure Layer** (`src/infra/`): Concrete implementations of external services (WhatsApp, DB, AI, Storage)
-- **Composition Root** (`src/index.ts`): Application startup and wires concrete infrastructure to features at runtime
+- **Composition Root** (`src/index.ts`): Application startup and wiring of concrete infrastructure to systems
 
 ### Dependency Flow
 
 ```mermaid
 graph TD
     subgraph "Layers"
-        C[<strong>Composition Root</strong><br/><small>Dependency Wiring</small>]
-        A[<strong>Agent Layer</strong><br/><small>ECS Systems</small>]
-        I[<strong>Infrastructure Layer</strong><br/><small>Abstract Ports and Concrete Adapters</small>]
-        D[<strong>Domain Layer</strong><br/><small>Pure Entities</small>]
+        C[<strong>Composition Root</strong><br/><small>Wiring</small>]
+        A[<strong>Agent Layer</strong><br/><small>Frame-based Systems</small>]
+        I[<strong>Infrastructure Layer</strong><br/><small>Adapters (WhatsApp, DB, AI, Storage)</small>]
     end
 
     C --> A
     C --> I
-    A --> D
-    I --> D
+    A --> I
 ```
 
 ## Database Schema
@@ -172,9 +120,8 @@ The database uses LibSQL with native vector support:
 
 ## Error Handling
 
-The ECS architecture provides robust error handling:
+We avoid broad try/catch and let exceptions bubble to src/agent.ts:
 
-- **Error Components**: Capture error state in entities
-- **Error Delivery**: Convert error components to user-friendly messages
-- **Graceful Degradation**: Continue processing even with partial failures
-- **Isolation**: Errors in one system don't affect others
+- Generation: wrap ingestMessage + responseGeneration; on failure, send a concise fallback text
+- Delivery: part of responseGeneration; same fallback path
+- Post-processing: best-effort; log only, never affect UX
