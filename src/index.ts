@@ -23,6 +23,9 @@ await configureLogging()
 
 const logger = getLogger(['app'])
 
+const version = (await import('../package.json')).version
+logger.info(`Starting server v${version}`)
+
 const deps: Deps = {
   db: LibSql.db(),
   storage: FilesystemStorage.storage(),

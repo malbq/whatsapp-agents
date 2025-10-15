@@ -50,3 +50,23 @@ Zapid Assistant is a chat-based personal secretary that:
 - Image or music generation.
 - Running undeclared external tools.
 - Illegal activities.
+
+## Development
+
+### Versioning
+
+The project uses automatic semantic versioning:
+
+- Version is stored in `package.json`
+- A git pre-commit hook automatically increments the patch version on every commit (unless manually changed)
+- Docker images are tagged with the version from `package.json`
+- The version is logged on application startup
+
+To build and deploy with the current version:
+
+```bash
+bun run docker:build
+docker compose up -d
+```
+
+To manually set a specific version, change it in `package.json` before committing. The pre-commit hook will detect the manual change and skip auto-increment.

@@ -1,9 +1,11 @@
 {
   "name": "zapid",
+  "version": "0.1.0",
   "type": "module",
   "packageManager": "bun",
   "scripts": {
     "dev": "bun --hot --no-clear-screen run src/index.ts",
+    "docker:build": "./docker-build.sh",
     "docker:setup": "./setup-docker-host.sh",
     "docker:logs": "docker compose logs -f",
     "typecheck": "tsc",
