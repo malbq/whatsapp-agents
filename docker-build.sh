@@ -9,13 +9,9 @@ if [ -z "$VERSION" ]; then
   exit 1
 fi
 
-echo "Building and deploying Docker image with version: $VERSION"
+echo "Building Docker image with version: $VERSION"
 
-# Update docker-compose.yml with the current version
-sed -i "s/image: zapid:.*/image: zapid:$VERSION/" docker-compose.yml
-
-export VERSION
 docker compose build
 
-echo "Successfully deployed zapid:$VERSION"
+echo "Successfully built zapid:$VERSION"
 
