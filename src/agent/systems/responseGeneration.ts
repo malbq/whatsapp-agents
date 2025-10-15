@@ -76,7 +76,7 @@ export async function responseGeneration(frame: Frame, deps: Deps) {
     const response = await deps.ai.respond({
       messages: messagesForAgent,
       tools: [
-        fetchMemoryTool(frame, deps),
+        fetchMemoryTool(frame, deps, recentMessages),
         searchFilesTool(frame, deps),
         webSearchTool(frame, deps),
         webFetchTool(frame, deps),

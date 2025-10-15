@@ -18,11 +18,11 @@ export const searchFilesTool = (frame: Frame, deps: Deps) =>
     }),
     execute: async ({ query }) => {
       logger.info(`Searching for files matching the query: ${query}`)
-      const embeddings = await deps.ai.generateEmbeddings(query)
+      const [embeddings] = await deps.ai.generateEmbeddings([query])
 
       const files = await deps.db.searchFiles({
         userId: frame.user!.id,
-        queryEmbedding: embeddings[0]!.embedding,
+        queryEmbedding: embeddings![0]!.embedding,
       })
 
       logger.info(`Found ${files.length} files`, {

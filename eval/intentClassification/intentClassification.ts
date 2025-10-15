@@ -1,5 +1,4 @@
 import { generateObject } from 'ai'
-import chalk from 'chalk'
 import path from 'node:path'
 import { format, instructions, requiredContext } from '../../src/agent/prompts/intentClassification'
 
@@ -26,7 +25,9 @@ const results: string[][] = await Promise.all(
       response.object.context.toSorted((a: string, b: string) => a.localeCompare(b)) ?? []
     )
 
-    const expected = JSON.stringify(item.output.toSorted((a: string, b: string) => a.localeCompare(b)))
+    const expected = JSON.stringify(
+      item.output.toSorted((a: string, b: string) => a.localeCompare(b))
+    )
 
     const isEqual = classification === expected
 
@@ -37,9 +38,7 @@ const results: string[][] = await Promise.all(
     }
 
     console.log(item.input)
-    console.log(
-      isEqual ? chalk.green(classification) : chalk.red(`${classification} expected: ${expected}`)
-    )
+    console.log(isEqual ? `✅ ${classification}` : `❌ ${classification} expected: ${expected}`)
 
     tokens += response.usage?.totalTokens ?? 0
     return [item.input, classification, expected, isEqual ? '' : '❌']

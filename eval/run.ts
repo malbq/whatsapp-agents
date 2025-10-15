@@ -210,9 +210,9 @@ async function insertPredefinedMessages(
       chunks = cached.chunks
       embeddings = cached.embeddings
     } else {
-      const messageEmbeddings = await AIProvider.generateEmbeddings([message.content])
-      chunks = messageEmbeddings.map((e) => e[0]!.content)
-      embeddings = messageEmbeddings.map((e) => e[0]!.embedding)
+      const [messageEmbeddings] = await AIProvider.generateEmbeddings([message.content])
+      chunks = messageEmbeddings!.map((e) => e.content)
+      embeddings = messageEmbeddings!.map((e) => e.embedding)
 
       cacheItemsToPersist.push({
         role: message.role,

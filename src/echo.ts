@@ -36,15 +36,8 @@ export async function sendCommandMessage(
       })
     case 'contact':
       return chat.sendContact({
-        contacts: [
-          {
-            name: { formattedName: 'John Doe', firstName: 'John', lastName: 'Doe' },
-            phones: [
-              { phone: '+1234567890', type: 'HOME' },
-              { phone: '+0987654321', type: 'WORK', externalId: '+0987654321' },
-            ],
-          },
-        ],
+        name: 'John Doe',
+        phone: '+1234567890',
       })
     case 'location':
       return chat.sendLocation({
