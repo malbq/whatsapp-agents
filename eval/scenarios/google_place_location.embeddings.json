@@ -1,7 +1,7 @@
 {
   "version": 1,
   "scenarioPath": "/home/mauro/dev/zapid/eval/scenarios/google_place_location.json",
-  "scenarioHash": "9704864a40a522435b144082826729b46eab3c48da173e4ee37b9e4210f0b753",
+  "scenarioHash": "ee36617c7eec336889be3944cbfd925f98a18ac8b80d95155484a8bf35bf1579",
   "items": [
     {
       "role": "user",

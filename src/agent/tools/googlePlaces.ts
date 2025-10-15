@@ -33,7 +33,7 @@ interface GooglePlace {
   }
 }
 
-export const googlePlacesTool = (_frame: Frame, _deps: Deps) =>
+export const googlePlacesTool = (frame: Frame, deps: Deps) =>
   tool({
     name: 'google_places',
     description: `Search for business locations using Google Places API.
@@ -51,11 +51,12 @@ This tool provides verified, structured data from Google's Places database inclu
 - Business hours and ratings
 - Current business status (operational, closed, etc.)
 
-Follow-up actions:
-- If you are confident a single result matches the user's request, immediately call send_location with latitude, longitude, name, and formatted address.
-- If a phone number is available, also call send_contact with the place name and the international phone number.
-- If there are multiple plausible matches, present the top 3 concise options and ask the user to pick before calling these tools.
-- Do not call these tools if you are unsure about the match.`,
+Set sendLocation/sendContact flags when:
+- When the user explicitly wants a location/address/map (e.g., "where is X?", "send me the location of X", "how do I get to X?").
+- When the user explicitly wants contact details (e.g., "what's the phone number for X?", "send me X's contact").
+- Set both to false when the user is exploring options, asking general questions, or the request is ambiguous.
+
+If a single match is found and flags are true, the location/contact will be sent automatically. If multiple matches exist, only the search results will be returned regardless of flags.`,
     inputSchema: z.object({
       query: z
         .string()
@@ -65,12 +66,30 @@ Follow-up actions:
         .optional()
         .default(5)
         .describe('Maximum number of results to return (1-20, default: 5)'),
+      sendLocation: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe(
+          'Set to true if the user explicitly requests a location, address, or map. The tool will send a map pin only if exactly one result is found.'
+        ),
+      sendContact: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe(
+          'Set to true if the user explicitly requests contact details or phone number. The tool will send a contact card only if exactly one result is found and has a phone number.'
+        ),
     }),
-    execute: async ({ query, maxResults = 5 }) => {
+    execute: async (
+      { query, maxResults = 5, sendLocation = false, sendContact = false },
+      { abortSignal }
+    ) => {
       try {
         const searchUrl = 'https://places.googleapis.com/v1/places:searchText'
 
         const searchResponse = await fetch(searchUrl, {
+          signal: abortSignal,
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -108,11 +127,45 @@ Follow-up actions:
         const response = (await searchResponse.json()) as PlacesSearchResponse
         const places = response.places || []
 
-        logger.info(`Places search`, { query, maxResults, resultsCount: places.length })
+        logger.info(`Places search tool called`, {
+          query,
+          maxResults,
+          placesCount: places.length,
+          sendLocation,
+          sendContact,
+        })
         logger.debug('Google Places response', { response })
 
         if (places.length === 0) {
           return `No places found for query: "${query}"`
+        }
+
+        const firstPlace = places[0]
+        const hasSingleMatch = places.length === 1
+
+        if (sendLocation && hasSingleMatch && firstPlace?.location) {
+          const location = {
+            latitude: firstPlace.location.latitude,
+            longitude: firstPlace.location.longitude,
+            name: firstPlace.displayName?.text,
+            address: firstPlace.formattedAddress,
+          }
+          await deps.chat.sendLocation(location)
+          logger.debug('Sent location message', location)
+        }
+
+        if (
+          sendContact &&
+          hasSingleMatch &&
+          firstPlace?.internationalPhoneNumber &&
+          firstPlace?.displayName?.text
+        ) {
+          const contact = {
+            name: firstPlace.displayName.text,
+            phone: firstPlace.internationalPhoneNumber,
+          }
+          await deps.chat.sendContact(contact)
+          logger.debug('Sent contact message', contact)
         }
 
         return JSON.stringify(places)

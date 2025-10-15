@@ -9,9 +9,7 @@ import { userProfile } from '../prompts/userProfile'
 import { fetchMemoryTool } from '../tools/fetchMemory'
 import { googlePlacesTool } from '../tools/googlePlaces'
 import { searchFilesTool } from '../tools/searchFiles'
-import { sendContactTool } from '../tools/sendContact'
 import { sendFileTool } from '../tools/sendFile'
-import { sendLocationTool } from '../tools/sendLocation'
 import { sendReactionTool } from '../tools/sendReaction'
 import { updateUserProfileTool } from '../tools/updateUserProfile'
 import { webFetchTool } from '../tools/webFetch'
@@ -85,8 +83,6 @@ export async function responseGeneration(frame: Frame, deps: Deps) {
         googlePlacesTool(frame, deps),
         sendFileTool(frame, deps),
         sendReactionTool(frame, deps),
-        sendLocationTool(frame, deps),
-        sendContactTool(frame, deps),
         updateUserProfileTool(frame, deps),
       ],
     })

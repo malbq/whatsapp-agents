@@ -1,7 +1,7 @@
 {
   "version": 1,
   "scenarioPath": "/home/mauro/dev/zapid/eval/scenarios/google_place_contact.json",
-  "scenarioHash": "8f356814d654e33fb3be2fc3a81d11c1eba0d6236ffc1a1443ba372f5e869c97",
+  "scenarioHash": "2343c558d750d62a2f3f8f5eaa6a7a0d9f95241a403fe08fda649ef699357ce4",
   "items": [
     {
       "role": "user",

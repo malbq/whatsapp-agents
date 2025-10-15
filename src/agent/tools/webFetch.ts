@@ -26,7 +26,7 @@ export const webFetchTool = (_frame: Frame, _deps: Deps) =>
         .default('text')
         .describe('Return format: "text" extracts plain text from HTML, "html" returns raw HTML'),
     }),
-    execute: async ({ url, format = 'text' }) => {
+    execute: async ({ url, format = 'text' }, { abortSignal }) => {
       try {
         if (!/^https?:\/\//i.test(url)) {
           return 'web_fetch: invalid URL (must start with http:// or https://)'
@@ -34,8 +34,9 @@ export const webFetchTool = (_frame: Frame, _deps: Deps) =>
 
         logger.debug(`Fetching URL: ${url}`, { format })
 
-        const ctrl = new AbortController()
-        const t = setTimeout(() => ctrl.abort(), DEFAULT_TIMEOUT_MS)
+        const abortController = new AbortController()
+        const t = setTimeout(() => abortController.abort(), DEFAULT_TIMEOUT_MS)
+        abortSignal?.addEventListener('abort', abortController.abort)
 
         const accept =
           format === 'html'
@@ -43,7 +44,7 @@ export const webFetchTool = (_frame: Frame, _deps: Deps) =>
             : 'text/html;q=1.0,text/plain;q=0.9,*/*;q=0.1'
 
         const resp = await fetch(url, {
-          signal: ctrl.signal,
+          signal: abortController.signal,
           headers: {
             'User-Agent':
               'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125 Safari/537.36',

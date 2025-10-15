@@ -223,7 +223,7 @@ export namespace Whatsapp {
 
     sendContact: async (contact) => {
       const name = contact.name.trim()
-      const phone = contact.phone.trim().replace(/[\s-()+]/g, '')
+      const phone = normalizePhoneNumber(contact.phone)
       if (name.length === 0 || phone.length === 0) {
         throw new ResponseDeliveryError('Name and phone are required')
       }
@@ -432,6 +432,16 @@ export namespace Whatsapp {
 
     const uploadResult = (await uploadResponse.json()) as { id: string }
     return uploadResult.id
+  }
+
+  function normalizePhoneNumber(phone: string): string {
+    const cleaned = phone.trim().replace(/[\s\-()+ ]/g, '')
+
+    if (phone.startsWith('+55') && cleaned.length === 12) {
+      return cleaned.slice(0, 4) + cleaned.slice(5)
+    }
+
+    return cleaned
   }
 
   async function sendMessageRequest<T extends Whatsapp.WaOutgoingMessageUnion>(requestBody: T) {
