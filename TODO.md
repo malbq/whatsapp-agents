@@ -2,15 +2,10 @@
 
 ## Next
 
-- **Fix**
-
-  - Keep messages under 500 characters. Tell the agent in system prompt that it can use sendText as much as needed to split responses and send intermediate messages.
-  - Agent should inform user with sendText of every action it performs with tools.
-  - Every message must be stored in the database.
-
 - **Loggingg**
 
   - Configure posthog in docker container
+  - Group every log entry from a single request in the UI.
 
 - **User Management**: Complete user management system
 
@@ -49,6 +44,13 @@
 - Encryption at rest
 - TTS: Answer with audio message
 - Cost Monitoring: Set up alerts for AI provider usage thresholds (e.g., via OpenAI dashboard hooks)
+- Tools:
+  - gerar PDF
+  - Gerar planilha
+  - Integração com Drives (Google, Microsoft, Dropbox)
+  - Envio de Email
+  - Gerar imagem
+  - Editar imagem
 - Automated DB backups
 - Media storage snapshots
 - Real-time TTS

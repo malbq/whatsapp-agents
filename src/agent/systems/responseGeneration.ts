@@ -11,6 +11,7 @@ import { googlePlacesTool } from '../tools/googlePlaces'
 import { searchFilesTool } from '../tools/searchFiles'
 import { sendFileTool } from '../tools/sendFile'
 import { sendReactionTool } from '../tools/sendReaction'
+import { sendTextTool } from '../tools/sendText'
 import { updateUserProfileTool } from '../tools/updateUserProfile'
 import { webFetchTool } from '../tools/webFetch'
 import { webSearchTool } from '../tools/webSearch'
@@ -76,6 +77,7 @@ export async function responseGeneration(frame: Frame, deps: Deps) {
     const response = await deps.ai.respond({
       messages: messagesForAgent,
       tools: [
+        sendTextTool(frame, deps),
         fetchMemoryTool(frame, deps, recentMessages),
         searchFilesTool(frame, deps),
         webSearchTool(frame, deps),
@@ -87,20 +89,26 @@ export async function responseGeneration(frame: Frame, deps: Deps) {
       ],
     })
 
-    const externalChatId = await deps.chat.sendText({ text: response.text })
+    if (frame.outboundMessages.length === 0) {
+      logger.warn('No messages sent via sendText tool, sending fallback response')
+      const fallbackText = response.text || 'Desculpe, não consegui formular uma resposta.'
+      const externalChatId = await deps.chat.sendText({ text: fallbackText })
+      frame.outboundMessages.push({
+        externalChatId,
+        type: 'text',
+        text: fallbackText,
+      })
+    }
 
-    logger.info(`Sent 'text' response`)
-
-    frame.outbound = {
+    logger.info(`Sent ${frame.outboundMessages.length} text message(s)`)
+  } catch (error) {
+    const errorText = 'Desculpe, tive algum problema ao tentar te responder.'
+    const externalChatId = await deps.chat.sendText({ text: errorText })
+    frame.outboundMessages.push({
       externalChatId,
       type: 'text',
-      text: response.text,
-    }
-  } catch (error) {
-    frame.outbound = {
-      type: 'text',
-      text: 'Desculpe, tive algum problema ao tentar te responder.',
-    }
+      text: errorText,
+    })
     throw error
   }
 }

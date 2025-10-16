@@ -2,7 +2,7 @@ import { getLogger } from '@logtape/logtape'
 import { tool } from 'ai'
 import { z } from 'zod'
 import { getMessageTypeFromMimeType } from '../../utils/getMessageTypeFromMimeType'
-import type { Frame } from '../frame'
+import type { Frame, FrameOutboundMessage } from '../frame'
 
 const logger = getLogger(['app', 'agent', 'tool', 'sendFile'])
 
@@ -16,10 +16,13 @@ export const sendFileTool = (frame: Frame, deps: Deps) =>
       caption: z.string().optional().describe('Optional caption (only used for images)'),
     }),
     execute: async ({ messageId, caption }) => {
-      if (!frame.user) return 'Could not send file due to missing user'
+      if (!frame.user) {
+        logger.error('Could not send file due to missing user')
+        return 'Could not send file due to missing user'
+      }
 
       if (!frame.lastSearchFiles?.some((result) => result.messageId === messageId)) {
-        logger.warn(
+        logger.error(
           `Invalid send_file attempt: messageId ${messageId} not found in last search results`,
           { messageId, lastSearchFiles: frame.lastSearchFiles }
         )
@@ -28,7 +31,7 @@ export const sendFileTool = (frame: Frame, deps: Deps) =>
 
       const message = await deps.db.findStorageKeyById({ userId: frame.user.id, messageId })
       if (!message) {
-        logger.warn(`Message not found: ${messageId}`)
+        logger.error(`Message not found: ${messageId}`)
         return 'File not found. Please run search_files again.'
       }
 
@@ -36,6 +39,7 @@ export const sendFileTool = (frame: Frame, deps: Deps) =>
       const messageType = getMessageTypeFromMimeType(fileInfo.mimeType)
 
       if (!messageType) {
+        logger.error(`Unsupported file type: ${fileInfo.mimeType}`)
         return `Unsupported file type: ${fileInfo.mimeType}. Only images and documents are supported`
       }
 
@@ -45,15 +49,15 @@ export const sendFileTool = (frame: Frame, deps: Deps) =>
           caption,
           mimeType: fileInfo.mimeType,
         })
-        frame.outboundFile = {
+        const outboundImage: FrameOutboundMessage = {
           externalChatId,
           type: 'image',
           storageKey: message.storageKey,
-          caption,
+          text: caption ?? '',
         }
-        logger.info(`Sent image response to ${frame.user.name} (${frame.user.externalId})`)
-        logger.debug(`Image response`, { ...frame.outboundFile })
-        return `Image delivered to user`
+        frame.outboundMessages.push(outboundImage)
+        logger.debug('Sent image message', { ...outboundImage })
+        return 'Image delivered to user'
       }
 
       const externalChatId = await deps.chat.sendDocument({
@@ -62,14 +66,14 @@ export const sendFileTool = (frame: Frame, deps: Deps) =>
         caption,
         mimeType: fileInfo.mimeType,
       })
-      frame.outboundFile = {
+      const outboundDocument: FrameOutboundMessage = {
         externalChatId,
         type: 'document',
         storageKey: message.storageKey,
-        caption,
+        text: caption ?? '',
       }
-      logger.info(`Sent document response to ${frame.user.name} (${frame.user.externalId})`)
-      logger.debug(`Document response`, { ...frame.outboundFile })
-      return `Document delivered to user`
+      frame.outboundMessages.push(outboundDocument)
+      logger.debug('Sent document message', { ...outboundDocument })
+      return 'Document delivered to user'
     },
   })

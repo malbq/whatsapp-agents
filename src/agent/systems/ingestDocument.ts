@@ -24,10 +24,10 @@ export async function ingestDocument(frame: Frame, deps: Deps): Promise<void> {
       `Processed document "${frame.inbound.media.filename}" of type ${frame.inbound.media.mimeType} (${frame.inbound.media.data.byteLength} bytes)`
     )
   } catch (error) {
-    frame.outbound = {
+    frame.outboundMessages.push({
       type: frame.inbound.type,
       text: 'Desculpe, tive um problema ao processar o documento.',
-    }
+    })
 
     logger.error('Document ingestion error', { ...spreadError(error) })
     throw new IngestionError('Failed to process document')

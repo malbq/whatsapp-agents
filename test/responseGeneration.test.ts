@@ -232,34 +232,147 @@ describe('ResponseGeneration Module', () => {
       await insertUserProfile(user)
     })
 
-    test('should set text response in frame outbound', async () => {
+    test('should handle single message sent via sendText tool', async () => {
       const frame = new Frame()
       frame.user = user
       frame.inbound = { type: 'text' as MessageType, text: 'Hello' }
-      ai.respond = mock(async () => ({
-        text: 'Hello back!',
-        usage: { totalTokens: 10, inputTokens: 5, outputTokens: 5 } as LanguageModelUsage,
-      }))
+
+      ai.respond = mock(async ({ tools }) => {
+        const sendTextTool = tools?.find((t: any) => t.name === 'sendText')
+        if (sendTextTool) {
+          await sendTextTool.execute({ text: 'Hello back!' })
+        }
+        return {
+          text: '',
+          usage: { totalTokens: 10, inputTokens: 5, outputTokens: 5 } as LanguageModelUsage,
+        }
+      })
+
       await responseGeneration(frame, deps)
-      expect(frame.outbound).toEqual({
-        externalChatId: 'external-id',
+
+      expect(frame.outboundMessages).toHaveLength(1)
+      expect(frame.outboundMessages[0]).toMatchObject({
         type: 'text',
         text: 'Hello back!',
+        externalChatId: expect.any(String),
       })
+    })
+
+    test('should handle multiple messages sent via sendText tool', async () => {
+      const frame = new Frame()
+      frame.user = user
+      frame.inbound = { type: 'text' as MessageType, text: 'Tell me a story' }
+
+      ai.respond = mock(async ({ tools }) => {
+        const sendTextTool = tools?.find((t: any) => t.name === 'sendText')
+        if (sendTextTool) {
+          await sendTextTool.execute({ text: 'Once upon a time...' })
+          await sendTextTool.execute({ text: 'There was a brave knight.' })
+          await sendTextTool.execute({ text: 'The end!' })
+        }
+        return {
+          text: '',
+          usage: { totalTokens: 20, inputTokens: 10, outputTokens: 10 } as LanguageModelUsage,
+        }
+      })
+
+      await responseGeneration(frame, deps)
+
+      expect(frame.outboundMessages).toHaveLength(3)
+      expect(frame.outboundMessages[0]?.text).toBe('Once upon a time...')
+      expect(frame.outboundMessages[1]?.text).toBe('There was a brave knight.')
+      expect(frame.outboundMessages[2]?.text).toBe('The end!')
+      expect(deps.chat.sendText).toHaveBeenCalledTimes(3)
+    })
+
+    test('should send fallback response when no sendText calls are made', async () => {
+      const frame = new Frame()
+      frame.user = user
+      frame.inbound = { type: 'text' as MessageType, text: 'Hello' }
+
+      ai.respond = mock(async () => ({
+        text: 'Direct response text',
+        usage: { totalTokens: 10, inputTokens: 5, outputTokens: 5 } as LanguageModelUsage,
+      }))
+
+      await responseGeneration(frame, deps)
+
+      expect(frame.outboundMessages).toHaveLength(1)
+      expect(frame.outboundMessages[0]?.text).toBe('Direct response text')
+      expect(deps.chat.sendText).toHaveBeenCalledWith({ text: 'Direct response text' })
+    })
+
+    test('should handle messages under 500 characters', async () => {
+      const frame = new Frame()
+      frame.user = user
+      frame.inbound = { type: 'text' as MessageType, text: 'Short message' }
+
+      const shortMessage = 'This is a short message under 500 characters.'
+
+      ai.respond = mock(async ({ tools }) => {
+        const sendTextTool = tools?.find((t: any) => t.name === 'sendText')
+        if (sendTextTool) {
+          await sendTextTool.execute({ text: shortMessage })
+        }
+        return {
+          text: '',
+          usage: { totalTokens: 10, inputTokens: 5, outputTokens: 5 } as LanguageModelUsage,
+        }
+      })
+
+      await responseGeneration(frame, deps)
+
+      expect(frame.outboundMessages).toHaveLength(1)
+      expect(frame.outboundMessages[0]?.text).toBe(shortMessage)
+      expect(shortMessage.length).toBeLessThan(500)
     })
 
     test('should handle AI response error gracefully', async () => {
       const frame = new Frame()
       frame.user = user
       frame.inbound = { type: 'text' as MessageType, text: 'Hello' }
+
       ai.respond = mock(async () => {
         throw new Error('AI service error')
       })
+
       await expect(responseGeneration(frame, deps)).rejects.toThrow('AI service error')
-      expect(frame.outbound).toEqual({
-        type: 'text',
-        text: 'Desculpe, tive algum problema ao tentar te responder.',
+
+      expect(frame.outboundMessages).toHaveLength(1)
+      expect(frame.outboundMessages[0]?.text).toBe(
+        'Desculpe, tive algum problema ao tentar te responder.'
+      )
+    })
+  })
+
+  describe('Tool Announcements', () => {
+    const user = createTestUser()
+    beforeEach(async () => {
+      await insertUserProfile(user)
+    })
+
+    test('should send preamble before using tools', async () => {
+      const frame = new Frame()
+      frame.user = user
+      frame.inbound = { type: 'text' as MessageType, text: 'Search for restaurants' }
+
+      ai.respond = mock(async ({ tools }) => {
+        const sendTextTool = tools?.find((t: any) => t.name === 'sendText')
+        if (sendTextTool) {
+          await sendTextTool.execute({ text: 'Searching for restaurants nearby...' })
+          await sendTextTool.execute({ text: 'Found 3 restaurants.' })
+        }
+        return {
+          text: '',
+          usage: { totalTokens: 15, inputTokens: 8, outputTokens: 7 } as LanguageModelUsage,
+        }
       })
+
+      await responseGeneration(frame, deps)
+
+      expect(frame.outboundMessages).toHaveLength(2)
+      expect(frame.outboundMessages[0]?.text).toContain('Searching')
+      expect(frame.outboundMessages[1]?.text).toContain('Found')
     })
   })
 })

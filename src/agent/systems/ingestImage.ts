@@ -16,10 +16,10 @@ export async function ingestImage(frame: Frame, deps: Deps): Promise<void> {
       caption: frame.inbound.text,
     })
   } catch (error) {
-    frame.outbound = {
+    frame.outboundMessages.push({
       type: frame.inbound.type,
       text: 'Desculpe, tive um problema ao analisar a imagem.',
-    }
+    })
 
     logger.error('Image ingestion error', { ...spreadError(error) })
     throw new IngestionError('Failed to analyze image')

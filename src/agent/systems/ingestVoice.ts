@@ -11,10 +11,10 @@ export async function ingestVoice(frame: Frame, deps: Deps): Promise<void> {
   try {
     frame.inbound.text = await deps.ai.transcribeAudio({ audio: frame.inbound.media.data })
   } catch (error) {
-    frame.outbound = {
+    frame.outboundMessages.push({
       type: 'text',
       text: 'Desculpe, tive um problema ao transcrever a mensagem de voz.',
-    }
+    })
 
     logger.error('Voice ingestion error', { ...spreadError(error) })
     throw new IngestionError('Failed to transcribe voice message')

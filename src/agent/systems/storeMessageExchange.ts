@@ -5,7 +5,11 @@ import type { Frame } from '../frame'
 const logger = getLogger(['app', 'agent', 'storeMessageExchange'])
 
 export async function storeMessageExchange(frame: Frame, deps: Deps): Promise<void> {
-  if (!frame.user || !frame.inbound || !frame.outbound) return
+  if (!frame.user || !frame.inbound) return
+  if (frame.outboundMessages.length === 0) {
+    logger.warn('No outbound messages to store')
+    return
+  }
 
   const messagesToStore: DbMessageInput[] = []
 
@@ -25,39 +29,32 @@ export async function storeMessageExchange(frame: Frame, deps: Deps): Promise<vo
       userId: frame.user.id,
       role: 'user',
       externalId: frame.inbound.externalChatId,
-      // when media has transcription we already stored a message with inbound.type
-      // Then we store this one as text message (may be doc/image caption)
+      // when transcription is present we already stored a message with `inbound.type` (previous `if` block)
+      // Then this must be a caption and we store it as `text` message
       type: frame.inbound.media?.transcriptionEmbedding ? 'text' : frame.inbound.type,
       content: frame.inbound.textEmbedding,
     })
   }
 
-  messagesToStore.push({
-    userId: frame.user.id,
-    role: 'assistant',
-    externalId: frame.outbound.externalChatId,
-    type: frame.outbound.type,
-    content: frame.outbound.textEmbedding ?? [],
-  })
-
-  const messageIds = await deps.db.storeMessage(messagesToStore)
-
-  switch (messageIds.length) {
-    case 0:
-      logger.warn(`Stored no messages`)
-      break
-    case 1:
-      logger.warn(`Stored only 1 message (${messagesToStore[0]?.role}/${messagesToStore[0]?.type})`)
-      break
-    default:
-      logger.info(
-        `Stored ${messageIds.length} messages (${messagesToStore
-          .map((m) => `${m.role}/${m.type}`)
-          .join(', ')})`
-      )
-      break
+  for (const outboundMessage of frame.outboundMessages) {
+    messagesToStore.push({
+      userId: frame.user.id,
+      role: 'assistant',
+      externalId: outboundMessage.externalChatId,
+      type: outboundMessage.type,
+      content: outboundMessage.textEmbedding ?? [],
+      storageKey: outboundMessage.storageKey,
+    })
   }
 
-  frame.inbound.messageId = messageIds.at(-2)
-  frame.outbound.messageId = messageIds.at(-1)
+  const messageIds = await deps.db.storeMessage(messagesToStore)
+  frame.profileVersionSourceMessageId = messageIds.at(-frame.outboundMessages.length)
+
+  const assistantMessageCount = frame.outboundMessages.length
+  const inboundMessageCount = messagesToStore.length - assistantMessageCount
+
+  logger.info(
+    `Stored ${messageIds.length} messages (${inboundMessageCount} user, ${assistantMessageCount} assistant)`,
+    { messages: messagesToStore.map((m) => `${m.role}/${m.type}`) }
+  )
 }

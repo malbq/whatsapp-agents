@@ -56,10 +56,10 @@ export async function ingestMessage(
       break
 
     default:
-      frame.outbound = {
+      frame.outboundMessages.push({
         type: 'text',
         text: 'Desculpe, ainda não consigo entender este tipo de mensagem.',
-      }
+      })
       throw new IngestionError(`Unsupported message type ${message.type}`)
   }
 }

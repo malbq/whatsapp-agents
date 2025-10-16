@@ -73,11 +73,14 @@ export async function agent(deps: Deps, message: IncomingMessage): Promise<void>
         await responseGeneration(frame, deps)
       } catch (error) {
         logger.error(`Agent response flow error: ${String(error)}`, { ...spreadError(error) })
-        frame.outbound = frame.outbound ?? {
-          type: 'text',
-          text: 'Desculpe, tive um problema ao processar sua mensagem.',
+        if (frame.outboundMessages.length === 0) {
+          const errorText = 'Desculpe, tive um problema ao processar sua mensagem.'
+          deps.chat.sendText({ text: errorText })
+          frame.outboundMessages.push({
+            type: 'text',
+            text: errorText,
+          })
         }
-        deps.chat.sendText({ text: frame.outbound.text! })
       }
 
       try {

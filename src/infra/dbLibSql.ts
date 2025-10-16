@@ -75,18 +75,9 @@ export namespace LibSql {
       },
       async storeMessage(messages) {
         if (messages.length === 0) return []
-        logger.debug('Storing messages', {
-          messages: messages.map((m) => ({
-            ...m,
-            content: m.content.map((c) => ({
-              ...c,
-              embedding: '...',
-            })),
-          })),
-        })
 
         const messageIds: string[] = []
-        const statements = messages.flatMap((messageData) => {
+        const statements = messages.flatMap((message) => {
           const id = Bun.randomUUIDv7()
           messageIds.push(id)
           return [
@@ -96,14 +87,14 @@ export namespace LibSql {
               VALUES (?, ?, ?, ?, ?, ?)`,
               args: [
                 id,
-                messageData.externalId ?? null,
-                messageData.userId,
-                messageData.role,
-                messageData.type,
-                messageData.storageKey ?? null,
+                message.externalId ?? null,
+                message.userId,
+                message.role,
+                message.type,
+                message.storageKey ?? null,
               ],
             },
-            ...messageData.content.map((chunk, sequence) => ({
+            ...message.content.map((chunk, sequence) => ({
               sql: `INSERT INTO
               embedding (message_id, sequence, content, embedding)
               VALUES (?, ?, ?, vector32(?))`,
@@ -113,6 +104,17 @@ export namespace LibSql {
         })
 
         await client.batch(statements)
+
+        logger.debug('Stored messages', {
+          messages: messages.map((m) => ({
+            ...m,
+            content: m.content.map((c) => ({
+              ...c,
+              embedding: '...',
+            })),
+          })),
+        })
+
         return messageIds
       },
 
