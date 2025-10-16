@@ -1,13 +1,15 @@
 {
   "name": "zapid",
-  "version": "0.1.3",
+  "version": "0.1.5",
   "type": "module",
   "packageManager": "bun",
   "scripts": {
     "dev": "bun --hot --no-clear-screen run src/index.ts",
-    "docker:build": "./docker-build.sh",
     "docker:setup": "./setup-docker-host.sh",
     "docker:logs": "docker compose logs -f",
+    "release:patch": "./scripts/release.sh patch",
+    "release:minor": "./scripts/release.sh minor",
+    "release:major": "./scripts/release.sh major",
     "typecheck": "tsc",
     "db:migrate": "atlas schema apply --env local --auto-approve",
     "lint": "oxlint --fix"

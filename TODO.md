@@ -4,7 +4,6 @@
 
 - **Fix**
 
-  - Create git pre-commit hook to increase project version and use it to set container version.
   - Keep messages under 500 characters. Tell the agent in system prompt that it can use sendText as much as needed to split responses and send intermediate messages.
   - Agent should inform user with sendText of every action it performs with tools.
   - Every message must be stored in the database.
