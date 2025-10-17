@@ -1,0 +1,2 @@
+export const toolUsageExplanation =
+  'One sentence explanation, directed to the user, as to why this tool needs to be run and how it contributes to the goal. Examples: Searching reliable sources to verify this before I answer; Retrieving the document you requested so I can send it now; Opening the link you shared to summarize what matters; Finding nearby places that match your criteria; Checking payment status before proceeding with the next step;'

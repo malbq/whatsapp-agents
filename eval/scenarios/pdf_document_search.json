@@ -1,0 +1,26 @@
+{
+  "systemPrompt": "You are role-playing as a human user in a conversation with a personal assistant AI. Your goal is to test the assistant's ability to search through uploaded PDF documents and send files back to you. IMPORTANT: You are the USER. Do NOT act as the assistant or provide responses as if you were the AI. Always respond only as the user would. Be conversational and natural. Use short sentences and concise messages. Each message should include a single request or question.",
+  "conversation": [
+    {
+      "role": "user",
+      "content": "I need you to search through my uploaded documents for information about quarterly sales reports from 2023. Can you find any documents that contain sales data?"
+    },
+    {
+      "role": "assistant",
+      "content": "I'll search through your uploaded documents for quarterly sales reports from 2023. Let me look for any documents containing sales data."
+    },
+    {
+      "role": "user",
+      "content": "Great! Now can you send me the document that has the Q3 2023 sales report? I need to review the revenue figures."
+    },
+    {
+      "role": "assistant",
+      "content": "I found the Q3 2023 sales report. Let me send you that document so you can review the revenue figures."
+    },
+    {
+      "role": "user",
+      "content": "Perfect! Can you also search for any documents related to customer feedback or satisfaction surveys from last year?"
+    }
+  ],
+  "maxMessages": 2
+}

@@ -7,14 +7,14 @@ const logger = getLogger(['app', 'agent', 'tool', 'sendText'])
 
 export const sendTextTool = (frame: Frame, deps: Deps) =>
   tool({
-    name: 'sendText',
+    name: 'send_text',
     description: `Send a text message to the user.`,
     inputSchema: z.object({
       text: z.string().describe('The text message to send to the user'),
     }),
     execute: async ({ text }) => {
       if (!frame.user) {
-        logger.error('Could not send text due to missing user')
+        logger.error('send_text: missing user', { text, textLength: text.length })
         return 'Could not send text due to missing user'
       }
 
@@ -26,12 +26,12 @@ export const sendTextTool = (frame: Frame, deps: Deps) =>
         text,
       })
 
-      logger.debug('Sent text message', {
-        message: text,
-        messageLength: text.length,
+      logger.info('send_text: delivered', {
+        text,
+        textLength: text.length,
         messageId: externalChatId,
       })
 
-      return 'Message sent successfully'
+      return `Sent message to user: ${text}`
     },
   })

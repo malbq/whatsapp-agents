@@ -30,8 +30,7 @@ const textProvider = createOpenAICompatible({
   baseURL: `${gatewayBaseURL}/compat`,
   headers: { 'cf-aig-authorization': `Bearer ${import.meta.env.CF_API_TOKEN}` },
 })
-const textModel = textProvider('grok/grok-4-fast-non-reasoning')
-// const textModel = textProvider('openai/gpt-5-mini')
+const textModel = textProvider('openai/gpt-5-mini')
 
 const embeddingProvider = createOpenAICompatible({
   name: 'cf-aig',
@@ -55,7 +54,7 @@ const documentTranscriptionModel = google('gemini-2.5-flash-lite')
 
 const IMAGE_ANALYSIS_TEMP = 0.1
 const TRANSCRIPTION_GEN_TEMP = 0
-const MAX_STEPS = 15
+const MAX_STEPS = 20
 
 export type AIMessage = SystemModelMessage | UserModelMessage | AssistantModelMessage
 

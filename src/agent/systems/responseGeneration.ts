@@ -89,16 +89,12 @@ export async function responseGeneration(frame: Frame, deps: Deps) {
       ],
     })
 
-    if (frame.outboundMessages.length === 0) {
-      logger.warn('No messages sent via sendText tool, sending fallback response')
-      const fallbackText = response.text || 'Desculpe, não consegui formular uma resposta.'
-      const externalChatId = await deps.chat.sendText({ text: fallbackText })
-      frame.outboundMessages.push({
-        externalChatId,
-        type: 'text',
-        text: fallbackText,
-      })
-    }
+    const externalChatId = await deps.chat.sendText({ text: response.text })
+    frame.outboundMessages.push({
+      externalChatId,
+      type: 'text',
+      text: response.text,
+    })
 
     logger.info(`Sent ${frame.outboundMessages.length} text message(s)`)
   } catch (error) {

@@ -16,9 +16,10 @@ Risk flags (handle with extra caution; avoid inferences): age (esp. minors), loc
 Benign location rule: You may store general, non-sensitive location for personalization (city, country, timezone). Do NOT store precise addresses, neighborhoods, habitual places, birthplace/origins, travel history, or any location hinting at sensitive traits unless the lastMessage both shares it and explicitly consents to storage.
 
 Consent rules:
-- For any item that could be sensitive, store it only if the lastMessage discloses it AND explicitly asks you to store it (e.g., “store my family info”).
+- For any item that could be sensitive, store it only if the lastMessage explicitly asks you to store it (e.g., “store my family info”).
 - Contact info (email/phone/handle): store only if the user provides it AND explicitly opts in to storage.
 - If the user refuses storage for any category, append that no-consent preference and honor it later.
+- Sharing and disclosing only is not consent. Explicit opt-in is required.
 
 What you may store (minimal, non-sensitive, user-stated only):
 - Name/preferred name/username and pronouns (verbatim; no guesses)
@@ -56,16 +57,25 @@ Output requirements:
     }),
     execute: async ({ improvedProfile }) => {
       if (!frame.user) {
-        logger.warn('Skipping profile update: User not found')
+        logger.error('update_user_profile: missing user', {
+          improvedProfile,
+          profileLength: improvedProfile.length,
+        })
         return 'User not found'
       }
       if (improvedProfile.trim().length === 0) {
-        logger.info('Skipping profile update: No improvement to make')
+        logger.warn('update_user_profile: skipped, no improvement', {
+          improvedProfile,
+          currentProfileLength: frame.user.profile.length,
+        })
         return 'No improvement to make'
       }
 
       if (improvedProfile === frame.user.profile) {
-        logger.warn('Skipping profile update: LLM returned the same profile')
+        logger.warn('update_user_profile: skipped, same profile', {
+          improvedProfile,
+          profileLength: improvedProfile.length,
+        })
         return 'You cannot update the profile to the same profile'
       }
 
@@ -78,8 +88,16 @@ Output requirements:
         frame.profileVersionId = profileVersionId
       }
 
-      logger.info('Profile improved')
-      logger.debug('Profile diff', { current: frame.user.profile, improved: improvedProfile })
+      logger.info('update_user_profile: completed', {
+        userId: frame.user.id,
+        profileVersionId,
+        currentProfileLength: frame.user.profile.length,
+        improvedProfileLength: improvedProfile.length,
+      })
+      logger.debug('update_user_profile: profile diff', {
+        current: frame.user.profile,
+        improved: improvedProfile,
+      })
 
       return 'Profile updated'
     },

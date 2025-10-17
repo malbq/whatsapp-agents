@@ -14,17 +14,18 @@ export const sendReactionTool = (frame: Frame, deps: Deps) =>
       emoji: z.string().describe('The emoji to send as a reaction (e.g., 👍, ❤️, 😊)'),
     }),
     execute: async ({ emoji }) => {
-      if (!frame.inbound?.externalChatId)
+      if (!frame.inbound?.externalChatId) {
+        logger.error('send_reaction: missing inbound message', { emoji })
         return 'Could not send reaction due to missing user message'
+      }
       deps.chat.sendReaction({
         emoji,
         externalChatId: frame.inbound.externalChatId,
       })
-      logger.debug(
-        `Sent reaction ${emoji} to message ${frame.inbound.externalChatId} from ${
-          frame.user!.name
-        } (${frame.user!.externalId})`
-      )
+      logger.info('send_reaction: sent', {
+        emoji,
+        messageId: frame.inbound.externalChatId,
+      })
       return 'Reaction delivered to user'
     },
   })

@@ -3,6 +3,7 @@ import { tool } from 'ai'
 import { z } from 'zod'
 import { getMessageTypeFromMimeType } from '../../utils/getMessageTypeFromMimeType'
 import type { Frame, FrameOutboundMessage } from '../frame'
+import { toolUsageExplanation } from '../prompts/toolUsageExplanation'
 
 const logger = getLogger(['app', 'agent', 'tool', 'sendFile'])
 
@@ -14,24 +15,37 @@ export const sendFileTool = (frame: Frame, deps: Deps) =>
     inputSchema: z.object({
       messageId: z.string().describe('The message ID of the file to send from search results'),
       caption: z.string().optional().describe('Optional caption (only used for images)'),
+      explanation: z.string().describe(toolUsageExplanation),
     }),
-    execute: async ({ messageId, caption }) => {
+    execute: async (params) => {
+      const { messageId, caption, explanation } = params
+
       if (!frame.user) {
-        logger.error('Could not send file due to missing user')
+        logger.error('Could not send file: missing user', params)
         return 'Could not send file due to missing user'
       }
 
+      const explanationChatId = await deps.chat.sendText({ text: explanation })
+      frame.outboundMessages.push({
+        externalChatId: explanationChatId,
+        type: 'text',
+        text: explanation,
+      })
+
       if (!frame.lastSearchFiles?.some((result) => result.messageId === messageId)) {
-        logger.error(
-          `Invalid send_file attempt: messageId ${messageId} not found in last search results`,
-          { messageId, lastSearchFiles: frame.lastSearchFiles }
-        )
+        logger.error('Invalid send_file: messageId not found in last search results', {
+          ...params,
+          lastSearchFiles: frame.lastSearchFiles,
+        })
         return 'Please run search_files first and select a file from the results.'
       }
 
       const message = await deps.db.findStorageKeyById({ userId: frame.user.id, messageId })
       if (!message) {
-        logger.error(`Message not found: ${messageId}`)
+        logger.error('send_file: message not found in storage', {
+          ...params,
+          userId: frame.user.id,
+        })
         return 'File not found. Please run search_files again.'
       }
 
@@ -39,7 +53,11 @@ export const sendFileTool = (frame: Frame, deps: Deps) =>
       const messageType = getMessageTypeFromMimeType(fileInfo.mimeType)
 
       if (!messageType) {
-        logger.error(`Unsupported file type: ${fileInfo.mimeType}`)
+        logger.error('send_file: unsupported file type', {
+          ...params,
+          mimeType: fileInfo.mimeType,
+          storageKey: message.storageKey,
+        })
         return `Unsupported file type: ${fileInfo.mimeType}. Only images and documents are supported`
       }
 
@@ -56,7 +74,12 @@ export const sendFileTool = (frame: Frame, deps: Deps) =>
           text: caption ?? '',
         }
         frame.outboundMessages.push(outboundImage)
-        logger.debug('Sent image message', { ...outboundImage })
+        logger.info('send_file: image delivered', {
+          ...params,
+          mimeType: fileInfo.mimeType,
+          captionLength: caption?.length ?? 0,
+        })
+        logger.debug('send_file: sent image message', { ...params, ...outboundImage })
         return 'Image delivered to user'
       }
 
@@ -73,7 +96,13 @@ export const sendFileTool = (frame: Frame, deps: Deps) =>
         text: caption ?? '',
       }
       frame.outboundMessages.push(outboundDocument)
-      logger.debug('Sent document message', { ...outboundDocument })
+      logger.info('send_file: document delivered', {
+        ...params,
+        filename: fileInfo.filename,
+        mimeType: fileInfo.mimeType,
+        captionLength: caption?.length ?? 0,
+      })
+      logger.debug('send_file: sent document message', { ...params, ...outboundDocument })
       return 'Document delivered to user'
     },
   })
