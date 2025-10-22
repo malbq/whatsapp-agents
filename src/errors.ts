@@ -53,3 +53,8 @@ export class ResponseDeliveryError extends Error {
     this.name = 'ResponseDeliveryError'
   }
 }
+
+export interface ToolExecutionError {
+  error: string
+  details: string
+}

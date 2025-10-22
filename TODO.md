@@ -2,18 +2,52 @@
 
 ## Next
 
+- Reverter splitting baseado em send_text tool:
+
+  - Usar splitting no final, sobre a resposta integral do agente
+  - Manter mensagens intermediárias de uso de tools (como mandar mensagem intermediária para websearch padrão da openai)
+
 - **Loggingg**
 
-  - Configure posthog in docker container
-  - Group every log entry from a single request in the UI.
+  - Configure signoz in docker container
+  - Logger tool should build properties over last call:
+    - `logger.info('message 1', { property1: 'value1' })` result in
+      ```
+      message 1
+        property1: value1
+      ```
+      `logger.info('message 2', { property2: 'value2' })` result in
+      ```
+      message 2
+        property1: value1
+        property2: value2
+      ```
+      `logger.info('message 3', { property3: 'value3' })` result in
+      ```
+      message 3
+        property1: value1
+        property2: value2
+        property3: value3
+      ```
 
 - **User Management**: Complete user management system
 
-  - https://getlago.com/docs/welcome
   - Subscription plan management
+    - Free
+      - basic text generation
+      - no web search, no media processing
+      - 50 messages per day
+    - Pro
+      - basic web search
+      - media processing
+      - 200 messages per day
+    - Ultra
+      - advanced research
+      - 500 messages per day
   - Usage tracking and limits
   - Onboarding
   - Generate unique code or token link, bound to the phone number, for payment and configuration
+  - https://getlago.com/docs/welcome
 
 - **Privacy & Compliance**: Data management features
 

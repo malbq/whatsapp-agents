@@ -1,6 +1,8 @@
 import { getLogger } from '@logtape/logtape'
 import { tool } from 'ai'
 import { z } from 'zod'
+import type { ToolExecutionError } from '../../errors'
+import { spreadError } from '../../utils/spreadError'
 import type { Frame } from '../frame'
 
 const logger = getLogger(['app', 'agent', 'tool', 'updateUserProfile'])
@@ -13,7 +15,8 @@ export const updateUserProfileTool = (frame: Frame, deps: Deps) =>
 Sensitive data (never store or infer): racial/ethnic origin, religion, politics, unions, health/sex life, genetic/biometric data, or any inferences about these (e.g., family implying genetics, hobbies implying beliefs, job implying unions).
 Risk flags (handle with extra caution; avoid inferences): age (esp. minors), location suggesting origins, family/best friends (genetics/affiliations), work/interests/plans that could imply politics/health/religion.
 
-Benign location rule: You may store general, non-sensitive location for personalization (city, country, timezone). Do NOT store precise addresses, neighborhoods, habitual places, birthplace/origins, travel history, or any location hinting at sensitive traits unless the lastMessage both shares it and explicitly consents to storage.
+Benign location rule: You may store general, non-sensitive location for personalization (city, country, timezone).
+Do NOT store precise addresses, neighborhoods, habitual places, birthplace/origins, travel history, or any location hinting at sensitive traits unless the lastMessage both shares it and explicitly consents to storage.
 
 Consent rules:
 - For any item that could be sensitive, store it only if the lastMessage explicitly asks you to store it (e.g., “store my family info”).
@@ -51,54 +54,69 @@ Output requirements:
 - Output the full updated profile (current content plus any new items), plain text, English only. No markdown, no JSON, no labels.
 - Be concise. Short sentences. Under 2000 characters. If it exceeds 2000, summarize it while preserving meaning, consents/opt-outs, and contact statuses.
 - Do not remove existing information.
-- If the info is already stored or the message is not relevant, output empty text (no quotes, no spaces, no new lines).`,
+- If the info is already stored or the message is not relevant, output empty text (no quotes, no spaces, no new lines).
+- Fail silently. Do not notify user of errors from this tool.`,
     inputSchema: z.object({
       improvedProfile: z.string().describe('The improved profile to update'),
     }),
     execute: async ({ improvedProfile }) => {
-      if (!frame.user) {
-        logger.error('update_user_profile: missing user', {
-          improvedProfile,
-          profileLength: improvedProfile.length,
+      try {
+        if (!frame.user) {
+          logger.error('missing user', {
+            improvedProfile,
+            profileLength: improvedProfile.length,
+          })
+          return {
+            error: 'Missing user',
+            details: 'Could not update profile due to missing user',
+          } satisfies ToolExecutionError
+        }
+        if (improvedProfile.trim().length === 0) {
+          logger.warn('skipped, no improvement', {
+            improvedProfile,
+            currentProfileLength: frame.user.profile.length,
+          })
+          return 'No improvement to make'
+        }
+
+        if (improvedProfile === frame.user.profile) {
+          logger.warn('skipped, same profile', {
+            improvedProfile,
+            profileLength: improvedProfile.length,
+          })
+          return 'You cannot update the profile to the same profile'
+        }
+
+        const profileVersionId = await deps.db.updateUserProfile({
+          userId: frame.user.id,
+          profile: improvedProfile,
         })
-        return 'User not found'
-      }
-      if (improvedProfile.trim().length === 0) {
-        logger.warn('update_user_profile: skipped, no improvement', {
-          improvedProfile,
+
+        if (profileVersionId) {
+          frame.profileVersionId = profileVersionId
+        }
+
+        logger.info('completed', {
+          userId: frame.user.id,
+          profileVersionId,
           currentProfileLength: frame.user.profile.length,
+          improvedProfileLength: improvedProfile.length,
         })
-        return 'No improvement to make'
-      }
+        logger.debug('profile diff', {
+          current: frame.user.profile,
+          improved: improvedProfile,
+        })
 
-      if (improvedProfile === frame.user.profile) {
-        logger.warn('update_user_profile: skipped, same profile', {
+        return 'Profile updated'
+      } catch (error) {
+        logger.error('Tool execution failed', {
           improvedProfile,
-          profileLength: improvedProfile.length,
+          ...spreadError(error),
         })
-        return 'You cannot update the profile to the same profile'
+        return {
+          error: 'Tool execution failed',
+          details: error instanceof Error ? error.message : 'unknown',
+        } satisfies ToolExecutionError
       }
-
-      const profileVersionId = await deps.db.updateUserProfile({
-        userId: frame.user.id,
-        profile: improvedProfile,
-      })
-
-      if (profileVersionId) {
-        frame.profileVersionId = profileVersionId
-      }
-
-      logger.info('update_user_profile: completed', {
-        userId: frame.user.id,
-        profileVersionId,
-        currentProfileLength: frame.user.profile.length,
-        improvedProfileLength: improvedProfile.length,
-      })
-      logger.debug('update_user_profile: profile diff', {
-        current: frame.user.profile,
-        improved: improvedProfile,
-      })
-
-      return 'Profile updated'
     },
   })

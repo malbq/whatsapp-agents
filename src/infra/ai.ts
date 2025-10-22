@@ -93,6 +93,11 @@ export const AIProvider: AI = {
       messages,
       tools,
       toolChoice: 'auto',
+      providerOptions: {
+        openai: {
+          parallelToolCalls: false,
+        },
+      },
       stopWhen: stepCountIs(MAX_STEPS),
     })
 

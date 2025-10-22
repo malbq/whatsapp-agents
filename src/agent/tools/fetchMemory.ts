@@ -1,7 +1,9 @@
 import { getLogger } from '@logtape/logtape'
 import { tool } from 'ai'
 import { z } from 'zod'
+import type { ToolExecutionError } from '../../errors'
 import type { RecentMessage } from '../../infra/db'
+import { spreadError } from '../../utils/spreadError'
 import { extractFilename } from '../../utils/storageKey'
 import type { Frame } from '../frame'
 import { toolUsageExplanation } from '../prompts/toolUsageExplanation'
@@ -18,42 +20,56 @@ Generate an optimized search query for finding relevant files and documents.`,
       explanation: z.string().describe(toolUsageExplanation),
     }),
     execute: async (params) => {
-      const { query, explanation } = params
+      try {
+        const { query, explanation } = params
 
-      if (!frame.user) {
-        logger.error('fetch_memory: missing user', params)
-        return 'Could not fetch memory due to missing user'
+        if (!frame.user) {
+          logger.error('missing user', params)
+          return {
+            error: 'Missing user',
+            details: 'Could not fetch memory due to missing user',
+          } satisfies ToolExecutionError
+        }
+
+        const externalChatId = await deps.chat.sendText({ text: explanation })
+        frame.outboundMessages.push({
+          externalChatId,
+          type: 'text',
+          text: explanation,
+        })
+
+        const [embeddings] = await deps.ai.generateEmbeddings([query])
+
+        const similarMessages = await deps.db.findSimilarMessages({
+          userId: frame.user.id,
+          queryEmbedding: embeddings![0]!.embedding,
+          excludeIds: recentMessages.map((message) => message.id),
+        })
+
+        logger.info('completed', {
+          ...params,
+          resultsCount: similarMessages.length,
+          excludedRecentCount: recentMessages.length,
+        })
+        logger.debug('results', { query, similarMessages })
+
+        return similarMessages.map((message) => ({
+          role: message.role,
+          type: message.type,
+          content: message.content,
+          chunk: `${message.chunkSequence} of ${message.totalChunks}`,
+          timestamp: message.timestamp.toISOString(),
+          filename: extractFilename(message.storageKey),
+        }))
+      } catch (error) {
+        logger.error('Tool execution failed', {
+          ...params,
+          ...spreadError(error),
+        })
+        return {
+          error: 'Tool execution failed',
+          details: error instanceof Error ? error.message : 'unknown',
+        } satisfies ToolExecutionError
       }
-
-      const externalChatId = await deps.chat.sendText({ text: explanation })
-      frame.outboundMessages.push({
-        externalChatId,
-        type: 'text',
-        text: explanation,
-      })
-
-      const [embeddings] = await deps.ai.generateEmbeddings([query])
-
-      const similarMessages = await deps.db.findSimilarMessages({
-        userId: frame.user.id,
-        queryEmbedding: embeddings![0]!.embedding,
-        excludeIds: recentMessages.map((message) => message.id),
-      })
-
-      logger.info('fetch_memory: completed', {
-        ...params,
-        resultsCount: similarMessages.length,
-        excludedRecentCount: recentMessages.length,
-      })
-      logger.debug('fetch_memory: results', { query, similarMessages })
-
-      return similarMessages.map((message) => ({
-        role: message.role,
-        type: message.type,
-        content: message.content,
-        chunk: `${message.chunkSequence} of ${message.totalChunks}`,
-        timestamp: message.timestamp.toISOString(),
-        filename: extractFilename(message.storageKey),
-      }))
     },
   })

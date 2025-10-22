@@ -13,6 +13,7 @@ import { AIProvider } from './infra/ai'
 import { Whatsapp } from './infra/chatWhatsapp'
 import { LibSql } from './infra/dbLibSql'
 import { FilesystemStorage } from './infra/storageFilesystem'
+import { WebSearchBrave } from './infra/webSearchBrave'
 import loggingRoutes from './logging/service'
 import { loggingMiddleware } from './middleware/logging'
 import { spreadError } from './utils/spreadError'
@@ -31,6 +32,7 @@ const deps: Deps = {
   storage: FilesystemStorage.storage(),
   chat: Whatsapp.chat,
   ai: AIProvider,
+  webSearch: WebSearchBrave.searchWeb(),
 }
 
 const app = new Hono<Env>()

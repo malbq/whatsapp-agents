@@ -1,6 +1,6 @@
 {
   "name": "zapid",
-  "version": "0.1.9",
+  "version": "0.3.1",
   "type": "module",
   "packageManager": "bun",
   "scripts": {
@@ -22,9 +22,9 @@
     "@libsql/client": "^0.15.15",
     "@logtape/logtape": "^1.1.1",
     "@logtape/otel": "^1.1.1",
-    "ai": "^5.0.71",
+    "ai": "^5.0.76",
     "compromise": "^14.14.4",
-    "hono": "^4.9.12",
+    "hono": "^4.10.1",
     "retext": "^9.0.0",
     "retext-readability": "^8.0.0",
     "retext-smartypants": "^6.2.0",

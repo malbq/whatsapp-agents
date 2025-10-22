@@ -121,6 +121,9 @@ declare global {
         Parameters<DB['markReminderFailed']>
       >
     }
+    webSearch: {
+      search: jest.Mock<ReturnType<WebSearch['search']>, Parameters<WebSearch['search']>>
+    }
   }
 }
 

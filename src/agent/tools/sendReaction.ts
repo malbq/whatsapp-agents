@@ -1,6 +1,8 @@
 import { getLogger } from '@logtape/logtape'
 import { tool } from 'ai'
 import { z } from 'zod'
+import type { ToolExecutionError } from '../../errors'
+import { spreadError } from '../../utils/spreadError'
 import type { Frame } from '../frame'
 
 const logger = getLogger(['app', 'agent', 'tool', 'sendReaction'])
@@ -16,16 +18,30 @@ export const sendReactionTool = (frame: Frame, deps: Deps) =>
     execute: async ({ emoji }) => {
       if (!frame.inbound?.externalChatId) {
         logger.error('send_reaction: missing inbound message', { emoji })
-        return 'Could not send reaction due to missing user message'
+        return {
+          error: 'Missing inbound message',
+          details: 'Could not send reaction due to missing user message',
+        } satisfies ToolExecutionError
       }
-      deps.chat.sendReaction({
-        emoji,
-        externalChatId: frame.inbound.externalChatId,
-      })
-      logger.info('send_reaction: sent', {
-        emoji,
-        messageId: frame.inbound.externalChatId,
-      })
-      return 'Reaction delivered to user'
+      try {
+        deps.chat.sendReaction({
+          emoji,
+          externalChatId: frame.inbound.externalChatId,
+        })
+        logger.info('send_reaction: sent', {
+          emoji,
+          messageId: frame.inbound.externalChatId,
+        })
+        return 'Reaction delivered to user'
+      } catch (error) {
+        logger.error('Tool execution failed', {
+          emoji,
+          ...spreadError(error),
+        })
+        return {
+          error: 'Tool execution failed',
+          details: error instanceof Error ? error.message : 'unknown',
+        } satisfies ToolExecutionError
+      }
     },
   })

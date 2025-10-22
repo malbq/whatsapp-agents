@@ -79,6 +79,8 @@ LLM reviews the list and chooses one to send via send_file.
 import { getLogger } from '@logtape/logtape'
 import { tool } from 'ai'
 import { z } from 'zod'
+import type { ToolExecutionError } from '../../errors'
+import { spreadError } from '../../utils/spreadError'
 import { extractFilename } from '../../utils/storageKey'
 import type { Frame } from '../frame'
 import { toolUsageExplanation } from '../prompts/toolUsageExplanation'
@@ -89,54 +91,68 @@ export const searchFilesTool = (frame: Frame, deps: Deps) =>
   tool({
     name: 'search_files',
     description: `Search for files based on content similarity.
-Use this when the user asks about documents, files, or specific information that might be stored in uploaded files.
-Returns results with a score property (0-1) indicating relevance, where higher scores mean better similarity to the query.
-Generate an optimized search query for finding relevant files and documents.`,
+Use when the user asks about documents, files, or specific information that might be stored in uploaded files.
+Generate an optimized search query to find the most relevant files.
+Returns results with a score (0-1) indicating relevance.
+After reviewing results: if one file is clearly relevant, call \`send_file\` with its messageId.
+If several are close, ask a clarifying question or present the list for selection..
+`,
     inputSchema: z.object({
       query: z.string().describe('The query to search for files'),
       explanation: z.string().describe(toolUsageExplanation),
     }),
     execute: async (params) => {
-      const { query, explanation } = params
+      try {
+        const { query, explanation } = params
 
-      const externalChatId = await deps.chat.sendText({ text: explanation })
-      frame.outboundMessages.push({
-        externalChatId,
-        type: 'text',
-        text: explanation,
-      })
+        const externalChatId = await deps.chat.sendText({ text: explanation })
+        frame.outboundMessages.push({
+          externalChatId,
+          type: 'text',
+          text: explanation,
+        })
 
-      const [embeddings] = await deps.ai.generateEmbeddings([query])
-      const files = await deps.db.searchFiles({
-        userId: frame.user!.id,
-        queryEmbedding: embeddings![0]!.embedding,
-      })
+        const [embeddings] = await deps.ai.generateEmbeddings([query])
+        const files = await deps.db.searchFiles({
+          userId: frame.user!.id,
+          queryEmbedding: embeddings![0]!.embedding,
+        })
 
-      const output = files.map((file) => ({
-        messageId: file.messageId,
-        filename: extractFilename(file.storageKey),
-        timestamp: file.timestamp,
-        snippet: file.snippet,
-        score: file.score,
-      }))
-
-      frame.lastSearchFiles = output.map((file) => ({
-        messageId: file.messageId,
-        filename: file.filename,
-      }))
-
-      logger.info('search_files: completed', {
-        ...params,
-        filesCount: files.length,
-        topScore: files[0]?.score ?? 0,
-        files: files.map((file) => ({
+        const output = files.map((file) => ({
+          messageId: file.messageId,
           filename: extractFilename(file.storageKey),
           timestamp: file.timestamp,
+          snippet: file.snippet,
           score: file.score,
-        })),
-      })
-      logger.debug('search_files: results', { ...params, files: output })
+        }))
 
-      return output
+        frame.lastSearchFiles = output.map((file) => ({
+          messageId: file.messageId,
+          filename: file.filename,
+        }))
+
+        logger.info('completed', {
+          ...params,
+          filesCount: files.length,
+          topScore: files[0]?.score ?? 0,
+          files: files.map((file) => ({
+            filename: extractFilename(file.storageKey),
+            timestamp: file.timestamp,
+            score: file.score,
+          })),
+        })
+        logger.debug('results', { ...params, files: output })
+
+        return output
+      } catch (error) {
+        logger.error('Tool execution failed', {
+          ...params,
+          ...spreadError(error),
+        })
+        return {
+          error: 'Tool execution failed',
+          details: error instanceof Error ? error.message : 'unknown',
+        } satisfies ToolExecutionError
+      }
     },
   })

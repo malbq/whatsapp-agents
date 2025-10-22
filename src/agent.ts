@@ -53,9 +53,13 @@ import { spreadError } from './utils/spreadError'
 const logger = getLogger(['app', 'agent'])
 
 export async function agent(deps: Deps, message: IncomingMessage): Promise<void> {
+  logger.info('Starting agent response flow', { message })
   const frame = new Frame()
 
-  await persistUser(frame, deps, message)
+  await persistUser(frame, deps, {
+    userName: message.userName,
+    userExternalId: message.userExternalId,
+  })
 
   if (!frame.user) {
     // Não podemos fazer nada sem um usuário, nem salvar a resposta no banco

@@ -44,6 +44,7 @@ import { AIProvider } from '../src/infra/ai'
 import type { Chat, IncomingMessage } from '../src/infra/chat'
 import { LibSql } from '../src/infra/dbLibSql'
 import { FilesystemStorage } from '../src/infra/storageFilesystem'
+import { WebSearchBrave } from '../src/infra/webSearchBrave'
 
 const xai = createXai({
   apiKey: import.meta.env.XAI_EVAL_API_KEY,
@@ -74,6 +75,7 @@ async function main() {
     storage: FilesystemStorage.storage(join(runDir, 'media')),
     chat: evalChat,
     ai: AIProvider,
+    webSearch: WebSearchBrave.searchWeb(),
   }
 
   const userExternalId = newUserId()

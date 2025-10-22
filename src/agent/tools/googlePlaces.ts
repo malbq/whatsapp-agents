@@ -1,6 +1,7 @@
 import { getLogger } from '@logtape/logtape'
 import { tool } from 'ai'
 import { z } from 'zod'
+import type { ToolExecutionError } from '../../errors'
 import { spreadError } from '../../utils/spreadError'
 import type { Frame } from '../frame'
 import { toolUsageExplanation } from '../prompts/toolUsageExplanation'
@@ -37,16 +38,10 @@ interface GooglePlace {
 export const googlePlacesTool = (frame: Frame, deps: Deps) =>
   tool({
     name: 'google_places',
-    description: `Search for business locations using Google Places API.
-Use this tool when the user asks about:
-- Finding a specific business or place
-- Getting contact details (phone, website) for a business
-- Finding the address or location of a business
-- Getting business hours or ratings
-- Finding places near a location
-- Discovering businesses by category (restaurants, hotels, etc.)
+    description: `Search for business and place information via Google Places.
+Use when the user requests place discovery, addresses, hours, ratings, contact details, or "places near me" style queries.
 
-This tool provides verified, structured data from Google's Places database including:
+This tool provides verified, structured data from Google Places including:
 - Exact addresses and GPS coordinates
 - Phone numbers and websites
 - Business hours and ratings
@@ -57,7 +52,8 @@ Set sendLocation/sendContact flags when:
 - When the user explicitly wants contact details (e.g., "what's the phone number for X?", "send me X's contact").
 - Set both to false when the user is exploring options, asking general questions, or the request is ambiguous.
 
-If a single match is found and flags are true, the location/contact will be sent automatically. If multiple matches exist, only the search results will be returned regardless of flags.`,
+If a single match is found and flags are true, the location/contact will be sent automatically.
+If multiple matches exist, only the search results will be returned regardless of flags.`,
     inputSchema: z.object({
       query: z
         .string()
@@ -128,7 +124,7 @@ If a single match is found and flags are true, the location/contact will be sent
 
         if (!searchResponse.ok) {
           const errorText = await searchResponse.text()
-          logger.error('google_places: API error', {
+          logger.error('API error', {
             ...params,
             status: searchResponse.status,
             statusText: searchResponse.statusText,
@@ -140,7 +136,7 @@ If a single match is found and flags are true, the location/contact will be sent
         const { places = [] } = (await searchResponse.json()) as PlacesSearchResponse
 
         if (places.length === 0) {
-          logger.warn('google_places: no results found', params)
+          logger.warn('no results found', params)
           return `No places found for query: "${query}"`
         }
 
@@ -155,7 +151,7 @@ If a single match is found and flags are true, the location/contact will be sent
             address: firstPlace.formattedAddress,
           }
           await deps.chat.sendLocation(location)
-          logger.debug('google_places: sent location message', location)
+          logger.debug('sent location message', location)
         }
 
         if (
@@ -169,26 +165,27 @@ If a single match is found and flags are true, the location/contact will be sent
             phone: firstPlace.internationalPhoneNumber,
           }
           await deps.chat.sendContact(contact)
-          logger.debug('google_places: sent contact message', contact)
+          logger.debug('sent contact message', contact)
         }
 
-        logger.info('google_places: completed', {
+        logger.info('completed', {
           ...params,
           resultsCount: places.length,
           sentLocation: sendLocation && hasSingleMatch && firstPlace?.location,
           sentContact: sendContact && hasSingleMatch && firstPlace?.internationalPhoneNumber,
         })
-        logger.debug('google_places: results', { ...params, places })
+        logger.debug('results', { ...params, places })
 
         return JSON.stringify(places)
       } catch (error) {
-        logger.error('google_places: unexpected error', {
+        logger.error('Tool execution failed', {
           ...params,
           ...spreadError(error),
         })
-        return `Error searching Google Places: ${
-          error instanceof Error ? error.message : 'Unknown error'
-        }`
+        return {
+          error: 'Tool execution failed',
+          details: error instanceof Error ? error.message : 'unknown',
+        } satisfies ToolExecutionError
       }
     },
   })

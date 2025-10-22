@@ -1,6 +1,7 @@
 import { getLogger } from '@logtape/logtape'
 import { tool } from 'ai'
 import { z } from 'zod'
+import type { ToolExecutionError } from '../../errors'
 import { extractTextFromHTML } from '../../utils/htmlToText'
 import { spreadError } from '../../utils/spreadError'
 import type { Frame } from '../frame'
@@ -18,7 +19,8 @@ export const webFetchTool = (frame: Frame, deps: Deps) =>
 - format: "text" (default) converts HTML to plain text via Bun HTMLRewriter; "html" returns raw HTML.
 - On errors, returns a short message and continues.
 - Maximum response size is 5MB.
-- Request timeout is 30 seconds.`,
+- Request timeout is 30 seconds.
+- HTTP URLs will be automatically upgraded to HTTPS`,
     inputSchema: z.object({
       url: z.string().describe('The URL to fetch. Must start with http:// or https://'),
       format: z
@@ -29,12 +31,17 @@ export const webFetchTool = (frame: Frame, deps: Deps) =>
       explanation: z.string().describe(toolUsageExplanation),
     }),
     execute: async (params, { abortSignal }) => {
-      const { url, format = 'text', explanation } = params
+      const abortController = new AbortController()
+
       try {
-        if (!/^https?:\/\//i.test(url)) {
-          logger.warn('web_fetch: invalid URL format', params)
-          return 'web_fetch: invalid URL (must start with http:// or https://)'
+        if (!/^https?:\/\//i.test(params.url)) {
+          logger.warn('invalid URL format', params)
+          return 'invalid URL (must start with http:// or https://)'
         }
+
+        const { format = 'text', explanation } = params
+
+        const url = new URL(params.url.replace(/^http:/i, 'https:'))
 
         const externalChatId = await deps.chat.sendText({ text: explanation })
         frame.outboundMessages.push({
@@ -43,7 +50,6 @@ export const webFetchTool = (frame: Frame, deps: Deps) =>
           text: explanation,
         })
 
-        const abortController = new AbortController()
         const t = setTimeout(() => abortController.abort(), DEFAULT_TIMEOUT_MS)
         abortSignal?.addEventListener('abort', abortController.abort)
 
@@ -61,45 +67,45 @@ export const webFetchTool = (frame: Frame, deps: Deps) =>
             'Accept-Language': 'en-US,en;q=0.9',
           },
         }).catch((e) => {
-          logger.error('web_fetch: fetch request failed', { ...params, ...spreadError(e) })
+          logger.error('fetch request failed', { ...params, ...spreadError(e) })
           return undefined
         })
 
         clearTimeout(t)
 
         if (!resp) {
-          logger.error('web_fetch: no response received', { ...params })
-          return 'web_fetch: network error'
+          logger.error('no response received', { ...params })
+          return 'network error'
         }
         if (!resp.ok) {
           const errorText = await resp.text()
-          logger.error('web_fetch: HTTP error', {
+          logger.error('HTTP error', {
             ...params,
             status: resp.status,
             statusText: resp.statusText,
             error: errorText,
           })
-          return `web_fetch: request failed (${resp.status} ${resp.statusText})`
+          return `request failed (${resp.status} ${resp.statusText})`
         }
 
         const lenHeader = resp.headers.get('content-length')
         if (lenHeader && parseInt(lenHeader, 10) > MAX_RESPONSE_SIZE) {
-          logger.error('web_fetch: response too large', {
+          logger.error('response too large', {
             ...params,
             declaredSize: parseInt(lenHeader, 10),
             maxSize: MAX_RESPONSE_SIZE,
           })
-          return 'web_fetch: response too large (exceeds 5MB)'
+          return 'response too large (exceeds 5MB)'
         }
 
         const buffer = await resp.arrayBuffer()
         if (buffer.byteLength > MAX_RESPONSE_SIZE) {
-          logger.error('web_fetch: response too large', {
+          logger.error('response too large', {
             ...params,
             actualSize: buffer.byteLength,
             maxSize: MAX_RESPONSE_SIZE,
           })
-          return 'web_fetch: response too large (exceeds 5MB)'
+          return 'response too large (exceeds 5MB)'
         }
 
         const contentType = resp.headers.get('content-type') || ''
@@ -109,13 +115,13 @@ export const webFetchTool = (frame: Frame, deps: Deps) =>
           return await extractTextFromHTML(websiteContent)
         }
 
-        logger.info('web_fetch: completed', {
+        logger.info('completed', {
           ...params,
           contentType,
           size: buffer.byteLength,
           contentLength: websiteContent.length,
         })
-        logger.debug('web_fetch: response', {
+        logger.debug('response', {
           ...params,
           contentType,
           websiteContent,
@@ -127,8 +133,13 @@ export const webFetchTool = (frame: Frame, deps: Deps) =>
 
         return websiteContent
       } catch (error) {
-        logger.error('web_fetch: unexpected error', { ...params, ...spreadError(error) })
-        return `web_fetch: error: ${error instanceof Error ? error.message : 'unknown'}`
+        logger.error('Tool execution failed', { ...params, ...spreadError(error) })
+        return {
+          error: 'Tool execution failed',
+          details: error instanceof Error ? error.message : 'unknown',
+        } satisfies ToolExecutionError
+      } finally {
+        abortSignal?.removeEventListener('abort', abortController.abort)
       }
     },
   })

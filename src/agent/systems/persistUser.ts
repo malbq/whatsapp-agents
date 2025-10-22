@@ -9,7 +9,7 @@ export async function persistUser(
   deps: Deps,
   incomingUser: { userExternalId: string; userName: string }
 ): Promise<void> {
-  logger.info(`Incoming user`, incomingUser)
+  logger.info(`Persisting incoming user`, incomingUser)
   await deps.db
     .persistUser({
       externalId: incomingUser.userExternalId,
@@ -17,6 +17,7 @@ export async function persistUser(
     })
     .then((user) => {
       frame.user = user
+      logger.debug('User persisted', { ...user })
     })
     .catch((error) => {
       logger.error('Error persisting user', {
