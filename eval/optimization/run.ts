@@ -333,8 +333,13 @@ class PromptOptimizer {
       searchFilesCallback,
     })
 
+    let responseText = ''
+    for await (const chunk of result.stream) {
+      responseText += chunk
+    }
+
     return {
-      response: result.text,
+      response: responseText,
       messageThread: messages,
       contextId: preset.id,
     }

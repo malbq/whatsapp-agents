@@ -3,9 +3,10 @@ import { getLogger } from '@logtape/logtape'
 import {
   embedMany,
   generateText,
+  smoothStream,
   stepCountIs,
+  streamText,
   type AssistantModelMessage,
-  type LanguageModelUsage,
   type SystemModelMessage,
   type TextPart,
   type Tool,
@@ -44,7 +45,7 @@ const embeddingModel = embeddingProvider.textEmbeddingModel('workers-ai/@cf/baai
 
 const google = createGoogleGenerativeAI({
   baseURL: `${gatewayBaseURL}/google-ai-studio/v1beta`,
-  apiKey: import.meta.env.GOOGLE_AI_STUDIO_API_KEY,
+  apiKey: import.meta.env.GOOGLE_GENERATIVE_AI_API_KEY,
   headers: { 'cf-aig-authorization': `Bearer ${import.meta.env.CF_API_TOKEN}` },
 })
 
@@ -63,7 +64,7 @@ export interface AI {
     instructions?: string
     messages: AIMessage[]
     tools?: Tool[]
-  }) => Promise<{ text: string; usage: LanguageModelUsage }>
+  }) => Promise<{ stream: AsyncIterable<string> }>
   transcribeAudio: (params: { instructions?: string; audio: ArrayBuffer }) => Promise<string>
   analyzeImage: (params: {
     instructions?: string
@@ -79,6 +80,8 @@ export interface AI {
   generateEmbeddings: (text: Array<string>) => Promise<Array<Array<ChunkData>>>
 }
 
+const chunkingRegex = /<S>/
+
 export const AIProvider: AI = {
   respond: async ({ instructions = system, messages, tools: customTools = [] }) => {
     const tools: Record<string, Tool> = {}
@@ -87,7 +90,7 @@ export const AIProvider: AI = {
       tools[(tool as { name: string }).name] = tool
     })
 
-    const result = await generateText({
+    const result = streamText({
       model: textModel,
       system: instructions,
       messages,
@@ -99,19 +102,33 @@ export const AIProvider: AI = {
         },
       },
       stopWhen: stepCountIs(MAX_STEPS),
-    })
-
-    logger.debug(`Text generated with ${textModel.modelId}`, {
-      gatewayLogId: result.response.headers?.['cf-aig-log-id'],
-      totalUsage: result.totalUsage,
-      steps: result.steps.map(({ request: _, response: __, ...step }) => {
-        return step
+      experimental_transform: smoothStream({
+        delayInMs: null,
+        chunking(buffer) {
+          const match = chunkingRegex.exec(buffer)
+          if (!match) return null
+          return buffer.slice(0, match.index) + match?.[0]
+        },
       }),
+      onFinish: (result) => {
+        logger.debug(`Text generated with ${textModel.modelId}`, {
+          gatewayLogId: result.response.headers?.['cf-aig-log-id'],
+          totalUsage: result.totalUsage,
+          steps: result.steps.map(({ request: _, response: __, ...step }) => {
+            return step
+          }),
+        })
+      },
     })
 
     return {
-      text: result.text,
-      usage: result.usage,
+      stream: result.textStream.pipeThrough(
+        new TransformStream({
+          transform(chunk, controller) {
+            controller.enqueue(chunk.replace('<S>', '').trim())
+          },
+        })
+      ),
     }
   },
 

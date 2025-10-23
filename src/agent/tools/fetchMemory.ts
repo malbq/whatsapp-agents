@@ -32,6 +32,9 @@ Generate an optimized search query for finding relevant files and documents.`,
         }
 
         const externalChatId = await deps.chat.sendText({ text: explanation })
+        if (frame.inbound?.externalChatId) {
+          await deps.chat.acknowledgeMessage(frame.inbound?.externalChatId)
+        }
         frame.outboundMessages.push({
           externalChatId,
           type: 'text',

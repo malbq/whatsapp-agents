@@ -2,14 +2,15 @@
 
 ## Next
 
-- Reverter splitting baseado em send_text tool:
+- We need to keep tool results in context, alongside messages
 
-  - Usar splitting no final, sobre a resposta integral do agente
-  - Manter mensagens intermediárias de uso de tools (como mandar mensagem intermediária para websearch padrão da openai)
+  - For example, if user follow-up with a question after a web search, we currently only know about agent messages. Search results were discarded. That would cause agent to search again, spending more tokens and time.
+  - Tool results must be stored in context as long as the starting message is in the "recent" list.
+  - No need to embed tool results.
 
 - **Loggingg**
 
-  - Configure signoz in docker container
+  - Implement custom local logging tool.
   - Logger tool should build properties over last call:
     - `logger.info('message 1', { property1: 'value1' })` result in
       ```
@@ -33,17 +34,6 @@
 - **User Management**: Complete user management system
 
   - Subscription plan management
-    - Free
-      - basic text generation
-      - no web search, no media processing
-      - 50 messages per day
-    - Pro
-      - basic web search
-      - media processing
-      - 200 messages per day
-    - Ultra
-      - advanced research
-      - 500 messages per day
   - Usage tracking and limits
   - Onboarding
   - Generate unique code or token link, bound to the phone number, for payment and configuration
@@ -61,6 +51,7 @@
 
 - **Performance & Reliability**: System improvements
 
+- Cost Monitoring: Set up alerts for AI provider usage thresholds (e.g., via OpenAI dashboard hooks)
   - E2E tests for error scenarios, privacy flows, and rate limits
   - Retry mechanisms
   - Improved error handling
@@ -77,7 +68,7 @@
 
 - Encryption at rest
 - TTS: Answer with audio message
-- Cost Monitoring: Set up alerts for AI provider usage thresholds (e.g., via OpenAI dashboard hooks)
+- Video processing
 - Tools:
   - gerar PDF
   - Gerar planilha
@@ -123,3 +114,6 @@
   - Gemini 2.5 flash: 20s
   - Gemini 2.5 flash-lite: 10s
 - Gemini flash models can only format output text if turning on thinking mode.
+- Gemini grounding search is too expensive.
+- Grok 4 is bad at respecting system instructions and tool usage guidelines.
+- Grok 4 (fast or full) does not respect chunking guidelines, splits in chunks of 1000+ characters.

@@ -5,7 +5,7 @@ export function validateEnvVars() {
     'META_APP_SECRET',
     'WA_API_VERSION',
     'WA_BUSINESS_PHONE_ID',
-    'GOOGLE_AI_STUDIO_API_KEY',
+    'GOOGLE_GENERATIVE_AI_API_KEY',
     'GOOGLE_PLACES_API_KEY',
     'CF_ACCOUNT_ID',
     'CF_GATEWAY_ID',

@@ -1,5 +1,4 @@
 import { createClient, type Client } from '@libsql/client'
-import type { LanguageModelUsage } from 'ai'
 import {
   afterAll,
   afterEach,
@@ -16,21 +15,23 @@ import { recentMessages } from '../src/agent/prompts/recentMessages'
 import { userProfile } from '../src/agent/prompts/userProfile'
 import { responseGeneration } from '../src/agent/systems/responseGeneration'
 import { ResponseGenerationError } from '../src/errors'
+import type { AI } from '../src/infra/ai'
 import type { Chat } from '../src/infra/chat'
 import type { DB, MessageType, User } from '../src/infra/db'
 import { LibSql } from '../src/infra/dbLibSql'
 import type { Storage } from '../src/infra/storage'
+import type { WebSearch } from '../src/infra/webSearch'
 
 const originalEnv = Object.assign({}, import.meta.env)
 
 const dbPath = `/tmp/response-generation-test-${Date.now()}.db`
 let db: DB
 let dbClient: Client
-let ai: TestDeps['ai']
+let ai: AI
 let storage: Storage
 let deps: Deps
 
-const mockEmbeddings = Array.from({ length: 384 }, () => 0.01)
+const mockEmbeddings: Array<number> = Array.from({ length: 384 }, () => 0.01)
 
 const createTestUser = (): User => ({
   id: '1',
@@ -59,17 +60,14 @@ beforeAll(async () => {
 
   ai = {
     respond: mock(async () => ({
-      text: 'mock response',
-      usage: {
-        totalTokens: 0,
-        inputTokens: 0,
-        outputTokens: 0,
-      } as LanguageModelUsage,
+      stream: (async function* () {
+        yield 'mock response'
+      })(),
     })),
     transcribeAudio: mock(async () => 'transcribed audio'),
     analyzeImage: mock(async () => 'image analysis'),
     transcribeDocument: mock(async () => 'document transcription'),
-    generateEmbeddings: mock(async () => [mockEmbeddings]),
+    generateEmbeddings: mock(async () => [[{ content: 'test', embedding: mockEmbeddings }]]),
   }
 
   storage = {
@@ -81,7 +79,13 @@ beforeAll(async () => {
     })),
   }
 
-  deps = { db, ai, storage, chat: { sendText: mock(async () => 'external-id') } as unknown as Chat }
+  deps = {
+    db,
+    ai,
+    storage,
+    chat: { sendText: mock(async () => 'external-id') } as unknown as Chat,
+    webSearch: { search: mock(async () => []) } as unknown as WebSearch,
+  }
 })
 
 beforeEach(async () => {
@@ -238,8 +242,9 @@ describe('ResponseGeneration Module', () => {
       frame.inbound = { type: 'text' as MessageType, text: 'Hello' }
 
       ai.respond = mock(async () => ({
-        text: 'Hello back!',
-        usage: { totalTokens: 10, inputTokens: 5, outputTokens: 5 } as LanguageModelUsage,
+        stream: (async function* () {
+          yield 'Hello back!'
+        })(),
       }))
 
       await responseGeneration(frame, deps)

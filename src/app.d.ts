@@ -23,7 +23,7 @@ declare global {
     CF_ACCOUNT_ID: string
     CF_GATEWAY_ID: string
     CF_API_TOKEN: string
-    GOOGLE_AI_STUDIO_API_KEY: string
+    GOOGLE_GENERATIVE_AI_API_KEY: string
     GOOGLE_PLACES_API_KEY: string
     BRAVE_API_KEY: string
     MAX_RECENT_MESSAGES: string

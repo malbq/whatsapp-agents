@@ -11,7 +11,6 @@ import { googlePlacesTool } from '../tools/googlePlaces'
 import { searchFilesTool } from '../tools/searchFiles'
 import { sendFileTool } from '../tools/sendFile'
 import { sendReactionTool } from '../tools/sendReaction'
-import { sendTextTool } from '../tools/sendText'
 import { updateUserProfileTool } from '../tools/updateUserProfile'
 import { webFetchTool } from '../tools/webFetch'
 import { webSearchTool } from '../tools/webSearch'
@@ -77,24 +76,25 @@ export async function responseGeneration(frame: Frame, deps: Deps) {
     const response = await deps.ai.respond({
       messages: messagesForAgent,
       tools: [
-        sendTextTool(frame, deps),
         fetchMemoryTool(frame, deps, recentMessages),
         searchFilesTool(frame, deps),
+        sendFileTool(frame, deps),
         webSearchTool(frame, deps),
         webFetchTool(frame, deps),
         googlePlacesTool(frame, deps),
-        sendFileTool(frame, deps),
         sendReactionTool(frame, deps),
         updateUserProfileTool(frame, deps),
       ],
     })
 
-    const externalChatId = await deps.chat.sendText({ text: response.text })
-    frame.outboundMessages.push({
-      externalChatId,
-      type: 'text',
-      text: response.text,
-    })
+    for await (const chunk of response.stream) {
+      const externalChatId = await deps.chat.sendText({ text: chunk })
+      frame.outboundMessages.push({
+        externalChatId,
+        type: 'text',
+        text: chunk,
+      })
+    }
 
     logger.info(`Sent ${frame.outboundMessages.length} text message(s)`)
   } catch (error) {

@@ -6,39 +6,18 @@
 2. Enforce per-user feature/usage limits.
 3. Offer paid tiers using Meta/WhatsApp Pay.
 
-## Identity
-
-- **Primary Key:** `external_id` (WhatsApp phone number).
-- **User Table:**
-  - `id` string PK (UUID)
-  - `external_id` string UNIQUE (WhatsApp phone number)
-  - `name` string
-  - `joined_at` datetime
-  - `profile` string (persistent user information)
-
 _No password storage required; WhatsApp itself authenticates the sender._
 
-### External Touchpoints
+## Plans
 
-```mermaid
-sequenceDiagram
-    participant W as WhatsApp User
-    participant G as Meta Gateway
-    participant S as Zapid Server
-    participant DB as Users Table
-
-    W->>G: message
-    G->>S: webhook + external_id + HMAC
-    S->>S: verify HMAC
-    S->>DB: upsert user by external_id
-```
-
-## Authorization & Feature Limits
-
-| Plan | Daily GPT Tokens | Storage Quota | Reminders | Priority |
-| ---- | ---------------- | ------------- | --------- | -------- |
-| Free | 10k              | 100 MB        | 10        | Low      |
-| Pro  | 100k             | 2 GB          | 100       | High     |
+| Feature                           | Free                           | Basic                            | Pro                                                                              |
+| --------------------------------- | ------------------------------ | -------------------------------- | -------------------------------------------------------------------------------- |
+| **Model**                         | GPT-5-nano<br>Open source mdel | GPT-5-mini                       | Can choose model                                                                 |
+| **Messages**                      | x/day                          | 100x/day                         | ∞                                                                                |
+| **Memory**<br>Profile<br>Messages | ✗                              | ✓                                | ✓                                                                                |
+| **Media Ingestion**               | ✗                              | Audio, voice, image and document | Video                                                                            |
+| **Files**                         | ✗                              | Store and retrieve files         | Integrates with external drive (Google Drive, Microsoft OneDrive, Dropbox, etc.) |
+| **Tools**                         | ✗                              | Web search<br>Google Places      | Gmail integration                                                                |
 
 Limits enforced by a middleware that increments counters in KV store.
 
@@ -64,5 +43,3 @@ flowchart LR
 2. **Retry strategy** – what if payment callback fails?
 3. **Grace period** – how long until downgrade after failed renewal?
 4. **Add-ons** – one-off memory boosts vs. subscription only.
-
-_Trade-offs and price modelling come next._

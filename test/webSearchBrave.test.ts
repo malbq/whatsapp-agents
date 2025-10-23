@@ -138,7 +138,22 @@ describe('WebSearchBrave', () => {
       queueTimeoutMs: 1000,
       requestTimeoutMs: 50,
     })
-    mockFetch.mockImplementationOnce(() => new Promise((resolve) => setTimeout(resolve, 100)))
+    mockFetch.mockImplementationOnce((url, options) => {
+      return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          resolve({
+            ok: true,
+            headers: new Headers(),
+            json: async () => mockSearchResponse,
+          })
+        }, 100)
+
+        options?.signal?.addEventListener('abort', () => {
+          clearTimeout(timeout)
+          reject(new Error('The operation was aborted'))
+        })
+      })
+    })
 
     await expect(searchWebWithShortTimeout({ query: 'test query' })).rejects.toThrow(
       'The operation was aborted'

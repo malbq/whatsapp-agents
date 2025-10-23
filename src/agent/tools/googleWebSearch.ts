@@ -11,7 +11,7 @@ const google = createGoogleGenerativeAI({
   baseURL: `https://gateway.ai.cloudflare.com/v1/${import.meta.env.CF_ACCOUNT_ID}/${
     import.meta.env.CF_GATEWAY_ID
   }/google-ai-studio/v1beta`,
-  apiKey: import.meta.env.GOOGLE_AI_STUDIO_API_KEY,
+  apiKey: import.meta.env.GOOGLE_GENERATIVE_AI_API_KEY,
   headers: { 'cf-aig-authorization': `Bearer ${import.meta.env.CF_API_TOKEN}` },
 })
 

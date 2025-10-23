@@ -75,8 +75,9 @@ beforeAll(async () => {
     ai: {
       analyzeImage: mock(async () => imageAnalysisResult),
       respond: mock(async () => ({
-        text: aiTextResponse,
-        usage: { totalTokens: 10, inputTokens: 5, outputTokens: 5 },
+        stream: (async function* () {
+          yield aiTextResponse
+        })(),
       })),
       transcribeAudio: mock(async () => audioTranscriptionResult),
       transcribeDocument: mock(async () => documentTranscriptionResult),
