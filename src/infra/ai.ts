@@ -1,11 +1,14 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { getLogger } from '@logtape/logtape'
 import {
+  customProvider,
+  defaultSettingsMiddleware,
   embedMany,
   generateText,
   smoothStream,
   stepCountIs,
   streamText,
+  wrapLanguageModel,
   type AssistantModelMessage,
   type SystemModelMessage,
   type TextPart,
@@ -22,16 +25,15 @@ import type { ChunkData } from './db'
 
 const logger = getLogger(['infra', 'ai'])
 
-const gatewayBaseURL = `https://gateway.ai.cloudflare.com/v1/${import.meta.env.CF_ACCOUNT_ID}/${
-  import.meta.env.CF_GATEWAY_ID
-}`
+const accountId = import.meta.env.CF_ACCOUNT_ID
+const gatewayId = import.meta.env.CF_GATEWAY_ID
+const gatewayBaseURL = `https://gateway.ai.cloudflare.com/v1/${accountId}/${gatewayId}`
 
 const textProvider = createOpenAICompatible({
   name: 'cf-aig',
   baseURL: `${gatewayBaseURL}/compat`,
   headers: { 'cf-aig-authorization': `Bearer ${import.meta.env.CF_API_TOKEN}` },
 })
-const textModel = textProvider('openai/gpt-5-mini')
 
 const embeddingProvider = createOpenAICompatible({
   name: 'cf-aig',
@@ -41,17 +43,42 @@ const embeddingProvider = createOpenAICompatible({
     'cf-aig-authorization': `Bearer ${import.meta.env.CF_API_TOKEN}`,
   },
 })
-const embeddingModel = embeddingProvider.textEmbeddingModel('workers-ai/@cf/baai/bge-m3')
 
-const google = createGoogleGenerativeAI({
+const googleProvider = createGoogleGenerativeAI({
   baseURL: `${gatewayBaseURL}/google-ai-studio/v1beta`,
   apiKey: import.meta.env.GOOGLE_GENERATIVE_AI_API_KEY,
   headers: { 'cf-aig-authorization': `Bearer ${import.meta.env.CF_API_TOKEN}` },
 })
 
-const transcriptionModel = google('gemini-2.5-flash')
-const imageAnalysisModel = google('gemini-2.5-flash')
-const documentTranscriptionModel = google('gemini-2.5-flash-lite')
+const provider = customProvider({
+  languageModels: {
+    text: wrapLanguageModel({
+      model: textProvider('openai/gpt-5-mini'),
+      middleware: defaultSettingsMiddleware({
+        settings: {
+          toolChoice: { type: 'auto' },
+          providerOptions: {
+            openai: {
+              parallelToolCalls: false,
+            },
+          },
+        },
+      }),
+    }),
+    audioTranscription: googleProvider('gemini-2.5-flash'),
+    imageAnalysis: googleProvider('gemini-2.5-flash'),
+    documentTranscription: googleProvider('gemini-2.5-flash-lite'),
+  },
+  textEmbeddingModels: {
+    embedding: embeddingProvider.textEmbeddingModel('workers-ai/@cf/baai/bge-m3'),
+  },
+})
+
+const textModel = provider.languageModel('text')
+const embeddingModel = provider.textEmbeddingModel('embedding')
+const transcriptionModel = provider.languageModel('audioTranscription')
+const imageAnalysisModel = provider.languageModel('imageAnalysis')
+const documentTranscriptionModel = provider.languageModel('documentTranscription')
 
 const IMAGE_ANALYSIS_TEMP = 0.1
 const TRANSCRIPTION_GEN_TEMP = 0
@@ -83,24 +110,13 @@ export interface AI {
 const chunkingRegex = /<S>/
 
 export const AIProvider: AI = {
-  respond: async ({ instructions = system, messages, tools: customTools = [] }) => {
-    const tools: Record<string, Tool> = {}
-
-    customTools.forEach((tool) => {
-      tools[(tool as { name: string }).name] = tool
-    })
-
+  respond: async ({ instructions = system, messages, tools = [] }) => {
+    const $tools = Object.fromEntries(tools.map((tool) => [(tool as { name: string }).name, tool]))
     const result = streamText({
       model: textModel,
       system: instructions,
       messages,
-      tools,
-      toolChoice: 'auto',
-      providerOptions: {
-        openai: {
-          parallelToolCalls: false,
-        },
-      },
+      tools: $tools,
       stopWhen: stepCountIs(MAX_STEPS),
       experimental_transform: smoothStream({
         delayInMs: null,
@@ -125,7 +141,7 @@ export const AIProvider: AI = {
       stream: result.textStream.pipeThrough(
         new TransformStream({
           transform(chunk, controller) {
-            controller.enqueue(chunk.replace('<S>', '').trim())
+            controller.enqueue(chunk.replace(chunkingRegex, '').trim())
           },
         })
       ),

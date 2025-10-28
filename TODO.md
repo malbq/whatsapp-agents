@@ -115,5 +115,4 @@
   - Gemini 2.5 flash-lite: 10s
 - Gemini flash models can only format output text if turning on thinking mode.
 - Gemini grounding search is too expensive.
-- Grok 4 is bad at respecting system instructions and tool usage guidelines.
-- Grok 4 (fast or full) does not respect chunking guidelines, splits in chunks of 1000+ characters.
+- Grok 4 is bad at respecting system instructions and tool usage: does not respect chunking guidelines, splits in chunks of 1000+ characters.
