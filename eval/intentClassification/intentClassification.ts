@@ -1,6 +1,6 @@
 import { generateObject } from 'ai'
 import path from 'node:path'
-import { format, instructions, requiredContext } from '../../src/agent/prompts/intentClassification'
+import { format, instructions, requiredContext } from '../../packages/agent/zapid/prompts/intentClassification'
 
 const inputData = path.join(import.meta.dir, 'data.json')
 const report = path.join(import.meta.dir, 'report.csv')

@@ -10,17 +10,17 @@ import {
   mock,
   test,
 } from 'bun:test'
-import { Frame, type FrameInboundMessage } from '../src/agent/frame'
-import { recentMessages } from '../src/agent/prompts/recentMessages'
-import { userProfile } from '../src/agent/prompts/userProfile'
-import { responseGeneration } from '../src/agent/systems/responseGeneration'
-import { ResponseGenerationError } from '../src/errors'
-import type { AI } from '../src/infra/ai'
-import type { Chat } from '../src/infra/chat'
-import type { DB, MessageType, User } from '../src/infra/db'
-import { LibSql } from '../src/infra/dbLibSql'
-import type { Storage } from '../src/infra/storage'
-import type { WebSearch } from '../src/infra/webSearch'
+import { Frame, type FrameInboundMessage } from '../packages/agent/default/frame'
+import { recentMessages } from '../packages/agent/zapid/prompts/recentMessages'
+import { userProfile } from '../packages/agent/zapid/prompts/userProfile'
+import { responseGeneration } from '../packages/core/systems/responseGeneration'
+import { ResponseGenerationError } from '../packages/core/errors'
+import type { AI } from '../packages/core/ai'
+import type { Chat } from '../packages/whastapp/chat'
+import type { DB, MessageType, User } from '../packages/core/infra/db'
+import { LibSql } from '../packages/core/infra/dbLibSql'
+import type { Storage } from '../packages/core/infra/storage'
+import type { WebSearch } from '../packages/core/infra/webSearch'
 
 const originalEnv = Object.assign({}, import.meta.env)
 

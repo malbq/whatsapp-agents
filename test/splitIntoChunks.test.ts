@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test'
 import { join } from 'node:path'
-import { parsePdf } from '../src/utils/parsePdf'
-import { splitIntoChunks, splitIntoSentences } from '../src/utils/splitIntoChunks'
+import { parsePdf } from '../packages/core/utils/parsePdf'
+import { splitIntoChunks, splitIntoSentences } from '../packages/core/utils/splitIntoChunks'
 
 test('Splits well formatted text into sentences', async () => {
   const original = `In these terms (the "Card Issuing Terms"), the following terms have the following meanings

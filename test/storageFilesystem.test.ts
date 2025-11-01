@@ -1,8 +1,8 @@
 import { afterAll, afterEach, beforeAll, expect, test } from 'bun:test'
 import { join } from 'node:path'
-import type { Storage } from '../src/infra/storage'
-import { FilesystemStorage } from '../src/infra/storageFilesystem'
-import { sanitizeFilename } from '../src/utils/sanitizeFilename'
+import type { Storage } from '../packages/core/infra/storage'
+import { FilesystemStorage } from '../packages/core/infra/storageFilesystem'
+import { sanitizeFilename } from '../packages/core/utils/sanitizeFilename'
 
 const storageBase = `/tmp/fs-storage-test-${Date.now()}`
 let storage: Storage

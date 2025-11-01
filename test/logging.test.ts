@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { unlinkSync } from 'node:fs'
-import { createLoggingDB, type LogEntry } from '../src/logging/db'
+import { createLoggingDB, type LogEntry } from '../packages/core/logging/db'
 
 const dbPath = `/tmp/logging-test-${Date.now()}.db`
 let db: Awaited<ReturnType<typeof createLoggingDB>>

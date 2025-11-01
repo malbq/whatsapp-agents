@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
-import type { WebSearch } from '../src/infra/webSearch'
-import { WebSearchBrave } from '../src/infra/webSearchBrave'
+import type { WebSearch } from '../packages/core/infra/webSearch'
+import { WebSearchBrave } from '../packages/core/infra/webSearchBrave'
 
 describe('WebSearchBrave', () => {
   let originalFetch: typeof globalThis.fetch

@@ -1,40 +1,41 @@
 {
   "name": "zapid",
-  "version": "0.4.1",
+  "version": "0.4.3",
+  "private": true,
   "type": "module",
   "packageManager": "bun",
+  "workspaces": [
+    "packages/*",
+    "packages/agent/*"
+  ],
   "scripts": {
-    "dev": "bun --hot --no-clear-screen run src/index.ts",
+    "dev": "bun --filter server dev",
+    "start": "bun --filter server start",
+    "typecheck": "bun run --filter '*' typecheck",
+    "lint": "bun run --filter '*' lint",
+    "db:migrate": "bun --filter core db:migrate",
     "docker:setup": "./setup-docker-host.sh",
     "docker:logs": "docker compose logs -f",
     "release:patch": "./scripts/release.sh patch",
     "release:minor": "./scripts/release.sh minor",
-    "release:major": "./scripts/release.sh major",
-    "typecheck": "tsc",
-    "db:migrate": "atlas schema apply --env local --auto-approve",
-    "lint": "oxlint --fix"
+    "release:major": "./scripts/release.sh major"
   },
-  "dependencies": {
+  "catalog": {
     "@ai-sdk/google": "^2.0.23",
-    "@ai-sdk/openai": "^2.0.52",
+    "@ai-sdk/openai": "^2.0.59",
     "@ai-sdk/openai-compatible": "^1.0.22",
     "@ai-sdk/xai": "^2.0.26",
     "@libsql/client": "^0.15.15",
-    "@logtape/logtape": "^1.1.1",
-    "@logtape/otel": "^1.1.1",
     "ai": "^5.0.76",
     "compromise": "^14.14.4",
     "hono": "^4.10.1",
+    "oxlint": "^1.23.0",
     "retext": "^9.0.0",
     "retext-readability": "^8.0.0",
     "retext-smartypants": "^6.2.0",
+    "typescript": "^5.9.3",
     "unpdf": "^1.3.2",
     "unstorage": "^1.17.1",
     "zod": "^4.1.12"
-  },
-  "devDependencies": {
-    "@types/bun": "^1.3.0",
-    "oxlint": "^1.23.0",
-    "typescript": "^5.9.3"
   }
 }

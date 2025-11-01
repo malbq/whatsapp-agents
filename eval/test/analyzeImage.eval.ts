@@ -1,6 +1,6 @@
 import { describe, expect, setDefaultTimeout, test } from 'bun:test'
 import { join } from 'node:path'
-import { AIProvider } from '../../src/infra/ai'
+import { AIProvider } from '../../packages/core/ai'
 
 setDefaultTimeout(30_000)
 

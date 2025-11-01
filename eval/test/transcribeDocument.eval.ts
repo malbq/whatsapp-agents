@@ -1,7 +1,7 @@
 import { describe, expect, setDefaultTimeout, test } from 'bun:test'
 import { join } from 'node:path'
-import { AIProvider } from '../../src/infra/ai'
-import { parsePdf } from '../../src/utils/parsePdf'
+import { AIProvider } from '../../packages/core/ai'
+import { parsePdf } from '../../packages/core/utils/parsePdf'
 
 setDefaultTimeout(30_000)
 

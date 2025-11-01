@@ -10,10 +10,11 @@ import {
   mock,
   test,
 } from 'bun:test'
-import type { Chat } from '../src/infra/chat'
-import type { DB } from '../src/infra/db'
-import { LibSql } from '../src/infra/dbLibSql'
-import { runSchedulerTick } from '../src/scheduler/tick'
+import type { Chat } from '../packages/whastapp/chat'
+import type { DB } from '../packages/core/infra/db'
+import { LibSql } from '../packages/core/infra/dbLibSql'
+// TODO: runSchedulerTick needs to be implemented or this test needs to be updated
+// import { runSchedulerTick } from '../packages/server/scheduler/tick'
 
 const dbPath = `/tmp/scheduler-test-${Date.now()}.db`
 let db: DB

@@ -1,7 +1,7 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, jest, mock, test } from 'bun:test'
-import { Frame } from '../src/agent/frame'
-import { ingestDocument } from '../src/agent/systems/ingestDocument'
-import { parsePdf } from '../src/utils/parsePdf'
+import { Frame } from '../packages/agent/default/frame'
+import { ingestDocument } from '../packages/core/systems/ingestDocument'
+import { parsePdf } from '../packages/core/utils/parsePdf'
 
 let deps: TestDeps
 let frame: Frame
@@ -10,7 +10,7 @@ const mockDocumentTranscription = 'This is a test document transcription'
 const parsePdfMock = mock(parsePdf)
 
 beforeAll(async () => {
-  mock.module('../src/utils/parsePdf', () => ({
+  mock.module('../packages/core/utils/parsePdf', () => ({
     parsePdf: parsePdfMock,
   }))
   deps = {

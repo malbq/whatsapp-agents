@@ -12,18 +12,18 @@
 
   - Implement custom local logging tool.
   - Logger tool should build properties over last call:
-    - `logger.info('message 1', { property1: 'value1' })` result in
+    - `console.log('message 1', { property1: 'value1' })` result in
       ```
       message 1
         property1: value1
       ```
-      `logger.info('message 2', { property2: 'value2' })` result in
+      `console.log('message 2', { property2: 'value2' })` result in
       ```
       message 2
         property1: value1
         property2: value2
       ```
-      `logger.info('message 3', { property3: 'value3' })` result in
+      `console.log('message 3', { property3: 'value3' })` result in
       ```
       message 3
         property1: value1

@@ -1,7 +1,7 @@
 import { createClient } from '@libsql/client'
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
 import { join } from 'node:path'
-import { LibSql } from '../src/infra/dbLibSql'
+import { LibSql } from '../packages/core/infra/dbLibSql'
 
 describe('User Profile Versioning', () => {
   const dbPath = join(import.meta.dirname, 'userProfileVersioning.db')

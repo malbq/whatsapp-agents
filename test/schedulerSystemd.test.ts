@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test'
-import type { Scheduler } from '../src/infra/scheduler'
-import { createSchedulerSystemd } from '../src/infra/schedulerSystemd'
+import type { Scheduler } from '../packages/core/infra/scheduler'
+import { createSchedulerSystemd } from '../packages/core/infra/schedulerSystemd'
 
 const testUnitName = `test-scheduler-${Date.now()}`
 const testTickScript = '/tmp/test-tick-script.ts'

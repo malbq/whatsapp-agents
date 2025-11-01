@@ -1,8 +1,8 @@
 import { createClient, type Client } from '@libsql/client'
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test'
 import { join } from 'node:path'
-import type { DB, DbMessageInput } from '../src/infra/db'
-import { LibSql } from '../src/infra/dbLibSql'
+import type { DB, DbMessageInput } from '../packages/core/infra/db'
+import { LibSql } from '../packages/core/infra/dbLibSql'
 
 const dbPath = `/tmp/libsql-test-${Date.now()}.db`
 let dbClient: Client

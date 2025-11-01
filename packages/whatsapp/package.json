@@ -1,0 +1,19 @@
+{
+  "name": "whastapp",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "typecheck": "tsc",
+    "lint": "oxlint --fix"
+  },
+  "dependencies": {
+    "core": "workspace:*",
+    "server": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.0",
+    "oxlint": "catalog:",
+    "typescript": "catalog:"
+  }
+}

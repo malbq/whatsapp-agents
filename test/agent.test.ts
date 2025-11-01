@@ -10,12 +10,12 @@ import {
   mock,
   test,
 } from 'bun:test'
-import { agent } from '../src/agent'
-import type { IncomingMessage } from '../src/infra/chat'
-import type { DB } from '../src/infra/db'
-import { LibSql } from '../src/infra/dbLibSql'
-import type { Storage } from '../src/infra/storage'
-import { FilesystemStorage } from '../src/infra/storageFilesystem'
+import { agent } from '../packages/core/agent'
+import type { IncomingMessage } from '../packages/whastapp/chat'
+import type { DB } from '../packages/core/infra/db'
+import { LibSql } from '../packages/core/infra/dbLibSql'
+import type { Storage } from '../packages/core/infra/storage'
+import { FilesystemStorage } from '../packages/core/infra/storageFilesystem'
 
 const originalEnv = Object.assign({}, import.meta.env)
 
