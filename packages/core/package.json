@@ -4,8 +4,10 @@
   "type": "module",
   "private": true,
   "exports": {
-    ".": "./index.ts",
-    "./utils/*": "./utils/*.ts"
+    "./utils/*": "./utils/*.ts",
+    "./infra/*": "./infra/*.ts",
+    "./ai/*": "./ai/*.ts",
+    "./tools/*": "./tools/*.ts"
   },
   "scripts": {
     "typecheck": "tsc",
@@ -17,6 +19,7 @@
     "@ai-sdk/openai": "catalog:",
     "@ai-sdk/openai-compatible": "catalog:",
     "@ai-sdk/xai": "catalog:",
+    "@batman/whatsapp": "workspace:*",
     "@libsql/client": "catalog:",
     "ai": "catalog:",
     "compromise": "catalog:",

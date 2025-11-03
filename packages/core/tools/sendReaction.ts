@@ -1,14 +1,16 @@
+import type { Chat } from '@batman/whatsapp'
 import { tool } from 'ai'
 import { z } from 'zod'
 import type { ToolExecutionError } from '../errors'
 import { spreadError } from '../utils/spreadError'
 
-export interface SendReactionDeps {
-  inboundMessageId?: string
-  sendReaction: (params: { emoji: string; externalChatId: string }) => Promise<void> | void
+export interface SendReactionContext {
+  userWhatsappId: string
+  targetMessageWhatsappId: string
+  sendReaction: Chat['sendReaction']
 }
 
-export function createSendReactionTool(deps: SendReactionDeps) {
+export function createSendReactionTool(ctx: SendReactionContext) {
   return tool({
     name: 'send_reaction',
     description:
@@ -17,21 +19,21 @@ export function createSendReactionTool(deps: SendReactionDeps) {
       emoji: z.string().describe('The emoji to send as a reaction (e.g., 👍, ❤️, 😊)'),
     }),
     execute: async ({ emoji }) => {
-      if (!deps.inboundMessageId) {
-        console.error('send_reaction: missing inbound message', { emoji })
+      if (!ctx.targetMessageWhatsappId) {
+        console.error('send_reaction: missing target message', { emoji })
         return {
-          error: 'Missing inbound message',
+          error: 'Missing target message',
           details: 'Could not send reaction due to missing user message',
         } satisfies ToolExecutionError
       }
       try {
-        deps.sendReaction({
+        ctx.sendReaction(ctx.userWhatsappId, {
           emoji,
-          externalChatId: deps.inboundMessageId,
+          targetMessageId: ctx.targetMessageWhatsappId,
         })
         console.log('send_reaction: sent', {
           emoji,
-          messageId: deps.inboundMessageId,
+          targetMessageId: ctx.targetMessageWhatsappId,
         })
         return 'Reaction delivered to user'
       } catch (error) {

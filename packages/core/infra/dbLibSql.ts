@@ -8,13 +8,10 @@ const MAX_SIMILAR_MESSAGES = parseInt(import.meta.env.MAX_SIMILAR_MESSAGES ?? '1
 const MAX_FILES = parseInt(import.meta.env.FILE_SEARCH_LIMIT ?? '10')
 const SENDING_STALE_SECONDS = parseInt(import.meta.env.REMINDER_SENDING_STALE_SECONDS ?? '300')
 
-//const logger = getLogger(['infra', 'db'])
-
 export namespace LibSql {
-  export const db = (client?: Client): DB => {
-    client ??= createClient({
-      url: 'file:./storage/assistant.db',
-    })
+  export const db = ({ client, url }: { client?: Client; url?: string }): DB => {
+    url ??= 'file:./storage/assistant.db'
+    client ??= createClient({ url })
     return {
       async storeWebhookEvent(payload, externalId) {
         try {

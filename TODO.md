@@ -104,15 +104,28 @@
 - We must use specific model name/version
   - New models must be evaluated
   - Relying on default might disrupt experience
-- OpenAI only opens URLs if `web_search_preview` is enabled; `gpt-4.1-nano` does not support `web_search_preview`.
-- GPT-4.1 has 1M tokens context window, but degrades quite fast: https://openai.com/index/gpt-4-1/
-- Gemini flash models are a lot faster than GPT at reading pdf files:
-  - GPT-4o: got lost reading a pdf with flattened pages, reached a line where it started repeating the same text over and over again.
-  - GPT 4o: 2m
-  - GPT 4o mini: 2m
-  - GPT 4.1 nano: 1m
-  - Gemini 2.5 flash: 20s
-  - Gemini 2.5 flash-lite: 10s
-- Gemini flash models can only format output text if turning on thinking mode.
-- Gemini grounding search is too expensive.
-- Grok 4 is bad at respecting system instructions and tool usage: does not respect chunking guidelines, splits in chunks of 1000+ characters.
+- **Cloudflare**
+  - Generous 10,000 Neurons/day:
+    - bge-m3: 1075 N/M input tokens.
+    - gpt-oss-120b: 31818 N/M input tokens, 68182 N/M output tokens.
+    - gpt-oss-20b: 18182 N/M input tokens, 27273 N/M output tokens.
+  - @cf/openai/gpt-oss-20b does not support streaming
+- **OpenAI**
+  - OpenAI only opens URLs if `web_search_preview` is enabled; `gpt-4.1-nano` does not support `web_search_preview`.
+  - GPT-4.1 has 1M tokens context window, but degrades quite fast: https://openai.com/index/gpt-4-1/
+- **Gemini**
+  - Gemini flash models can only format output text if turning on thinking mode.
+  - Gemini grounding search is too expensive.
+- **Grok**
+  - Grok 4 is bad at respecting system instructions and tool usage: does not respect chunking guidelines, splits in chunks of 1000+ characters.
+- **Document Parsing**
+  - Gemini flash models are a lot faster than GPT at reading pdf files:
+    - GPT-4o: got lost reading a pdf with flattened pages, reached a line where it started repeating the same text over and over again.
+    - GPT 4o: 2m
+    - GPT 4o mini: 2m
+    - GPT 4.1 nano: 1m
+    - Gemini 2.5 flash: 20s
+    - Gemini 2.5 flash-lite: 10s
+    - _Grok 4 fast: To be tested_
+    - _GPT 5 mini: To be tested_
+    - _GPT 5 nano: To be tested_

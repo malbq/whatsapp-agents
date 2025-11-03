@@ -1,16 +1,12 @@
 {
   "extends": "../../../tsconfig.json",
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"]
+      "@batman/core/*": ["../../core/*"],
+      "@batman/server": ["../../server/index.ts"],
+      "@batman/whatsapp": ["../../whatsapp/index.ts"]
     }
   },
-  "include": [
-    "**/*.ts",
-    "**/*.tsx"
-  ],
-  "exclude": [
-    "node_modules"
-  ]
+  "include": ["**/*.ts", "**/*.tsx"],
+  "exclude": ["node_modules"]
 }

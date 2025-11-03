@@ -1,12 +1,10 @@
-import type { Frame } from '../frame'
-import type { IncomingMessage, Deps } from '../types'
 import { IngestionError } from '../../../core/errors'
+import type { Frame } from '../frame'
+import type { Deps, IncomingMessage } from '../types'
 import { ingestAudio } from './ingestAudio'
 import { ingestDocument } from './ingestDocument'
 import { ingestImage } from './ingestImage'
 import { ingestVoice } from './ingestVoice'
-
-//const logger = getLogger(['app', 'agent', 'ingestion'])
 
 export async function ingestMessage(
   frame: Frame,

@@ -1,12 +1,13 @@
+import type { Chat } from '@batman/whatsapp'
 import { tool } from 'ai'
 import { z } from 'zod'
 
-export interface SendTextDeps {
-  sendText: (params: { text: string }) => Promise<string>
-  onTextSent?: (externalChatId: string, text: string) => void
+export interface SendTextContext {
+  userWhatsappId: string
+  sendText: Chat['sendText']
 }
 
-export function createSendTextTool(deps: SendTextDeps) {
+export function createSendTextTool(ctx: SendTextContext) {
   return tool({
     name: 'send_text',
     description: `Send a text message to the user.`,
@@ -14,9 +15,7 @@ export function createSendTextTool(deps: SendTextDeps) {
       text: z.string().describe('The text message to send to the user'),
     }),
     execute: async ({ text }) => {
-      const externalChatId = await deps.sendText({ text })
-
-      deps.onTextSent?.(externalChatId, text)
+      const externalChatId = await ctx.sendText(ctx.userWhatsappId, { text })
 
       console.log('send_text: delivered', {
         text,

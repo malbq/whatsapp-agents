@@ -9,12 +9,12 @@ export interface WebSearchResult {
   description: string
 }
 
-export interface WebSearchDeps {
+export interface WebSearchContext {
   webSearch: (params: { query: string; signal?: AbortSignal }) => Promise<Array<WebSearchResult>>
   onExplanation?: (explanation: string) => Promise<void> | void
 }
 
-export function createWebSearchTool(deps: WebSearchDeps, explanationPrompt: string) {
+export function createWebSearchTool(ctx: WebSearchContext, explanationPrompt: string) {
   return tool({
     name: 'web_search',
     description: `Search the web for current/external information (news, facts, prices, business info, etc.).
@@ -30,8 +30,8 @@ After discovering relevant URLs, use \`web_fetch\` to retrieve full content when
 
       try {
         const { query, explanation } = params
-        
-        await deps.onExplanation?.(explanation)
+
+        await ctx.onExplanation?.(explanation)
 
         const urlMatch = query.match(/https?:\/\/\S+/i)
         if (urlMatch) {
@@ -47,7 +47,7 @@ After discovering relevant URLs, use \`web_fetch\` to retrieve full content when
         }
 
         console.debug('calling webSearch dependency', { query })
-        const results = await deps.webSearch({ query, signal: abortSignal })
+        const results = await ctx.webSearch({ query, signal: abortSignal })
         console.debug('webSearch dependency returned', {
           query,
           resultsCount: results.length,

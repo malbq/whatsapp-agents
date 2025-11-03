@@ -1,30 +1,28 @@
-import type { Hono } from 'hono'
+import { Hono } from 'hono'
 import { createHmac } from 'node:crypto'
-import type { Chat, Message, StatusUpdate } from './types'
+import type { Chat, MessageNotification, StatusUpdateNotification } from './types'
 
 export interface WebhookConfig {
   appSecret: string
   verifyToken: string
-  path?: string
 }
 
 export interface WebhookHandlers {
-  onMessage: (message: Message) => Promise<void> | void
-  onStatusUpdate?: (statusUpdate: StatusUpdate) => Promise<void> | void
+  onMessage: (notification: MessageNotification) => Promise<void> | void
+  onStatusUpdate?: (statusUpdate: StatusUpdateNotification) => Promise<void> | void
   onUnknownNotification?: (body: unknown) => Promise<void> | void
 }
 
-export function createWebhookRoutes(
-  app: Hono,
+export function createWebhookApp(
   chat: Chat,
   config: WebhookConfig,
   handlers: WebhookHandlers
-): void {
-  const path = config.path ?? '/webhook'
+): Hono {
+  const app = new Hono()
 
   // Webhook verification endpoint
   // https://developers.facebook.com/docs/graph-api/webhooks/getting-started#verification-requests
-  app.get(path, (c) => {
+  app.get('/', (c) => {
     const mode = c.req.query('hub.mode')
     const token = c.req.query('hub.verify_token')
     const challenge = c.req.query('hub.challenge')
@@ -39,7 +37,7 @@ export function createWebhookRoutes(
   })
 
   // Webhook notification endpoint
-  app.post(path, async (c) => {
+  app.post('/', async (c) => {
     const headerSignature = c.req.header('x-hub-signature-256')
     const body = await c.req.text()
 
@@ -55,19 +53,21 @@ export function createWebhookRoutes(
       return c.body('', 200)
     }
 
-    if (notification.statusUpdate) {
-      await handlers.onStatusUpdate?.(notification.statusUpdate)
+    if ('statusUpdate' in notification) {
+      await handlers.onStatusUpdate?.(notification)
       return c.body('', 200)
     }
 
-    if (notification.message) {
-      await handlers.onMessage(notification.message)
+    if ('message' in notification) {
+      await handlers.onMessage(notification)
       return c.body('', 200)
     }
 
     await handlers.onUnknownNotification?.(JSON.parse(body))
     return c.body('', 200)
   })
+
+  return app
 }
 
 function validateWebhookSignature(

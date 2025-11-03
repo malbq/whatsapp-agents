@@ -1,49 +1,37 @@
 import { tool } from 'ai'
 import { z } from 'zod'
+import { generateEmbeddings } from '../ai/generateEmbeddings'
 import type { ToolExecutionError } from '../errors'
-import type { SimilarMessage } from '../infra/db'
+import type { DB } from '../infra/db'
 import { spreadError } from '../utils/spreadError'
 import { extractFilename } from '../utils/storageKey'
 
-export interface FetchMemoryDeps {
+export interface FetchMemoryContext {
   userId: string
-  generateEmbeddings: (texts: Array<string>) => Promise<Array<Array<{ embedding: Array<number> }>>>
-  findSimilarMessages: (params: {
-    userId: string
-    queryEmbedding: Array<number>
-    excludeIds?: Array<string>
-  }) => Promise<Array<SimilarMessage>>
-  onExplanation?: (explanation: string) => Promise<void> | void
-  acknowledgeInboundMessage?: () => Promise<void> | void
+  findSimilarMessages: DB['findSimilarMessages']
 }
 
-export function createFetchMemoryTool(deps: FetchMemoryDeps, explanationPrompt: string) {
+export function createFetchMemoryTool(ctx: FetchMemoryContext) {
   return tool({
     name: 'fetch_memory',
     description: `Fetch relevant memories from conversation history to provide context-aware and personalized responses.
 Generate an optimized search query for finding relevant files and documents.`,
     inputSchema: z.object({
       query: z.string().describe('The query to search for relevant memories'),
-      explanation: z.string().describe(explanationPrompt),
     }),
-    execute: async (params) => {
+    execute: async ({ query }) => {
       try {
-        const { query, explanation } = params
-
-        await deps.onExplanation?.(explanation)
-        await deps.acknowledgeInboundMessage?.()
-
-        const [embeddings] = await deps.generateEmbeddings([query])
+        const [embeddings] = await generateEmbeddings([query])
 
         const recentMessageIds: string[] = []
-        const similarMessages = await deps.findSimilarMessages({
-          userId: deps.userId,
+        const similarMessages = await ctx.findSimilarMessages({
+          userId: ctx.userId,
           queryEmbedding: embeddings![0]!.embedding,
           excludeIds: recentMessageIds,
         })
 
         console.log('fetch_memory completed', {
-          ...params,
+          query,
           resultsCount: similarMessages.length,
           excludedRecentCount: recentMessageIds.length,
         })
@@ -55,11 +43,11 @@ Generate an optimized search query for finding relevant files and documents.`,
           content: message.content,
           chunk: `${message.chunkSequence} of ${message.totalChunks}`,
           timestamp: message.timestamp.toISOString(),
-          filename: extractFilename(message.storageKey),
+          filename: extractFilename(message.storageKey), // FIXME we should be storing original filename, not relying in storage key
         }))
       } catch (error) {
         console.error('fetch_memory failed', {
-          ...params,
+          query,
           ...spreadError(error),
         })
         return {

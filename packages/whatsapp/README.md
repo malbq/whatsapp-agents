@@ -7,6 +7,7 @@ Abstract, self-contained WhatsApp Business API client for agents.
 This package provides a factory function to create WhatsApp clients with injected configuration. It normalizes Meta's WhatsApp Business API payloads into unified message types that work for both incoming and outgoing messages.
 
 **Key characteristics:**
+
 - Zero dependencies on other monorepo packages (fully self-contained)
 - Clean separation between public API and Meta's internal API types
 - Configuration injection via factory pattern (no global state)
@@ -45,7 +46,7 @@ The package provides a factory to create Hono routes with built-in signature val
 
 ```typescript
 import { Hono } from 'hono'
-import { createWhatsappClient, createWebhookRoutes } from 'whatsapp'
+import { createWhatsappClient, createWebhookApp } from 'whatsapp'
 
 const app = new Hono()
 const chat = createWhatsappClient({
@@ -53,27 +54,33 @@ const chat = createWhatsappClient({
   businessPhoneId: process.env.META_BUSINESS_PHONE_ID,
 })
 
-createWebhookRoutes(app, chat, {
-  appSecret: process.env.META_APP_SECRET,
-  verifyToken: process.env.META_WEBHOOK_VERIFY_TOKEN,
-}, {
-  onMessage: async (message) => {
-    // Handle incoming message
-    console.log('Received message:', message)
-    
-    if (message.type === 'text') {
-      await chat.sendText({ text: `Echo: ${message.text}` })
-    }
+const webhookApp = createWebhookApp(
+  chat,
+  {
+    appSecret: process.env.META_APP_SECRET,
+    verifyToken: process.env.META_WEBHOOK_VERIFY_TOKEN,
   },
-  onStatusUpdate: async (statusUpdate) => {
-    // Optional: handle status updates (read, delivered, sent)
-    console.log('Status update:', statusUpdate)
-  },
-  onUnknownNotification: async (body) => {
-    // Optional: handle unknown notification types
-    console.warn('Unknown notification:', body)
+  {
+    onMessage: async (message) => {
+      // Handle incoming message
+      console.log('Received message:', message)
+
+      if (message.type === 'text') {
+        await chat.sendText({ text: `Echo: ${message.text}` })
+      }
+    },
+    onStatusUpdate: async (statusUpdate) => {
+      // Optional: handle status updates (read, delivered, sent)
+      console.log('Status update:', statusUpdate)
+    },
+    onUnknownNotification: async (body) => {
+      // Optional: handle unknown notification types
+      console.warn('Unknown notification:', body)
+    },
   }
-})
+)
+
+app.route('/webhook', webhookApp)
 
 export default {
   port: 8080,
@@ -81,24 +88,29 @@ export default {
 }
 ```
 
-The `createWebhookRoutes` function:
-- Creates `GET /webhook` for Meta's verification request
-- Creates `POST /webhook` for incoming notifications
+The `createWebhookApp` function:
+
+- Creates a Hono app with `GET /` for Meta's verification request
+- Creates `POST /` for incoming notifications
 - Validates HMAC-SHA256 signature automatically
+- Should be mounted using `app.route('/webhook', webhookApp)`
 - Parses notifications and routes to appropriate handlers
 - Returns proper HTTP responses (200, 401, 403)
 
 ## Configuration
 
 ### WhatsApp Client (required, injected by caller)
+
 - `apiToken`: Meta API access token
 - `businessPhoneId`: WhatsApp Business Phone Number ID
 
 ### Webhook Routes (required, injected by caller)
+
 - `appSecret`: Meta app secret for signature validation
 - `verifyToken`: Token for webhook verification
 
 ### Optional (package env var)
+
 - `WA_API_VERSION`: WhatsApp API version (defaults to `v23.0`)
 
 ## Message Types
@@ -108,6 +120,7 @@ The package uses a unified type system where the same message types are used for
 ### Base Message Types
 
 All messages extend a base type with:
+
 - `type`: Message type classification
 - `replyingTo?`: Optional message ID to reply to
 
@@ -152,15 +165,16 @@ Incoming messages include routing metadata:
 
 ```typescript
 type IncomingMessage = Message & {
-  userExternalId: string  // WhatsApp ID
-  userName: string        // User's display name
-  externalId: string      // Message ID
+  userExternalId: string // WhatsApp ID
+  userName: string // User's display name
+  externalId: string // Message ID
 }
 ```
 
 ### Outgoing Messages
 
 For backward compatibility, the package also exports `Outgoing*Message` types:
+
 - `OutgoingTextMessage` = `Omit<TextMessage, 'type'>`
 - `OutgoingImageMessage` = `Omit<ImageMessage, 'type'>` (with required `data` and `mimeType`)
 - `OutgoingDocumentMessage` = `Omit<DocumentMessage, 'type'>` (with required `data` and `mimeType`)
@@ -210,25 +224,31 @@ Configuration is exposed through a closure pattern - the factory captures config
 
 ### Webhook Functions
 
-#### `createWebhookRoutes(app, chat, config, handlers)`
+#### `createWebhookApp(chat, config, handlers)`
 
-Mounts webhook routes on a Hono app instance.
+Creates a Hono app with webhook routes.
 
 **Parameters:**
-- `app`: Hono instance
+
 - `chat`: WhatsApp client from `createWhatsappClient()`
 - `config`: `{ appSecret, verifyToken }`
 - `handlers`: `{ onMessage, onStatusUpdate?, onUnknownNotification? }`
 
+**Returns:** Hono app instance
+
 **Routes created:**
-- `GET /webhook` - Verification endpoint (returns challenge if valid)
-- `POST /webhook` - Notification endpoint (validates signature, routes to handlers)
+
+- `GET /` - Verification endpoint (returns challenge if valid)
+- `POST /` - Notification endpoint (validates signature, routes to handlers)
+
+**Usage:** Mount the returned app using `app.route('/webhook', webhookApp)`
 
 #### `validateWebhookSignature(body, signature, appSecret)`
 
 Validates X-Hub-Signature-256 header.
 
 **Parameters:**
+
 - `body`: Raw request body (string)
 - `signature`: Header value (with or without "sha256=" prefix)
 - `appSecret`: Meta app secret

@@ -14,7 +14,7 @@ export type MessageType =
   | 'unsupported'
 
 interface BaseMessage {
-  waId: string
+  messageId: string
   type: MessageType
   replyingTo?: string
 }
@@ -62,7 +62,7 @@ export interface LocationMessage extends BaseMessage {
 export interface ReactionMessage extends BaseMessage {
   type: 'reaction'
   emoji: string
-  externalChatId: string
+  targetMessageId: string
 }
 
 export interface ContactMessage extends BaseMessage {
@@ -216,31 +216,57 @@ export type Message =
   | UnsupportedMessage
 
 export interface Notification {
-  userExternalId: string
+  userId: string
   userName: string
-  message?: Message
-  statusUpdate?: StatusUpdate
+}
+
+export type MessageNotification = Notification & {
+  message: Message
+}
+
+export type StatusUpdateNotification = Notification & {
+  statusUpdate: StatusUpdate
 }
 
 export type StatusUpdate = 'read' | 'delivered' | 'sent'
 
 export interface Chat {
-  parseNotification: (notification: unknown) => Promise<Notification | null>
+  parseNotification: (
+    notification: unknown
+  ) => Promise<MessageNotification | StatusUpdateNotification | null>
   acknowledgeMessage: (messageId: string) => Promise<void>
-  sendText: (userWhatsappId: string, message: TextMessage) => Promise<string>
-  sendImage: (userWhatsappId: string, message: ImageMessage) => Promise<string>
-  sendDocument: (userWhatsappId: string, message: DocumentMessage) => Promise<string>
-  sendLocation: (userWhatsappId: string, message: LocationMessage) => Promise<string>
-  sendReaction: (userWhatsappId: string, message: ReactionMessage) => Promise<string>
-  sendContact: (userWhatsappId: string, message: ContactMessage) => Promise<string>
-  sendInteractiveList: (userWhatsappId: string, message: InteractiveListMessage) => Promise<string>
+  sendText: (userId: string, message: Omit<TextMessage, 'messageId' | 'type'>) => Promise<string>
+  sendImage: (userId: string, message: Omit<ImageMessage, 'messageId' | 'type'>) => Promise<string>
+  sendDocument: (
+    userId: string,
+    message: Omit<DocumentMessage, 'messageId' | 'type'>
+  ) => Promise<string>
+  sendLocation: (
+    userId: string,
+    message: Omit<LocationMessage, 'messageId' | 'type'>
+  ) => Promise<string>
+  sendReaction: (
+    userId: string,
+    message: Omit<ReactionMessage, 'messageId' | 'type'>
+  ) => Promise<string>
+  sendContact: (
+    userId: string,
+    message: Omit<ContactMessage, 'messageId' | 'type'>
+  ) => Promise<string>
+  sendInteractiveList: (
+    userId: string,
+    message: Omit<InteractiveListMessage, 'messageId' | 'type'>
+  ) => Promise<string>
   sendInteractiveButton: (
-    userWhatsappId: string,
-    message: InteractiveButtonMessage
+    userId: string,
+    message: Omit<InteractiveButtonMessage, 'messageId' | 'type'>
   ) => Promise<string>
   sendInteractiveCtaUrl: (
-    userWhatsappId: string,
-    message: InteractiveCtaUrlMessage
+    userId: string,
+    message: Omit<InteractiveCtaUrlMessage, 'messageId' | 'type'>
   ) => Promise<string>
-  sendTemplate: (userWhatsappId: string, message: TemplateMessage) => Promise<string>
+  sendTemplate: (
+    userId: string,
+    message: Omit<TemplateMessage, 'messageId' | 'type'>
+  ) => Promise<string>
 }

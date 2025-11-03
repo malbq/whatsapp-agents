@@ -1,11 +1,7 @@
 import { createHash } from 'node:crypto'
-import {
-  FailedToDownloadMediaError,
-  MediaHashMismatchError,
-  ResponseDeliveryError,
-} from './errors'
+import { FailedToDownloadMediaError, MediaHashMismatchError, ResponseDeliveryError } from './errors'
+import type { Chat, Notification, StatusUpdate, StatusUpdateNotification } from './types'
 import { getExtFromMimeType } from './utils'
-import type { Chat, Notification, StatusUpdate } from './types'
 import type {
   WaAcknowledgeMessageResponse,
   WaMediaUrlResponse,
@@ -156,7 +152,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
       if (!contact) return null
 
       const notification: Notification = {
-        userExternalId: contact.wa_id,
+        userId: contact.wa_id,
         userName: contact.profile.name,
       }
 
@@ -165,7 +161,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
         return {
           ...notification,
           statusUpdate: statusUpdate.status as StatusUpdate,
-        }
+        } satisfies StatusUpdateNotification
       }
 
       const waMessage = change.value.messages?.[0]
@@ -176,7 +172,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
           return {
             ...notification,
             message: {
-              waId: waMessage.id,
+              messageId: waMessage.id,
               type: 'text',
               text: waMessage.text.body,
             },
@@ -185,7 +181,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
           return {
             ...notification,
             message: {
-              waId: waMessage.id,
+              messageId: waMessage.id,
               type: waMessage.audio.voice ? 'voice' : 'audio',
               data: await fetchReceivedMedia(waMessage.audio.id, waMessage.audio.sha256),
               mimeType: waMessage.audio.mime_type,
@@ -195,7 +191,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
           return {
             ...notification,
             message: {
-              waId: waMessage.id,
+              messageId: waMessage.id,
               type: 'document',
               caption: waMessage.document.caption,
               filename: waMessage.document.filename,
@@ -207,7 +203,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
           return {
             ...notification,
             message: {
-              waId: waMessage.id,
+              messageId: waMessage.id,
               type: 'image',
               caption: waMessage.image.caption,
               data: await fetchReceivedMedia(waMessage.image.id, waMessage.image.sha256),
@@ -218,7 +214,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
           return {
             ...notification,
             message: {
-              waId: waMessage.id,
+              messageId: waMessage.id,
               type: 'unsupported',
               unsupportedType: waMessage.type,
             },
@@ -267,10 +263,10 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
       })
     },
 
-    sendText: async (userWhatsappId, { text, replyingTo }) => {
+    sendText: async (userId, { text, replyingTo }) => {
       const requestBody: WaOutgoingText = {
         messaging_product: 'whatsapp',
-        to: userWhatsappId,
+        to: userId,
         type: 'text',
         text: { body: text, preview_url: true },
         ...(replyingTo && { context: { message_id: replyingTo } }),
@@ -281,12 +277,12 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
       return messageId
     },
 
-    sendImage: async (userWhatsappId, { data, caption, mimeType, replyingTo }) => {
+    sendImage: async (userId, { data, caption, mimeType, replyingTo }) => {
       const mediaId = await uploadMedia(data, mimeType)
 
       const message: WaOutgoingImage = {
         messaging_product: 'whatsapp',
-        to: userWhatsappId,
+        to: userId,
         type: 'image',
         image: {
           id: mediaId,
@@ -298,12 +294,12 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
       return sendMessageRequest(message)
     },
 
-    sendDocument: async (userWhatsappId, { data, filename, caption, mimeType, replyingTo }) => {
+    sendDocument: async (userId, { data, filename, caption, mimeType, replyingTo }) => {
       const mediaId = await uploadMedia(data, mimeType, filename)
 
       const message: WaOutgoingDocument = {
         messaging_product: 'whatsapp',
-        to: userWhatsappId,
+        to: userId,
         type: 'document',
         document: {
           id: mediaId,
@@ -318,10 +314,10 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
       return messageId
     },
 
-    sendLocation: async (userWhatsappId, { latitude, longitude, name, address, replyingTo }) => {
+    sendLocation: async (userId, { latitude, longitude, name, address, replyingTo }) => {
       const requestBody: WaOutgoingLocation = {
         messaging_product: 'whatsapp',
-        to: userWhatsappId,
+        to: userId,
         type: 'location',
         location: {
           latitude,
@@ -337,13 +333,13 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
       return messageId
     },
 
-    sendReaction: async (userWhatsappId, { externalChatId, emoji }) => {
+    sendReaction: async (userId, { targetMessageId, emoji }) => {
       const requestBody: WaOutgoingReaction = {
         messaging_product: 'whatsapp',
-        to: userWhatsappId,
+        to: userId,
         type: 'reaction',
         reaction: {
-          message_id: externalChatId,
+          message_id: targetMessageId,
           emoji,
         },
       }
@@ -353,7 +349,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
       return messageId
     },
 
-    sendContact: async (userWhatsappId, contact) => {
+    sendContact: async (userId, contact) => {
       const name = contact.name.trim()
       const phone = normalizePhoneNumber(contact.phone)
       if (name.length === 0 || phone.length === 0) {
@@ -362,7 +358,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
 
       const requestBody: WaOutgoingContact = {
         messaging_product: 'whatsapp',
-        to: userWhatsappId,
+        to: userId,
         type: 'contacts',
         contacts: [
           {
@@ -377,10 +373,10 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
       return messageId
     },
 
-    sendInteractiveList: async (userWhatsappId, { header, body, footer, action, replyingTo }) => {
+    sendInteractiveList: async (userId, { header, body, footer, action, replyingTo }) => {
       const requestBody: WaOutgoingInteractiveList = {
         messaging_product: 'whatsapp',
-        to: userWhatsappId,
+        to: userId,
         type: 'interactive',
         interactive: {
           type: 'list',
@@ -397,10 +393,10 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
       return messageId
     },
 
-    sendInteractiveButton: async (userWhatsappId, { header, body, footer, action, replyingTo }) => {
+    sendInteractiveButton: async (userId, { header, body, footer, action, replyingTo }) => {
       const requestBody: WaOutgoingInteractiveButton = {
         messaging_product: 'whatsapp',
-        to: userWhatsappId,
+        to: userId,
         type: 'interactive',
         interactive: {
           type: 'button',
@@ -415,10 +411,10 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
       return sendMessageRequest(requestBody)
     },
 
-    sendInteractiveCtaUrl: async (userWhatsappId, { header, body, footer, action, replyingTo }) => {
+    sendInteractiveCtaUrl: async (userId, { header, body, footer, action, replyingTo }) => {
       const requestBody: WaOutgoingInteractiveCtaUrl = {
         messaging_product: 'whatsapp',
-        to: userWhatsappId,
+        to: userId,
         type: 'interactive',
         interactive: {
           type: 'cta_url',
@@ -436,7 +432,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
     },
 
     sendTemplate: async (
-      userWhatsappId,
+      userId,
       { name, language, headerParameters, bodyParameters, footerParameters }
     ) => {
       const components: Array<WaTemplateComponent> = []
@@ -460,7 +456,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
       }
       const requestBody: WaOutgoingTemplate = {
         messaging_product: 'whatsapp',
-        to: userWhatsappId,
+        to: userId,
         type: 'template',
         template: {
           name,

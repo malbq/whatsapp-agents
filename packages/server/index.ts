@@ -1,2 +1,2 @@
 export { createServer } from './builder'
-export type { ServerBuilder, ServerConfig, ServerEnv, ServerMiddleware } from './types'
+export type { ServerBuilder, ServerConfig, ServerMiddleware } from './types'

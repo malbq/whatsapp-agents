@@ -1,7 +1,7 @@
 export { createWhatsappClient } from './client'
 export type { WhatsappConfig } from './client'
 
-export { createWebhookRoutes } from './webhook'
+export { createWebhookApp } from './webhook'
 export type { WebhookConfig, WebhookHandlers } from './webhook'
 
 export type {
@@ -15,10 +15,12 @@ export type {
   InteractiveListMessage,
   LocationMessage,
   Message,
+  MessageNotification,
   MessageType,
   Notification,
   ReactionMessage,
   StatusUpdate,
+  StatusUpdateNotification,
   TemplateMessage,
   TextMessage,
   UnsupportedMessage,

@@ -7,11 +7,11 @@ import { spreadError } from '../utils/spreadError'
 const DEFAULT_TIMEOUT_MS = 30_000
 const MAX_RESPONSE_SIZE = 5 * 1024 * 1024 // 5MB
 
-export interface WebFetchDeps {
+export interface WebFetchContext {
   onExplanation?: (explanation: string) => Promise<void> | void
 }
 
-export function createWebFetchTool(deps: WebFetchDeps, explanationPrompt: string) {
+export function createWebFetchTool(ctx: WebFetchContext, explanationPrompt: string) {
   return tool({
     name: 'web_fetch',
     description: `Fetch a URL and return its content. Use this directly when the user's message includes a URL; do not call web_search first. Also use this to read sources discovered by web_search.
@@ -42,7 +42,7 @@ export function createWebFetchTool(deps: WebFetchDeps, explanationPrompt: string
 
         const url = new URL(params.url.replace(/^http:/i, 'https:'))
 
-        await deps.onExplanation?.(explanation)
+        await ctx.onExplanation?.(explanation)
 
         const t = setTimeout(() => abortController.abort(), DEFAULT_TIMEOUT_MS)
         abortSignal?.addEventListener('abort', abortController.abort)

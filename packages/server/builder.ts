@@ -1,9 +1,9 @@
 import { Hono } from 'hono'
 import { secureHeaders } from 'hono/secure-headers'
-import type { ServerBuilder, ServerConfig, ServerEnv, ServerMiddleware } from './types'
+import type { ServerBuilder, ServerConfig, ServerMiddleware } from './types'
 
 export function createServer(config: ServerConfig): ServerBuilder {
-  const app = new Hono<ServerEnv>()
+  const app = new Hono()
   app.use(secureHeaders())
 
   const middlewares: ServerMiddleware[] = []
@@ -14,7 +14,7 @@ export function createServer(config: ServerConfig): ServerBuilder {
     return builder
   }
 
-  const getApp = (): Hono<ServerEnv> => {
+  const getApp = (): Hono => {
     return app
   }
 

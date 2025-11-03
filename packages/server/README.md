@@ -5,6 +5,7 @@ Abstract server builder for creating Hono/Bun web servers with minimal middlewar
 ## Overview
 
 This package provides:
+
 - Hono/Bun server bootstrap
 - Minimal middleware contracts (logging, error formatting, request ID generation)
 - No provider or agent specifics
@@ -20,14 +21,14 @@ import { createServer } from 'server'
 const server = createServer({
   port: 8080,
   name: 'my-agent',
-  version: '1.0.0'
+  version: '1.0.0',
 })
 
 const app = server.build()
 
 export default {
   port: app.port,
-  fetch: app.fetch
+  fetch: app.fetch,
 }
 ```
 
@@ -38,20 +39,22 @@ import { createServer, createLoggingMiddleware } from 'server'
 
 const server = createServer({ port: 8080 })
 
-server.use(createLoggingMiddleware({
-  logger: {
-    debug: (message, context) => console.debug(message, context),
-    info: (message, context) => console.info(message, context),
-    warn: (message, context) => console.warn(message, context),
-    error: (message, context) => console.error(message, context)
-  },
-  errorFormatter: {
-    format: (error) => ({ message: error.message })
-  },
-  requestIdGenerator: {
-    generate: () => crypto.randomUUID()
-  }
-}))
+server.use(
+  createLoggingMiddleware({
+    logger: {
+      debug: (message, context) => console.debug(message, context),
+      info: (message, context) => console.info(message, context),
+      warn: (message, context) => console.warn(message, context),
+      error: (message, context) => console.error(message, context),
+    },
+    errorFormatter: {
+      format: (error) => ({ message: error.message }),
+    },
+    requestIdGenerator: {
+      generate: () => crypto.randomUUID(),
+    },
+  })
+)
 
 const app = server.build()
 ```
@@ -78,7 +81,7 @@ const built = server.build()
 
 ```typescript
 import { createServer, createLoggingMiddleware } from 'server'
-import { createWebhookRoutes } from 'whatsapp'
+import { createWebhookApp } from 'whatsapp'
 
 const server = createServer({ port: 8080 })
 
@@ -86,15 +89,20 @@ server.use(createLoggingMiddleware())
 
 const app = server.getApp()
 
-createWebhookRoutes(app, chat, {
-  appSecret: process.env.META_APP_SECRET,
-  verifyToken: process.env.META_WEBHOOK_VERIFY_TOKEN,
-  path: '/webhook'
-}, {
-  onMessage: async (message) => {
-    // Handle message
+const webhookApp = createWebhookApp(
+  chat,
+  {
+    appSecret: process.env.META_APP_SECRET,
+    verifyToken: process.env.META_WEBHOOK_VERIFY_TOKEN,
+  },
+  {
+    onMessage: async (message) => {
+      // Handle message
+    },
   }
-})
+)
+
+app.route('/webhook', webhookApp)
 
 const built = server.build()
 ```
@@ -106,6 +114,7 @@ const built = server.build()
 Creates a new server builder instance.
 
 **Config:**
+
 - `port: number` - Port to listen on
 - `name?: string` - Optional server name
 - `version?: string` - Optional server version
@@ -113,6 +122,7 @@ Creates a new server builder instance.
 ### `ServerBuilder`
 
 **Methods:**
+
 - `use(middleware: ServerMiddleware): this` - Add middleware
 - `getApp(): Hono<ServerEnv>` - Get underlying Hono app for custom routes
 - `build()` - Build and return the server
@@ -122,6 +132,7 @@ Creates a new server builder instance.
 Creates logging middleware with customizable logger, error formatter, and request ID generator.
 
 **Config:**
+
 - `logger?: Logger` - Custom logger implementation
 - `errorFormatter?: ErrorFormatter` - Custom error formatter
 - `requestIdGenerator?: RequestIdGenerator` - Custom request ID generator
