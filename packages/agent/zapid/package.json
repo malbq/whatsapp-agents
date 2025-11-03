@@ -8,7 +8,8 @@
     "lint": "oxlint --fix"
   },
   "dependencies": {
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "@batman/core": "workspace:*"
   },
   "devDependencies": {
     "@types/bun": "^1.3.0",

@@ -1,59 +1,53 @@
 import { tool } from 'ai'
 import { z } from 'zod'
-import type { ToolExecutionError } from '../../../core/errors'
-import type { RecentMessage } from '../../../core/infra/db'
-import { spreadError } from '../../../core/utils/spreadError'
-import { extractFilename } from '../../../core/utils/storageKey'
-import { toolUsageExplanation } from '../../zapid/prompts/toolUsageExplanation'
-import type { Frame } from '../frame'
+import type { ToolExecutionError } from '../errors'
+import type { SimilarMessage } from '../infra/db'
+import { spreadError } from '../utils/spreadError'
+import { extractFilename } from '../utils/storageKey'
 
-// //const logger = getLogger(['app', 'agent', 'tool', 'fetchMemory'])
+export interface FetchMemoryDeps {
+  userId: string
+  generateEmbeddings: (texts: Array<string>) => Promise<Array<Array<{ embedding: Array<number> }>>>
+  findSimilarMessages: (params: {
+    userId: string
+    queryEmbedding: Array<number>
+    excludeIds?: Array<string>
+  }) => Promise<Array<SimilarMessage>>
+  onExplanation?: (explanation: string) => Promise<void> | void
+  acknowledgeInboundMessage?: () => Promise<void> | void
+}
 
-export const fetchMemoryTool = (frame: Frame, deps: Deps, recentMessages: RecentMessage[] = []) =>
-  tool({
+export function createFetchMemoryTool(deps: FetchMemoryDeps, explanationPrompt: string) {
+  return tool({
     name: 'fetch_memory',
     description: `Fetch relevant memories from conversation history to provide context-aware and personalized responses.
 Generate an optimized search query for finding relevant files and documents.`,
     inputSchema: z.object({
       query: z.string().describe('The query to search for relevant memories'),
-      explanation: z.string().describe(toolUsageExplanation),
+      explanation: z.string().describe(explanationPrompt),
     }),
     execute: async (params) => {
       try {
         const { query, explanation } = params
 
-        if (!frame.user) {
-          console.error('missing user', params)
-          return {
-            error: 'Missing user',
-            details: 'Could not fetch memory due to missing user',
-          } satisfies ToolExecutionError
-        }
+        await deps.onExplanation?.(explanation)
+        await deps.acknowledgeInboundMessage?.()
 
-        const externalChatId = await deps.chat.sendText({ text: explanation })
-        if (frame.inbound?.externalChatId) {
-          await deps.chat.acknowledgeMessage(frame.inbound?.externalChatId)
-        }
-        frame.outboundMessages.push({
-          externalChatId,
-          type: 'text',
-          text: explanation,
-        })
+        const [embeddings] = await deps.generateEmbeddings([query])
 
-        const [embeddings] = await deps.ai.generateEmbeddings([query])
-
-        const similarMessages = await deps.db.findSimilarMessages({
-          userId: frame.user.id,
+        const recentMessageIds: string[] = []
+        const similarMessages = await deps.findSimilarMessages({
+          userId: deps.userId,
           queryEmbedding: embeddings![0]!.embedding,
-          excludeIds: recentMessages.map((message) => message.id),
+          excludeIds: recentMessageIds,
         })
 
-        console.log('completed', {
+        console.log('fetch_memory completed', {
           ...params,
           resultsCount: similarMessages.length,
-          excludedRecentCount: recentMessages.length,
+          excludedRecentCount: recentMessageIds.length,
         })
-        console.debug('results', { query, similarMessages })
+        console.debug('fetch_memory results', { query, similarMessages })
 
         return similarMessages.map((message) => ({
           role: message.role,
@@ -64,7 +58,7 @@ Generate an optimized search query for finding relevant files and documents.`,
           filename: extractFilename(message.storageKey),
         }))
       } catch (error) {
-        console.error('Tool execution failed', {
+        console.error('fetch_memory failed', {
           ...params,
           ...spreadError(error),
         })
@@ -75,3 +69,4 @@ Generate an optimized search query for finding relevant files and documents.`,
       }
     },
   })
+}

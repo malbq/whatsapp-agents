@@ -1,17 +1,16 @@
 {
-  "name": "server",
+  "name": "@batman/server",
   "module": "index.ts",
   "type": "module",
   "private": true,
+  "exports": {
+    ".": "./index.ts"
+  },
   "scripts": {
-    "dev": "bun --hot index.ts",
-    "start": "bun index.ts",
     "typecheck": "tsc",
     "lint": "oxlint --fix"
   },
   "dependencies": {
-    "core": "workspace:*",
-    "whastapp": "workspace:*",
     "hono": "catalog:"
   },
   "devDependencies": {

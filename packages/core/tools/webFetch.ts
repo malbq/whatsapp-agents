@@ -1,18 +1,18 @@
 import { tool } from 'ai'
 import { z } from 'zod'
-import type { ToolExecutionError } from '../../../core/errors'
-import { extractTextFromHTML } from '../../../core/utils/htmlToText'
-import { spreadError } from '../../../core/utils/spreadError'
-import { toolUsageExplanation } from '../../zapid/prompts/toolUsageExplanation'
-import type { Frame } from '../frame'
-
-//const logger = getLogger(['app', 'agent', 'tool', 'webFetch'])
+import type { ToolExecutionError } from '../errors'
+import { extractTextFromHTML } from '../utils/htmlToText'
+import { spreadError } from '../utils/spreadError'
 
 const DEFAULT_TIMEOUT_MS = 30_000
 const MAX_RESPONSE_SIZE = 5 * 1024 * 1024 // 5MB
 
-export const webFetchTool = (frame: Frame, deps: Deps) =>
-  tool({
+export interface WebFetchDeps {
+  onExplanation?: (explanation: string) => Promise<void> | void
+}
+
+export function createWebFetchTool(deps: WebFetchDeps, explanationPrompt: string) {
+  return tool({
     name: 'web_fetch',
     description: `Fetch a URL and return its content. Use this directly when the user's message includes a URL; do not call web_search first. Also use this to read sources discovered by web_search.
 - format: "text" (default) converts HTML to plain text via Bun HTMLRewriter; "html" returns raw HTML.
@@ -27,7 +27,7 @@ export const webFetchTool = (frame: Frame, deps: Deps) =>
         .optional()
         .default('text')
         .describe('Return format: "text" extracts plain text from HTML, "html" returns raw HTML'),
-      explanation: z.string().describe(toolUsageExplanation),
+      explanation: z.string().describe(explanationPrompt),
     }),
     execute: async (params, { abortSignal }) => {
       const abortController = new AbortController()
@@ -42,12 +42,7 @@ export const webFetchTool = (frame: Frame, deps: Deps) =>
 
         const url = new URL(params.url.replace(/^http:/i, 'https:'))
 
-        const externalChatId = await deps.chat.sendText({ text: explanation })
-        frame.outboundMessages.push({
-          externalChatId,
-          type: 'text',
-          text: explanation,
-        })
+        await deps.onExplanation?.(explanation)
 
         const t = setTimeout(() => abortController.abort(), DEFAULT_TIMEOUT_MS)
         abortSignal?.addEventListener('abort', abortController.abort)
@@ -142,3 +137,4 @@ export const webFetchTool = (frame: Frame, deps: Deps) =>
       }
     },
   })
+}

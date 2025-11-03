@@ -78,16 +78,24 @@ LLM reviews the list and chooses one to send via send_file.
 */
 import { tool } from 'ai'
 import { z } from 'zod'
-import type { ToolExecutionError } from '../../../core/errors'
-import { spreadError } from '../../../core/utils/spreadError'
-import { extractFilename } from '../../../core/utils/storageKey'
-import { toolUsageExplanation } from '../../zapid/prompts/toolUsageExplanation'
-import type { Frame } from '../frame'
+import type { ToolExecutionError } from '../errors'
+import type { FileSearchResult } from '../infra/db'
+import { spreadError } from '../utils/spreadError'
+import { extractFilename } from '../utils/storageKey'
 
-//const logger = getLogger(['app', 'agent', 'tool', 'searchFiles'])
+export interface SearchFilesDeps {
+  userId: string
+  generateEmbeddings: (texts: Array<string>) => Promise<Array<Array<{ embedding: Array<number> }>>>
+  searchFiles: (params: {
+    userId: string
+    queryEmbedding: Array<number>
+  }) => Promise<Array<FileSearchResult>>
+  onExplanation?: (explanation: string) => Promise<void> | void
+  onSearchResults?: (results: Array<{ messageId: string; filename: string | undefined }>) => void
+}
 
-export const searchFilesTool = (frame: Frame, deps: Deps) =>
-  tool({
+export function createSearchFilesTool(deps: SearchFilesDeps, explanationPrompt: string) {
+  return tool({
     name: 'search_files',
     description: `Search for files based on content similarity.
 Use when the user asks about documents, files, or specific information that might be stored in uploaded files.
@@ -98,22 +106,17 @@ If several are close, ask a clarifying question or present the list for selectio
 `,
     inputSchema: z.object({
       query: z.string().describe('The query to search for files'),
-      explanation: z.string().describe(toolUsageExplanation),
+      explanation: z.string().describe(explanationPrompt),
     }),
     execute: async (params) => {
       try {
         const { query, explanation } = params
 
-        const externalChatId = await deps.chat.sendText({ text: explanation })
-        frame.outboundMessages.push({
-          externalChatId,
-          type: 'text',
-          text: explanation,
-        })
+        await deps.onExplanation?.(explanation)
 
-        const [embeddings] = await deps.ai.generateEmbeddings([query])
-        const files = await deps.db.searchFiles({
-          userId: frame.user!.id,
+        const [embeddings] = await deps.generateEmbeddings([query])
+        const files = await deps.searchFiles({
+          userId: deps.userId,
           queryEmbedding: embeddings![0]!.embedding,
         })
 
@@ -125,12 +128,14 @@ If several are close, ask a clarifying question or present the list for selectio
           score: file.score,
         }))
 
-        frame.lastSearchFiles = output.map((file) => ({
-          messageId: file.messageId,
-          filename: file.filename,
-        }))
+        deps.onSearchResults?.(
+          output.map((file) => ({
+            messageId: file.messageId,
+            filename: file.filename,
+          }))
+        )
 
-        console.log('completed', {
+        console.log('search_files completed', {
           ...params,
           filesCount: files.length,
           topScore: files[0]?.score ?? 0,
@@ -140,11 +145,11 @@ If several are close, ask a clarifying question or present the list for selectio
             score: file.score,
           })),
         })
-        console.debug('results', { ...params, files: output })
+        console.debug('search_files results', { ...params, files: output })
 
         return output
       } catch (error) {
-        console.error('Tool execution failed', {
+        console.error('search_files failed', {
           ...params,
           ...spreadError(error),
         })
@@ -155,3 +160,4 @@ If several are close, ask a clarifying question or present the list for selectio
       }
     },
   })
+}

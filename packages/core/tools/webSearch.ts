@@ -1,14 +1,21 @@
 import { tool } from 'ai'
 import { z } from 'zod'
-import type { ToolExecutionError } from '../../../core/errors'
-import { spreadError } from '../../../core/utils/spreadError'
-import { toolUsageExplanation } from '../../zapid/prompts/toolUsageExplanation'
-import type { Frame } from '../frame'
+import type { ToolExecutionError } from '../errors'
+import { spreadError } from '../utils/spreadError'
 
-//const logger = getLogger(['app', 'agent', 'tool', 'webSearch'])
+export interface WebSearchResult {
+  title: string
+  url: string
+  description: string
+}
 
-export const webSearchTool = (frame: Frame, deps: Deps) =>
-  tool({
+export interface WebSearchDeps {
+  webSearch: (params: { query: string; signal?: AbortSignal }) => Promise<Array<WebSearchResult>>
+  onExplanation?: (explanation: string) => Promise<void> | void
+}
+
+export function createWebSearchTool(deps: WebSearchDeps, explanationPrompt: string) {
+  return tool({
     name: 'web_search',
     description: `Search the web for current/external information (news, facts, prices, business info, etc.).
 Use when the answer depends on up-to-date internet sources.
@@ -16,19 +23,15 @@ If the user's message includes a URL, do not use this tool; call \`web_fetch\` d
 After discovering relevant URLs, use \`web_fetch\` to retrieve full content when needed.`,
     inputSchema: z.object({
       query: z.string().describe('The search query to find relevant information on the web.'),
-      explanation: z.string().describe(toolUsageExplanation),
+      explanation: z.string().describe(explanationPrompt),
     }),
     execute: async (params, { abortSignal }) => {
       console.log('starting web_search tool execution', params)
 
       try {
         const { query, explanation } = params
-        const externalChatId = await deps.chat.sendText({ text: explanation })
-        frame.outboundMessages.push({
-          externalChatId,
-          type: 'text',
-          text: explanation,
-        })
+        
+        await deps.onExplanation?.(explanation)
 
         const urlMatch = query.match(/https?:\/\/\S+/i)
         if (urlMatch) {
@@ -77,3 +80,4 @@ After discovering relevant URLs, use \`web_fetch\` to retrieve full content when
       }
     },
   })
+}

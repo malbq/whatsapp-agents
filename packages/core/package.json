@@ -1,8 +1,12 @@
 {
-  "name": "core",
+  "name": "@batman/core",
   "module": "index.ts",
   "type": "module",
   "private": true,
+  "exports": {
+    ".": "./index.ts",
+    "./utils/*": "./utils/*.ts"
+  },
   "scripts": {
     "typecheck": "tsc",
     "lint": "oxlint --fix",

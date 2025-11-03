@@ -1,15 +1,39 @@
 import { tool } from 'ai'
 import { z } from 'zod'
-import type { ToolExecutionError } from '../../../core/errors'
-import { getMessageTypeFromMimeType } from '../../../core/utils/getMessageTypeFromMimeType'
-import { spreadError } from '../../../core/utils/spreadError'
-import { toolUsageExplanation } from '../../zapid/prompts/toolUsageExplanation'
-import type { Frame, FrameOutboundMessage } from '../frame'
+import type { ToolExecutionError } from '../errors'
+import { getMessageTypeFromMimeType } from '../utils/getMessageTypeFromMimeType'
+import { spreadError } from '../utils/spreadError'
 
-//const logger = getLogger(['app', 'agent', 'tool', 'sendFile'])
+export interface SendFileDeps {
+  userId: string
+  findStorageKeyById: (params: {
+    userId: string
+    messageId: string
+  }) => Promise<{ storageKey: string } | undefined>
+  retrieveFile: (storageKey: string) => Promise<{
+    data: Uint8Array
+    mimeType: string
+    filename: string
+  }>
+  sendImage: (params: {
+    data: Uint8Array
+    caption?: string
+    mimeType: string
+  }) => Promise<string>
+  sendDocument: (params: {
+    data: Uint8Array
+    filename: string
+    caption?: string
+    mimeType: string
+  }) => Promise<string>
+  onExplanation?: (explanation: string) => Promise<void> | void
+  onImageSent?: (externalChatId: string, storageKey: string, caption?: string) => void
+  onDocumentSent?: (externalChatId: string, storageKey: string, caption?: string) => void
+  validateMessageId?: (messageId: string) => boolean
+}
 
-export const sendFileTool = (frame: Frame, deps: Deps) =>
-  tool({
+export function createSendFileTool(deps: SendFileDeps, explanationPrompt: string) {
+  return tool({
     name: 'send_file',
     description: `Retrieve a specific file from storage and deliver it to the user.
 Only call this after using \`search_files\` tool.
@@ -20,42 +44,29 @@ Do not pass filenames.`,
         .string()
         .describe('The message ID associated with the file to send from `search_files` results'),
       caption: z.string().optional().describe('Optional caption (only used for images)'),
-      explanation: z.string().describe(toolUsageExplanation),
+      explanation: z.string().describe(explanationPrompt),
     }),
     execute: async (params) => {
       try {
         const { messageId, caption, explanation } = params
 
-        if (!frame.user) {
-          console.error('missing user', params)
-          return 'Could not send file due to missing user'
-        }
+        await deps.onExplanation?.(explanation)
 
-        const explanationChatId = await deps.chat.sendText({ text: explanation })
-        frame.outboundMessages.push({
-          externalChatId: explanationChatId,
-          type: 'text',
-          text: explanation,
-        })
-
-        if (!frame.lastSearchFiles?.some((result) => result.messageId === messageId)) {
-          console.error('messageId not found in last search results', {
-            ...params,
-            lastSearchFiles: frame.lastSearchFiles,
-          })
+        if (deps.validateMessageId && !deps.validateMessageId(messageId)) {
+          console.error('messageId not found in last search results', params)
           return 'Please run search_files first and select a file from the results.'
         }
 
-        const message = await deps.db.findStorageKeyById({ userId: frame.user.id, messageId })
+        const message = await deps.findStorageKeyById({ userId: deps.userId, messageId })
         if (!message) {
           console.error('message not found in storage', {
             ...params,
-            userId: frame.user.id,
+            userId: deps.userId,
           })
           return 'File not found. Please run search_files again.'
         }
 
-        const fileInfo = await deps.storage.retrieve(message.storageKey)
+        const fileInfo = await deps.retrieveFile(message.storageKey)
         const messageType = getMessageTypeFromMimeType(fileInfo.mimeType)
 
         if (!messageType) {
@@ -68,47 +79,35 @@ Do not pass filenames.`,
         }
 
         if (messageType === 'image') {
-          const externalChatId = await deps.chat.sendImage({
+          const externalChatId = await deps.sendImage({
             data: fileInfo.data,
             caption,
             mimeType: fileInfo.mimeType,
           })
-          const outboundImage: FrameOutboundMessage = {
-            externalChatId,
-            type: 'image',
-            storageKey: message.storageKey,
-            text: caption ?? '',
-          }
-          frame.outboundMessages.push(outboundImage)
+          deps.onImageSent?.(externalChatId, message.storageKey, caption)
           console.log('image delivered', {
             ...params,
             mimeType: fileInfo.mimeType,
             captionLength: caption?.length ?? 0,
           })
-          console.debug('sent image message', { ...params, ...outboundImage })
+          console.debug('sent image message', { ...params, externalChatId, storageKey: message.storageKey })
           return 'Image delivered to user'
         }
 
-        const externalChatId = await deps.chat.sendDocument({
+        const externalChatId = await deps.sendDocument({
           data: fileInfo.data,
           filename: fileInfo.filename,
           caption,
           mimeType: fileInfo.mimeType,
         })
-        const outboundDocument: FrameOutboundMessage = {
-          externalChatId,
-          type: 'document',
-          storageKey: message.storageKey,
-          text: caption ?? '',
-        }
-        frame.outboundMessages.push(outboundDocument)
+        deps.onDocumentSent?.(externalChatId, message.storageKey, caption)
         console.log('document delivered', {
           ...params,
           filename: fileInfo.filename,
           mimeType: fileInfo.mimeType,
           captionLength: caption?.length ?? 0,
         })
-        console.debug('sent document message', { ...params, ...outboundDocument })
+        console.debug('sent document message', { ...params, externalChatId, storageKey: message.storageKey })
         return 'Document delivered to user'
       } catch (error) {
         console.error('Tool execution failed', {
@@ -122,3 +121,4 @@ Do not pass filenames.`,
       }
     },
   })
+}

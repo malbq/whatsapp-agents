@@ -1,13 +1,15 @@
 import { tool } from 'ai'
 import { z } from 'zod'
-import type { ToolExecutionError } from '../../../core/errors'
-import { spreadError } from '../../../core/utils/spreadError'
-import type { Frame } from '../frame'
+import type { ToolExecutionError } from '../errors'
+import { spreadError } from '../utils/spreadError'
 
-//const logger = getLogger(['app', 'agent', 'tool', 'sendReaction'])
+export interface SendReactionDeps {
+  inboundMessageId?: string
+  sendReaction: (params: { emoji: string; externalChatId: string }) => Promise<void> | void
+}
 
-export const sendReactionTool = (frame: Frame, deps: Deps) =>
-  tool({
+export function createSendReactionTool(deps: SendReactionDeps) {
+  return tool({
     name: 'send_reaction',
     description:
       'Send a reaction emoji to the user message. Use this for quick acknowledgments and emotional responses.',
@@ -15,7 +17,7 @@ export const sendReactionTool = (frame: Frame, deps: Deps) =>
       emoji: z.string().describe('The emoji to send as a reaction (e.g., 👍, ❤️, 😊)'),
     }),
     execute: async ({ emoji }) => {
-      if (!frame.inbound?.externalChatId) {
+      if (!deps.inboundMessageId) {
         console.error('send_reaction: missing inbound message', { emoji })
         return {
           error: 'Missing inbound message',
@@ -23,13 +25,13 @@ export const sendReactionTool = (frame: Frame, deps: Deps) =>
         } satisfies ToolExecutionError
       }
       try {
-        deps.chat.sendReaction({
+        deps.sendReaction({
           emoji,
-          externalChatId: frame.inbound.externalChatId,
+          externalChatId: deps.inboundMessageId,
         })
         console.log('send_reaction: sent', {
           emoji,
-          messageId: frame.inbound.externalChatId,
+          messageId: deps.inboundMessageId,
         })
         return 'Reaction delivered to user'
       } catch (error) {
@@ -44,3 +46,4 @@ export const sendReactionTool = (frame: Frame, deps: Deps) =>
       }
     },
   })
+}
