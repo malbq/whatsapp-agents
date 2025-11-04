@@ -97,3 +97,5 @@ export async function initializeDataStore(): Promise<{
 
   return { dataStore, saveData }
 }
+
+export const { dataStore, saveData } = await initializeDataStore()

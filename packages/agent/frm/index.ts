@@ -1,11 +1,11 @@
 import type { User } from '@batman/core/infra/db'
-import { ingestMessage } from '@batman/core/ingestion/ingestMessage'
 import { createServer } from '@batman/server'
 import type { MessageNotification } from '@batman/whatsapp'
 import { createWebhookApp } from '@batman/whatsapp'
 import { generateText, stepCountIs, type ModelMessage, type Tool } from 'ai'
 import { ok } from 'node:assert'
-import { chat, config, dataStore, db, languageModel, saveData } from './config'
+import { chat, config, db, model } from './config'
+import { dataStore, saveData } from './dataStore'
 import { createSystemPrompt } from './prompts/system'
 import { createCancelInterviewTool } from './tools/cancelInterview'
 import { createConfirmDateTimeTool } from './tools/confirmDateTime'
@@ -26,7 +26,7 @@ async function respond(params: {
   tools: Tool[]
 }): Promise<string> {
   const result = await generateText({
-    model: languageModel,
+    model: model,
     system: createSystemPrompt(dataStore),
     messages: params.messages.map((msg) => ({
       role: msg.role as 'system' | 'user' | 'assistant',
@@ -70,7 +70,7 @@ const processMessage = async (notification: MessageNotification): Promise<void> 
     chat.sendText(notification.userId, {
       text: 'Desculpe, tive um problema ao processar sua mensagem e não consigo te responder agora.',
     })
-    console.error('FRM Agent error:', error)
+    console.error('Error persisting user:', error)
     return
   }
 
@@ -81,36 +81,40 @@ const processMessage = async (notification: MessageNotification): Promise<void> 
     return
   }
 
-  const ingestedMessage = await ingestMessage(message)
+  const recentMessages = await db.findRecentMessages({ userId: user.id }).catch((error) => {
+    console.error('Error finding recent messages:', error)
+    return []
+  })
 
-  const recentMessages = await db.findRecentMessages({ userId: user.id })
-  const conversationMessages: ModelMessage[] = [
-    ...recentMessages.map((msg) => ({
-      role: msg.role,
-      content: msg.content,
-    })),
-    ingestedMessage,
+  const messages: ModelMessage[] = [
+    ...recentMessages.map((msg) => ({ role: msg.role, content: msg.content })),
+    { role: 'user', content: message.text },
   ]
 
+  let responseText: string
   try {
     const tools = createTools(notification.userId)
-
-    const responseText = await respond({
-      messages: conversationMessages,
-      tools,
+    responseText = await respond({ messages, tools })
+  } catch (error) {
+    console.error('Error generating response:', error)
+    await chat.sendText(notification.userId, {
+      text: 'Desculpe, ocorreu um problema no processamento da sua solicitação. Tente novamente mais tarde.',
     })
+    return
+  }
 
-    const assistantMessageId = await chat.sendText(notification.userId, { text: responseText })
+  const assistantMessageId = await chat.sendText(notification.userId, { text: responseText })
 
-    const storeMessagePromise = db.storeMessage([
+  try {
+    await db.storeMessage([
       {
         userId: user.id,
-        role: ingestedMessage.role,
+        role: 'user',
         externalId: message.messageId,
         type: message.type,
         content: [
           {
-            content: ingestedMessage.content as string,
+            content: message.text,
             embedding: [],
           },
         ],
@@ -128,15 +132,10 @@ const processMessage = async (notification: MessageNotification): Promise<void> 
         ],
       },
     ])
-    await Promise.all([ackPromise, storeMessagePromise, saveData()])
   } catch (error) {
-    console.error('FRM Agent error:', error)
-
-    const fallbackMessage =
-      'Desculpe, ocorreu um problema no processamento da sua solicitação. Tente novamente mais tarde.'
-    await chat.sendText(notification.userId, { text: fallbackMessage })
-
-    await saveData()
+    console.error('Error storing message:', error)
+  } finally {
+    await Promise.all([ackPromise, saveData()])
   }
 }
 

@@ -1,4 +1,4 @@
-# WhatsApp Package
+# WhatsApp Package (@batman/whatsapp)
 
 Abstract, self-contained WhatsApp Business API client for agents.
 
@@ -19,8 +19,8 @@ This package provides a factory function to create WhatsApp clients with injecte
 ### Basic Client Usage
 
 ```typescript
-import { createWhatsappClient } from 'whatsapp'
-import type { TextMessage, ImageMessage } from 'whatsapp'
+import { createWhatsappClient } from '@batman/whatsapp'
+import type { TextMessage, ImageMessage } from '@batman/whatsapp'
 
 const chat = createWhatsappClient({
   apiToken: 'your-meta-api-token',
@@ -46,7 +46,7 @@ The package provides a factory to create Hono routes with built-in signature val
 
 ```typescript
 import { Hono } from 'hono'
-import { createWhatsappClient, createWebhookApp } from 'whatsapp'
+import { createWhatsappClient, createWebhookApp } from '@batman/whatsapp'
 
 const app = new Hono()
 const chat = createWhatsappClient({

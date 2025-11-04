@@ -1,4 +1,4 @@
-# Server Package
+# Server Package (@batman/server)
 
 Abstract server builder for creating Hono/Bun web servers with minimal middleware contracts.
 
@@ -16,7 +16,7 @@ This package provides:
 ### Basic Server
 
 ```typescript
-import { createServer } from 'server'
+import { createServer } from '@batman/server'
 
 const server = createServer({
   port: 8080,
@@ -35,7 +35,7 @@ export default {
 ### With Logging Middleware
 
 ```typescript
-import { createServer, createLoggingMiddleware } from 'server'
+import { createServer, createLoggingMiddleware } from '@batman/server'
 
 const server = createServer({ port: 8080 })
 
@@ -62,7 +62,7 @@ const app = server.build()
 ### Adding Custom Routes
 
 ```typescript
-import { createServer } from 'server'
+import { createServer } from '@batman/server'
 
 const server = createServer({ port: 8080 })
 
@@ -80,8 +80,8 @@ const built = server.build()
 ### Composing with WhatsApp
 
 ```typescript
-import { createServer, createLoggingMiddleware } from 'server'
-import { createWebhookApp } from 'whatsapp'
+import { createServer, createLoggingMiddleware } from '@batman/server'
+import { createWebhookApp } from '@batman/whatsapp'
 
 const server = createServer({ port: 8080 })
 
@@ -137,35 +137,6 @@ Creates logging middleware with customizable logger, error formatter, and reques
 - `errorFormatter?: ErrorFormatter` - Custom error formatter
 - `requestIdGenerator?: RequestIdGenerator` - Custom request ID generator
 
-## Types
-
-### `Logger`
-
-```typescript
-interface Logger {
-  debug: (message: string, context?: LogContext) => void
-  info: (message: string, context?: LogContext) => void
-  warn: (message: string, context?: LogContext) => void
-  error: (message: string, context?: LogContext) => void
-}
-```
-
-### `ErrorFormatter`
-
-```typescript
-interface ErrorFormatter {
-  format: (error: unknown) => Record<string, unknown>
-}
-```
-
-### `RequestIdGenerator`
-
-```typescript
-interface RequestIdGenerator {
-  generate: () => string
-}
-```
-
 ## Architecture
 
 This package is designed to be abstract and composable:
@@ -175,4 +146,4 @@ This package is designed to be abstract and composable:
 - No database or storage dependencies
 - Minimal, focused responsibility: server bootstrap and middleware contracts
 
-Agents compose this package with `whatsapp` and `core` packages to build complete applications.
+Agents compose this package with `@batman/whatsapp` and `@batman/core` to build complete applications.

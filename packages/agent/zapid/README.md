@@ -83,3 +83,77 @@ Um assistente pessoal baseado em chat para WhatsApp. Armazena mensagens como mem
 - Memória: Perfil + histórico completo
 - Arquivos: Integração com armazenamento externo
 - Ferramentas: Avançadas (em definição)
+
+## Desenvolvimento e Stack
+
+### Stack técnico
+
+- Framework web: HonoJS v4 (via pacote `@batman/server`)
+- Abstração de LLM: Vercel AI SDK (`ai`) com múltiplos provedores
+- Serviços externos: Meta Business API (WhatsApp), OpenAI Responses API, Google AI Studio
+- Embeddings: Cloudflare Workers AI (geração) + vetores em libSQL
+- Armazenamento de arquivos: Cloudflare R2 (produção), `unstorage` filesystem (dev)
+- Agendador: entrega de lembretes baseada em cron
+
+### Convenções
+
+- TypeScript estrito; prefira `unknown` a `any`. Valide com zod
+- ESM somente; imports relativos, agrupados (std, terceiros, internos)
+- Funções pequenas; retorne cedo em vez de `else`
+- Evite `try/catch` amplo; deixe erros propagarem quando possível
+- Sem estado global mutável; passe dependências por parâmetro
+- Variáveis/Tipos: `camelCase` para variáveis/funções; `PascalCase` para tipos/classes; `UPPER_SNAKE` para env
+
+## Arquitetura e Fluxo
+
+Zapid segue um pipeline baseado em Frame (estado efêmero por requisição), com fases bem definidas:
+
+1. PersistUser garante `frame.user`
+2. IngestMessage captura entrada e mídias
+3. Embedding de mensagens de entrada para enriquecimento/contexto
+4. ResponseGeneration produz a resposta
+5. ResponseDelivery envia a resposta (falha aqui interrompe o fluxo)
+6. Pós-resposta (best-effort): armazenamento de mídia + embedding de saída, depois StoreMessageExchange, ImproveUserProfile
+
+Características:
+
+- Raciocínio orientado a ferramentas: `fetch_memory`, `search_files`, `send_file`, `web_search`, `web_fetch`, `google_places`, `send_reaction`, `update_user_profile`
+- Efeitos colaterais acontecem dentro de sistemas/ferramentas, não no core do pipeline
+- Segmentação de erros: geração, entrega e pós-processamento são blocos isolados
+- Estratégia dupla de embeddings: entrada (contexto + memória futura) e saída (memória/personalização)
+- Logging contextual com `userId`
+- Extensível: insira novos sistemas no fluxo sem aumentar o Frame além do necessário
+
+## Estrutura do Código
+
+- `prompts/` prompts curtos, focados em tokens (ex.: `system.ts`, `userProfile.ts`)
+- `systems/` funções assíncronas focadas, que recebem `(frame, deps, ...args)` e mutam apenas o Frame
+  - Exemplos: `ingestMessage.ts`, `responseGeneration.ts`, `storeMessageExchange.ts`
+- `tools/` ferramentas de primeira classe chamadas pelo modelo (ex.: `searchFiles.ts`, `googlePlaces.ts`)
+- `frame.ts` tipo de Frame; `types.ts` tipos auxiliares do agente
+
+## Banco de Dados
+
+- LibSQL com suporte nativo a vetores
+- Tabelas base: `user`, `message`, `embedding`, `raw_incoming_message`
+- Vetores: `FLOAT32(384)` com similaridade cosseno (indexados)
+
+## Dicas de Testes
+
+- Use o runner do Bun; mantenha testes determinísticos e pequenos
+- Espelhe padrões de `test/*.test.ts` quando adicionar testes
+- Mocks apenas para chat e dependências de IA
+- Prefira asserts exatos: formas de objetos/arrays, `toThrow(ErrorClass)`, `toThrow(/mensagem/)`
+- Limpe o banco em `afterEach` com helpers
+
+## Build, lint, typecheck
+
+A partir da raiz do repositório:
+
+- Typecheck de todos os pacotes: `bun run typecheck`
+- Lint de todos os pacotes (oxc): `bun run lint`
+
+Dentro do pacote, scripts disponíveis:
+
+- `bun run typecheck`
+- `bun run lint`

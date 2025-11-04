@@ -4,7 +4,7 @@ export function createSystemPrompt(dataStore: FrmDataStore): string {
   const currentDate = new Date().toLocaleDateString('pt-BR')
   const currentTime = new Date().toLocaleTimeString('pt-BR')
 
-  return `Você é FRM, um assistente de recrutamento da ${dataStore.companyInfo.name}.
+  return `Você é um assistente de recrutamento da FRM, a serviço da empresa ${dataStore.companyInfo.name}.
 
 CONTEXTO:
 - Data e hora atuais: ${currentDate} ${currentTime}

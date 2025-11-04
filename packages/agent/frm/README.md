@@ -16,11 +16,11 @@ This agent implements a complete recruitment workflow including:
 
 FRM follows the established agent architecture pattern:
 
-- **Composition Root**: `index.ts` wires together core, server, and whatsapp packages
-- **Webhook Integration**: Uses whatsapp `createWebhookApp()` with `app.route()` for message handling
-- **Message Processing**: Processes whatsapp `Message` types directly (no custom IncomingMessage)
-- **Core Persistence**: Uses core DB and storage for message persistence
-- **Recruitment Logic**: In-memory data structures with JSON file persistence for FRM-specific state
+- Composition root: `index.ts` wires together `@batman/core`, `@batman/server`, and `@batman/whatsapp`
+- Webhook integration: uses `createWebhookApp()` from `@batman/whatsapp` with `app.route()`
+- Message processing: handles `Message` types from `@batman/whatsapp` directly (no custom wrapper)
+- Core persistence: uses `@batman/core` DB/storage for message persistence
+- Recruitment logic: in-memory data structures with JSON file persistence for FRM-specific state
 
 ## Data Persistence
 
@@ -34,34 +34,20 @@ The agent maintains state in `frm_data.json` with:
 
 ## Available Tools
 
-### consult_schedule
-
-Check available interview slots for scheduling.
-
-### confirm_datetime
-
-Verify if a specific date and time is available for interviews.
-
-### schedule_interview
-
-Schedule an interview for a candidate at a specific date and time.
-
-### cancel_interview
-
-Cancel a scheduled interview.
-
-### reschedule_interview
-
-Change the date/time of an existing interview.
+- consult_schedule: Check available interview slots
+- confirm_datetime: Verify a specific date/time availability
+- schedule_interview: Schedule a candidate interview
+- cancel_interview: Cancel a scheduled interview
+- reschedule_interview: Change the date/time of an existing interview
 
 ## Recruitment Flow
 
-1. **Scheduling Request**: Candidate expresses interest in scheduling
-2. **Slot Consultation**: Agent shows available time slots
-3. **Confirmation**: Agent confirms chosen date/time availability
-4. **Interview Creation**: Interview is scheduled with 24h reminder
-5. **Reminder Delivery**: Automated reminder sent before interview
-6. **Result Processing**: Handle approval/rejection outcomes
+1. Scheduling request: candidate expresses interest
+2. Slot consultation: agent lists available slots
+3. Confirmation: agent validates chosen date/time
+4. Interview creation: interview scheduled with 24h reminder
+5. Reminder delivery: automated reminder before interview
+6. Result processing: handle approval/rejection outcomes
 
 ## Configuration
 
@@ -73,16 +59,28 @@ Company information is configured in the data store:
 
 ## Development
 
-The agent is designed to work in demonstration environments with:
+Designed for demonstration environments with:
 
 - JSON file-based persistence
 - In-memory data structures
 - Simplified chat interface
-- No complex pipeline dependencies
+- Minimal dependencies on the full pipeline
+
+### Scripts
+
+From the repo root:
+
+- Typecheck: `bun run typecheck`
+- Lint: `bun run lint`
+
+Inside this package:
+
+- `bun run typecheck`
+- `bun run lint`
 
 ## Integration with Core Package
 
-The FRM agent demonstrates what features are needed from the core package:
+The FRM agent demonstrates what features are needed from `@batman/core`:
 
 - AI response generation with tool calling
 - Basic database and storage interfaces

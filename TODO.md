@@ -2,11 +2,12 @@
 
 ## Next
 
-- We need to keep tool results in context, alongside messages
-
-  - For example, if user follow-up with a question after a web search, we currently only know about agent messages. Search results were discarded. That would cause agent to search again, spending more tokens and time.
-  - Tool results must be stored in context as long as the starting message is in the "recent" list.
-  - No need to embed tool results.
+- Refactor and clean FRM agent code.
+- Look at convex/agent as reference to @batman/core
+- Refactor docker/compose scripts to be used by agents. The goal is to build an executable and run it inside a container with postgres database as sibling service. Use Bun.build.
+- Replace libsql+atlas with postgres+drizzle(?)
+- Improve how messages are stored. We need to use ModelMessage type from ai package as base and extend it with our own properties.
+- We need to keep tool results in context, alongside messages. For example, if user follow-up with a question after a web search, we currently only know about agent messages. Search results were discarded. That would cause agent to search again, spending more tokens and time. Tool results must be stored in context as long as the starting message is in the "recent" list. No tool results embedding or vector search.
 
 - **Loggingg**
 

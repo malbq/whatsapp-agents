@@ -1,8 +1,6 @@
 import { spreadError } from '../utils/spreadError.js'
 import type { SearchParams, SearchResult, WebSearch } from './webSearch.js'
 
-//const logger = getLogger(['app', 'infra', 'searchBrave'])
-
 interface BraveSearchResult {
   title: string
   url: string

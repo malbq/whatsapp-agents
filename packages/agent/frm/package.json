@@ -5,7 +5,8 @@
   "private": true,
   "scripts": {
     "typecheck": "tsc",
-    "lint": "oxlint --fix"
+    "lint": "oxlint --fix",
+    "db:migrate": "atlas schema apply --env local --auto-approve"
   },
   "dependencies": {
     "@batman/core": "workspace:*",
