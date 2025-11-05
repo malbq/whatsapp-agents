@@ -55,6 +55,7 @@ export type WaMessagesChange = {
       | WaLocationMessage
       | WaContactsMessage
       | WaStickerMessage
+      | WaButtonMessage
     >
     statuses?: Array<WaStatusUpdate>
   }
@@ -69,6 +70,7 @@ export type WaMessageType =
   | 'location'
   | 'contacts'
   | 'sticker'
+  | 'button'
   | 'unsupported'
 
 export interface WaIncomingMessage {
@@ -158,6 +160,14 @@ export interface WaReactionMessage extends WaIncomingMessage {
   reaction: {
     message_id: string
     emoji: string
+  }
+}
+
+export interface WaButtonMessage extends WaIncomingMessage {
+  type: 'button'
+  button: {
+    payload: string
+    text: string
   }
 }
 
@@ -384,6 +394,7 @@ export type WaTemplateParameter =
 
 export interface WaTemplateTextParameter {
   type: 'text'
+  parameter_name?: string
   text: string
 }
 

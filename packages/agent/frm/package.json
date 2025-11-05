@@ -1,20 +1,28 @@
 {
   "name": "agent-frm",
+  "version": "0.0.1",
   "module": "index.ts",
   "type": "module",
   "private": true,
   "scripts": {
+    "dev": "bun run --hot index.ts --no-clear-screen",
     "typecheck": "tsc",
     "lint": "oxlint --fix",
-    "db:migrate": "atlas schema apply --env local --auto-approve"
+    "db:migrate": "bun --eval \"import { Database } from 'bun:sqlite'; import { readFileSync } from 'fs'; const db = new Database('./storage/frm.db'); db.run(readFileSync('./migrations/schema.sql', 'utf-8')); db.close(); console.log('Schema applied');\"",
+    "db:clean": "bun --eval \"import { Database } from 'bun:sqlite'; const db = new Database('./storage/frm.db'); db.run('DELETE FROM embedding'); db.run('DELETE FROM message'); db.close(); console.log('Tables cleaned');\""
   },
   "dependencies": {
     "@batman/core": "workspace:*",
     "@batman/server": "workspace:*",
-    "@batman/whatsapp": "workspace:*"
+    "@batman/whatsapp": "workspace:*",
+    "@ai-sdk/openai": "catalog:",
+    "ai": "catalog:",
+    "zod": "catalog:",
+    "hono": "catalog:"
   },
   "devDependencies": {
     "@types/bun": "^1.3.0",
+    "@types/node": "^24.10.0",
     "oxlint": "catalog:",
     "typescript": "catalog:"
   }

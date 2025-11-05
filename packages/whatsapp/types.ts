@@ -186,13 +186,15 @@ export interface InteractiveCtaUrlMessage extends BaseMessage {
   }
 }
 
+export type TemplateParameters = Array<string> | Record<string, string>
+
 export interface TemplateMessage extends BaseMessage {
   type: 'template'
   name: string
   language: string
-  headerParameters?: Array<string>
-  bodyParameters: Array<string>
-  footerParameters?: Array<string>
+  headerParameters?: TemplateParameters
+  bodyParameters: TemplateParameters
+  footerParameters?: TemplateParameters
 }
 
 export interface UnsupportedMessage extends BaseMessage {

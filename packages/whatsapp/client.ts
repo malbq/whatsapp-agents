@@ -1,6 +1,12 @@
 import { createHash } from 'node:crypto'
 import { FailedToDownloadMediaError, MediaHashMismatchError, ResponseDeliveryError } from './errors'
-import type { Chat, Notification, StatusUpdate, StatusUpdateNotification } from './types'
+import type {
+  Chat,
+  Notification,
+  StatusUpdate,
+  StatusUpdateNotification,
+  TemplateParameters,
+} from './types'
 import { getExtFromMimeType } from './utils'
 import type {
   WaAcknowledgeMessageResponse,
@@ -19,6 +25,7 @@ import type {
   WaOutgoingTemplate,
   WaOutgoingText,
   WaTemplateComponent,
+  WaTemplateTextParameter,
 } from './whatsappTypes'
 
 export interface WhatsappConfig {
@@ -123,7 +130,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
     )
 
     if (!httpResponse.ok) {
-      console.error('Failed to send message: {status} {statusText}', {
+      console.error(`Failed to send message: ${httpResponse.status} ${httpResponse.statusText}`, {
         status: httpResponse.status,
         statusText: httpResponse.statusText,
         body: await httpResponse.text(),
@@ -145,10 +152,10 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
 
   return {
     parseNotification: async (body) => {
-      const change = (body as WaNotification).entry?.[0]?.changes?.[0]
+      const change = (body as WaNotification).entry?.[0]?.changes?.[0]?.value
       if (!change) return null
 
-      const contact = change.value.contacts?.[0]
+      const contact = change.contacts?.[0]
       if (!contact) return null
 
       const notification: Notification = {
@@ -156,7 +163,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
         userName: contact.profile.name,
       }
 
-      const statusUpdate = change.value.statuses?.[0]
+      const statusUpdate = change.statuses?.[0]
       if (statusUpdate) {
         return {
           ...notification,
@@ -164,7 +171,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
         } satisfies StatusUpdateNotification
       }
 
-      const waMessage = change.value.messages?.[0]
+      const waMessage = change.messages?.[0]
       if (!waMessage) return null
 
       switch (waMessage.type) {
@@ -208,6 +215,15 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
               caption: waMessage.image.caption,
               data: await fetchReceivedMedia(waMessage.image.id, waMessage.image.sha256),
               mimeType: waMessage.image.mime_type,
+            },
+          }
+        case 'button':
+          return {
+            ...notification,
+            message: {
+              messageId: waMessage.id,
+              type: 'text',
+              text: waMessage.button.text,
             },
           }
         default:
@@ -439,19 +455,19 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
       if (headerParameters) {
         components.push({
           type: 'header',
-          parameters: headerParameters.map((parameter) => ({ type: 'text', text: parameter })),
+          parameters: convertParameters(headerParameters),
         })
       }
       if (bodyParameters) {
         components.push({
           type: 'body',
-          parameters: bodyParameters.map((parameter) => ({ type: 'text', text: parameter })),
+          parameters: convertParameters(bodyParameters),
         })
       }
       if (footerParameters) {
         components.push({
           type: 'footer',
-          parameters: footerParameters.map((parameter) => ({ type: 'text', text: parameter })),
+          parameters: convertParameters(footerParameters),
         })
       }
       const requestBody: WaOutgoingTemplate = {
@@ -483,4 +499,15 @@ function normalizePhoneNumber(phone: string): string {
   }
 
   return cleaned
+}
+
+function convertParameters(params: TemplateParameters): Array<WaTemplateTextParameter> {
+  if (Array.isArray(params)) {
+    return params.map((parameter) => ({ type: 'text', text: parameter }))
+  }
+  return Object.entries(params).map(([key, value]) => ({
+    type: 'text',
+    parameter_name: key,
+    text: value,
+  }))
 }

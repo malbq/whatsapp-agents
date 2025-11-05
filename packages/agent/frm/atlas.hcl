@@ -4,11 +4,7 @@ variable "db_url" {
 }
 
 env "local" {
-  src = [
-    "file://../../core/migrations/user.sql",
-    "file://../../core/migrations/message.sql",
-    "file://../../core/migrations/embedding.sql"
-  ]
+  src = "file://migrations"
   url = var.db_url
   dev = "sqlite://file?mode=memory"
 }

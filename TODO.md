@@ -2,7 +2,6 @@
 
 ## Next
 
-- Refactor and clean FRM agent code.
 - Look at convex/agent as reference to @batman/core
 - Refactor docker/compose scripts to be used by agents. The goal is to build an executable and run it inside a container with postgres database as sibling service. Use Bun.build.
 - Replace libsql+atlas with postgres+drizzle(?)

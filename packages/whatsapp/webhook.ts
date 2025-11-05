@@ -59,6 +59,7 @@ export function createWebhookApp(
     }
 
     if ('message' in notification) {
+      console.debug('WhatsApp message received:', body)
       await handlers.onMessage(notification)
       return c.body('', 200)
     }

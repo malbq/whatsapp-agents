@@ -2,6 +2,22 @@
 
 The FRM (Recruitment Management) agent is a specialized AI assistant designed to handle interview scheduling and recruitment processes for demonstration environments.
 
+## Dashboard UI
+
+The agent includes a simple web-based dashboard for managing candidates and viewing message threads:
+
+- **Dashboard** (`/`): View all candidates and start conversation flows with a click
+- **Message Threads** (`/threads`): Read-only view of all conversations with candidates
+
+To access the dashboard, navigate to `http://localhost:8080` (or your configured port) in your browser.
+
+### Dashboard Features
+
+- View all candidates with their current flow status
+- Start conversation flows with candidates directly from the UI (calls `/start` endpoint)
+- View message history organized by user/candidate
+- No realtime updates - refresh the page to see new messages
+
 ## Overview
 
 This agent implements a complete recruitment workflow including:
@@ -35,7 +51,6 @@ The agent maintains state in `frm_data.json` with:
 ## Available Tools
 
 - consult_schedule: Check available interview slots
-- confirm_datetime: Verify a specific date/time availability
 - schedule_interview: Schedule a candidate interview
 - cancel_interview: Cancel a scheduled interview
 - reschedule_interview: Change the date/time of an existing interview
@@ -48,6 +63,40 @@ The agent maintains state in `frm_data.json` with:
 4. Interview creation: interview scheduled with 24h reminder
 5. Reminder delivery: automated reminder before interview
 6. Result processing: handle approval/rejection outcomes
+
+### Runtime Context
+
+The agent assumes the following context is available at runtime:
+
+- Current date/time
+- Hiring company information: name, location, contact
+- Recruitment manual/guidelines to ground responses
+
+### Start Endpoint and Initial Message
+
+- HTTP GET: `/start?phone={{phoneNumber}}`
+- Sends WhatsApp template message `TEMPLATE_NAME` to `phoneNumber` with params: `name`, `position`
+- Persists the outbound message as part of the agent conversation
+
+### Detailed Scheduling Flow
+
+1. Candidate receives the start template and opts in (positive response)
+2. If negative: the agent sends a polite closing message
+3. If positive:
+   - Agent consults availability and presents options
+   - Candidate chooses a date and time
+   - Agent confirms the selected slot
+   - Agent schedules the interview
+   - Agent sends a confirmation message including rescheduling instructions
+
+### Detailed Rescheduling Flow
+
+1. Candidate requests to reschedule
+2. Agent consults availability and presents options
+3. Candidate chooses a new date and time
+4. Agent confirms the selected slot
+5. Agent reschedules the interview (cancel + schedule)
+6. Agent sends a confirmation message including rescheduling information
 
 ## Configuration
 

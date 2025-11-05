@@ -11,6 +11,10 @@ export namespace LibSql {
     url ??= 'file:./storage/assistant.db'
     client ??= createClient({ url })
     return {
+      async query(sql, args) {
+        return client.execute({ sql, args })
+      },
+
       async storeWebhookEvent(payload, externalId) {
         try {
           await client.execute({
