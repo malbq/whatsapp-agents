@@ -73,116 +73,35 @@ export interface ContactMessage extends BaseMessage {
 
 export interface InteractiveListMessage extends BaseMessage {
   type: 'interactive_list'
-  header?: {
-    type: 'text'
-    text: string
-  }
-  body: {
-    text: string
-  }
-  footer?: {
-    text: string
-  }
-  action: {
-    button: string
-    sections: Array<{
+  header?: string
+  body: string
+  footer?: string
+  openListButton: string
+  sections: Array<{
+    title?: string
+    options: Array<{
       title: string
-      rows: Array<{
-        id: string
-        title: string
-        description?: string
-      }>
+      description?: string
     }>
-  }
+  }>
 }
 
 export interface InteractiveButtonMessage extends BaseMessage {
   type: 'interactive_button'
-  header?:
-    | {
-        type: 'text'
-        text: string
-      }
-    | {
-        type: 'image'
-        image: {
-          id?: string
-          link?: string
-        }
-      }
-    | {
-        type: 'document'
-        document: {
-          id?: string
-          link?: string
-          filename?: string
-        }
-      }
-    | {
-        type: 'video'
-        video: {
-          id?: string
-          link?: string
-        }
-      }
-  body: {
-    text: string
-  }
-  footer?: {
-    text: string
-  }
-  action: {
-    buttons: Array<{
-      type: 'reply'
-      reply: {
-        id: string
-        title: string
-      }
-    }>
-  }
+  header?: string
+  body: string
+  footer?: string
+  buttons: Array<string>
 }
 
 export interface InteractiveCtaUrlMessage extends BaseMessage {
   type: 'interactive_cta_url'
-  header?:
-    | {
-        type: 'text'
-        text: string
-      }
-    | {
-        type: 'image'
-        image: {
-          id?: string
-          link?: string
-        }
-      }
-    | {
-        type: 'document'
-        document: {
-          id?: string
-          link?: string
-          filename?: string
-        }
-      }
-    | {
-        type: 'video'
-        video: {
-          id?: string
-          link?: string
-        }
-      }
-  body: {
-    text: string
-  }
-  footer?: {
-    text: string
-  }
+  header?: string
+  body: string
+  footer?: string
   action: {
-    name: 'cta_url'
-    parameters: {
-      display_text: string
-      url: string
-    }
+    text: string
+    url: string
   }
 }
 
@@ -237,6 +156,7 @@ export interface Chat {
     notification: unknown
   ) => Promise<MessageNotification | StatusUpdateNotification | null>
   acknowledgeMessage: (messageId: string) => Promise<void>
+  sendTypingIndicator: (messageId: string) => Promise<void>
   sendText: (userId: string, message: Omit<TextMessage, 'messageId' | 'type'>) => Promise<string>
   sendImage: (userId: string, message: Omit<ImageMessage, 'messageId' | 'type'>) => Promise<string>
   sendDocument: (

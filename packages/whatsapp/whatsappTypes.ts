@@ -55,7 +55,7 @@ export type WaMessagesChange = {
       | WaLocationMessage
       | WaContactsMessage
       | WaStickerMessage
-      | WaButtonMessage
+      | WaTemplateButtonMessage
     >
     statuses?: Array<WaStatusUpdate>
   }
@@ -71,6 +71,7 @@ export type WaMessageType =
   | 'contacts'
   | 'sticker'
   | 'button'
+  | 'interactive'
   | 'unsupported'
 
 export interface WaIncomingMessage {
@@ -163,11 +164,27 @@ export interface WaReactionMessage extends WaIncomingMessage {
   }
 }
 
-export interface WaButtonMessage extends WaIncomingMessage {
+export interface WaTemplateButtonMessage extends WaIncomingMessage {
   type: 'button'
   button: {
     payload: string
     text: string
+  }
+}
+
+export interface WaInteractiveButtonReplyMessage extends WaIncomingMessage {
+  type: 'interactive'
+  interactive: {
+    type: 'button_reply' | 'list_reply'
+    button_reply?: {
+      id: string
+      title: string
+    }
+    list_reply?: {
+      id: string
+      title: string
+      description: string
+    }
   }
 }
 
@@ -248,7 +265,7 @@ export interface WaOutgoingInteractiveList extends WaOutgoingMessage {
     action: {
       button: string
       sections: Array<{
-        title: string
+        title?: string
         rows: Array<{
           id: string
           title: string

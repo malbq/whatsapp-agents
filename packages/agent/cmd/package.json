@@ -1,0 +1,27 @@
+{
+  "name": "@batman/agent-cmd",
+  "version": "0.0.1",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "bun run --hot --no-clear-screen index.ts",
+    "typecheck": "tsc",
+    "lint": "oxlint --fix"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "catalog:",
+    "@batman/core": "workspace:*",
+    "@batman/server": "workspace:*",
+    "@batman/whatsapp": "workspace:*",
+    "ai": "catalog:",
+    "hono": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/bun": "catalog:",
+    "@types/node": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:"
+  }
+}

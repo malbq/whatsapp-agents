@@ -34,6 +34,7 @@ export interface WhatsappConfig {
 }
 
 const WA_API_VERSION = import.meta.env.WA_API_VERSION || 'v23.0'
+const MAX_OPTIONS_PER_SECTION = 10
 
 export function createWhatsappClient(config: WhatsappConfig): Chat {
   const authorizationHeader = `Bearer ${config.apiToken}`
@@ -146,8 +147,14 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
       })
       throw new ResponseDeliveryError('Failed to send message')
     }
-
-    return response.messages[0].id
+    const messageId = response.messages[0].id
+    console.debug(
+      `Sent "${requestBody.type}${
+        requestBody.type === 'interactive' ? `-${requestBody.interactive.type}` : ''
+      }" response`,
+      { messageId }
+    )
+    return messageId
   }
 
   return {
@@ -249,9 +256,8 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
           },
           body: JSON.stringify({
             messaging_product: 'whatsapp',
-            status: 'read',
             message_id: messageId,
-            typing_indicator: { type: 'text' },
+            status: 'read',
           }),
         }
       )
@@ -271,12 +277,49 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
         return
       }
 
-      console.error('Failed to acknowledge message: {code} {type} {message}', {
-        message: response.error?.message,
-        code: response.error?.code,
-        type: response.error?.type,
-        details: response.error?.error_data?.details,
-      })
+      console.error(
+        `Failed to acknowledge message: ${response.error?.code} ${response.error?.type} ${response.error?.message}`,
+        response.error?.error_data?.details
+      )
+    },
+
+    sendTypingIndicator: async (messageId) => {
+      const response = (await fetch(
+        `https://graph.facebook.com/${WA_API_VERSION}/${config.businessPhoneId}/messages`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: authorizationHeader,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messaging_product: 'whatsapp',
+            message_id: messageId,
+            status: 'read',
+            typing_indicator: { type: 'text' },
+          }),
+        }
+      )
+        .then((response) => response.json())
+        .catch((error) => {
+          return {
+            success: false,
+            error: {
+              message: error.message,
+              code: error.code,
+            },
+          }
+        })) as WaAcknowledgeMessageResponse
+
+      if (response.success) {
+        console.log(`Typing indicator sent: ${messageId}`)
+        return
+      }
+
+      console.error(
+        `Failed to send typing indicator: ${response.error?.code} ${response.error?.type} ${response.error?.message}`,
+        response.error?.error_data?.details
+      )
     },
 
     sendText: async (userId, { text, replyingTo }) => {
@@ -288,9 +331,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
         ...(replyingTo && { context: { message_id: replyingTo } }),
       }
 
-      const messageId = await sendMessageRequest(requestBody)
-      console.debug(`Sent 'text' response`, { messageId })
-      return messageId
+      return await sendMessageRequest(requestBody)
     },
 
     sendImage: async (userId, { data, caption, mimeType, replyingTo }) => {
@@ -306,8 +347,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
         },
         ...(replyingTo && { context: { message_id: replyingTo } }),
       }
-
-      return sendMessageRequest(message)
+      return await sendMessageRequest(message)
     },
 
     sendDocument: async (userId, { data, filename, caption, mimeType, replyingTo }) => {
@@ -325,9 +365,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
         ...(replyingTo && { context: { message_id: replyingTo } }),
       }
 
-      const messageId = await sendMessageRequest(message)
-      console.debug(`Sent 'document' response`, { messageId })
-      return messageId
+      return await sendMessageRequest(message)
     },
 
     sendLocation: async (userId, { latitude, longitude, name, address, replyingTo }) => {
@@ -344,9 +382,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
         ...(replyingTo && { context: { message_id: replyingTo } }),
       }
 
-      const messageId = await sendMessageRequest(requestBody)
-      console.debug(`Sent 'location' response`, { messageId })
-      return messageId
+      return await sendMessageRequest(requestBody)
     },
 
     sendReaction: async (userId, { targetMessageId, emoji }) => {
@@ -360,9 +396,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
         },
       }
 
-      const messageId = await sendMessageRequest(requestBody)
-      console.debug(`Sent 'reaction' response`, { messageId })
-      return messageId
+      return await sendMessageRequest(requestBody)
     },
 
     sendContact: async (userId, contact) => {
@@ -384,47 +418,76 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
         ],
       }
 
-      const messageId = await sendMessageRequest(requestBody)
-      console.debug(`Sent 'contacts' response`, { messageId })
-      return messageId
+      return await sendMessageRequest(requestBody)
     },
 
-    sendInteractiveList: async (userId, { header, body, footer, action, replyingTo }) => {
+    sendInteractiveList: async (
+      userId,
+      { header, body, footer, openListButton, sections, replyingTo }
+    ) => {
+      const $sections: WaOutgoingInteractiveList['interactive']['action']['sections'] = []
+      let used = 0
+      for (const section of sections) {
+        if (used >= MAX_OPTIONS_PER_SECTION) break
+        const remaining = MAX_OPTIONS_PER_SECTION - used
+        const rows: Array<{ id: string; title: string; description?: string }> = []
+        for (const option of section.options) {
+          if (rows.length >= remaining) break
+          rows.push({
+            id: option.title,
+            title: option.title.slice(0, 24),
+            description: option.description?.slice(0, 72),
+          })
+        }
+        if (rows.length === 0) continue
+        $sections.push({
+          title: section.title?.slice(0, 24),
+          rows,
+        })
+        used += rows.length
+      }
       const requestBody: WaOutgoingInteractiveList = {
         messaging_product: 'whatsapp',
         to: userId,
         type: 'interactive',
         interactive: {
           type: 'list',
-          ...(header && { header }),
-          body,
-          ...(footer && { footer }),
-          action,
+          header: header ? { type: 'text', text: header.slice(0, 60) } : undefined,
+          body: { text: body.slice(0, 4096) },
+          footer: footer ? { text: footer.slice(0, 60) } : undefined,
+          action: {
+            button: openListButton.slice(0, 20),
+            sections: $sections,
+          },
         },
         ...(replyingTo && { context: { message_id: replyingTo } }),
       }
-
-      const messageId = await sendMessageRequest(requestBody)
-      console.debug(`Sent 'interactive list' response`, { messageId })
-      return messageId
+      return await sendMessageRequest(requestBody)
     },
 
-    sendInteractiveButton: async (userId, { header, body, footer, action, replyingTo }) => {
+    sendInteractiveButton: async (userId, { header, body, footer, buttons, replyingTo }) => {
       const requestBody: WaOutgoingInteractiveButton = {
         messaging_product: 'whatsapp',
         to: userId,
         type: 'interactive',
         interactive: {
           type: 'button',
-          ...(header && { header }),
-          body,
-          ...(footer && { footer }),
-          action,
+          header: header ? { type: 'text', text: header.slice(0, 60) } : undefined,
+          body: { text: body.slice(0, 1024) },
+          footer: footer ? { text: footer.slice(0, 60) } : undefined,
+          action: {
+            buttons: buttons.map((button) => ({
+              type: 'reply',
+              reply: {
+                id: button,
+                title: button.slice(0, 20),
+              },
+            })),
+          },
         },
         ...(replyingTo && { context: { message_id: replyingTo } }),
       }
-
-      return sendMessageRequest(requestBody)
+      return await sendMessageRequest(requestBody)
     },
 
     sendInteractiveCtaUrl: async (userId, { header, body, footer, action, replyingTo }) => {
@@ -434,17 +497,21 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
         type: 'interactive',
         interactive: {
           type: 'cta_url',
-          ...(header && { header }),
-          body,
-          ...(footer && { footer }),
-          action,
+          header: header ? { type: 'text', text: header.slice(0, 60) } : undefined,
+          body: { text: body.slice(0, 1024) },
+          footer: footer ? { text: footer.slice(0, 60) } : undefined,
+          action: {
+            name: 'cta_url',
+            parameters: {
+              display_text: action.text.slice(0, 20),
+              url: action.url,
+            },
+          },
         },
         ...(replyingTo && { context: { message_id: replyingTo } }),
       }
 
-      const messageId = await sendMessageRequest(requestBody)
-      console.debug(`Sent 'interactive button' response`, { messageId })
-      return messageId
+      return await sendMessageRequest(requestBody)
     },
 
     sendTemplate: async (
@@ -484,9 +551,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
         },
       }
 
-      const messageId = await sendMessageRequest(requestBody)
-      console.debug(`Sent 'template' response`, { messageId })
-      return messageId
+      return await sendMessageRequest(requestBody)
     },
   }
 }
