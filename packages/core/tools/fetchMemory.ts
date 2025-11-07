@@ -4,7 +4,6 @@ import { generateEmbeddings } from '../ai/generateEmbeddings'
 import type { ToolExecutionError } from '../errors'
 import type { DB } from '../infra/db'
 import { spreadError } from '../utils/spreadError'
-import { extractFilename } from '../utils/storageKey'
 
 export interface FetchMemoryContext {
   userId: string
@@ -41,9 +40,11 @@ Generate an optimized search query for finding relevant files and documents.`,
           role: message.role,
           type: message.type,
           content: message.content,
-          chunk: `${message.chunkSequence} of ${message.totalChunks}`,
+          chunk:
+            message.totalChunks > 1
+              ? `${message.chunkSequence} of ${message.totalChunks}`
+              : undefined,
           timestamp: message.timestamp.toISOString(),
-          filename: extractFilename(message.storageKey), // FIXME we should be storing original filename, not relying in storage key
         }))
       } catch (error) {
         console.error('fetch_memory failed', {

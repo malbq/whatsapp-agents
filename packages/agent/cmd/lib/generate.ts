@@ -26,12 +26,46 @@ export async function generate(
         targetMessageId,
       })
     },
+    toModelOutput: () => ({
+      type: 'text',
+      value: 'Reaction delivered to user',
+    }),
   })
 
   const result = await generateText({
     model,
-    system,
-    prompt: command,
+    messages: [
+      {
+        role: 'system',
+        content:
+          'You are a command assistant that generates WhatsApp messages for testing various message types. Your role is to generate structured WhatsApp messages based on command requests.',
+      },
+      {
+        role: 'system',
+        content: `Available commands and their expected outputs:
+- /text - Generate a text message with interesting content
+- /contact - Generate a contact with realistic name and phone number
+- /location - Generate a location with coordinates, name, and address
+- /options {N} - Generate an interactive list of {N} options`,
+      },
+      {
+        role: 'system',
+        content: `Guidelines:
+- Use realistic data (locations, contacts, URLs, etc.)
+- For interactive lists, respect the number of options.
+- For buttons, provide clear action labels as simple strings
+- Keep text concise but informative`,
+      },
+      {
+        role: 'system',
+        content:
+          'Always react to user messages with a random and funny emoji using the send_reaction tool before generating the message response.',
+      },
+      {
+        role: 'user',
+        content: command,
+      },
+    ],
     tools: {
       send_reaction: sendReactionTool,
     },
@@ -44,23 +78,27 @@ export async function generate(
     stopWhen: stepCountIs(10),
   })
 
-  console.log('result', JSON.stringify(result.output.message, null, 2))
+  console.log('result', result.content)
+
+  Bun.write(
+    'agent-cmd-messages.json',
+    JSON.stringify(
+      result.steps.map((step) => ({
+        messages:
+          step.finishReason === 'stop'
+            ? step.response.messages.at(-1)
+            : step.response.messages.slice(-2),
+        usage: step.usage,
+        toolCalls: step.finishReason === 'tool-calls' ? step.toolCalls : undefined,
+        toolResults: step.finishReason === 'tool-calls' ? step.toolResults : undefined,
+        finishReason: step.finishReason,
+        sources: step.sources,
+      })),
+      null,
+      2
+    )
+  )
+  // Bun.write('agent-cmd-messages.json', JSON.stringify(result.response.messages, null, 2))
 
   return result.output.message
 }
-
-const system = `You are a command assistant that generates WhatsApp messages for testing various message types.
-Your role is to generate structured WhatsApp messages based on command requests.
-
-Available commands and their expected outputs:
-- /text - Generate a text message with interesting content
-- /contact - Generate a contact with realistic name and phone number
-- /location - Generate a location with coordinates, name, and address
-- /options {N} - Generate an interactive list of {N} options
-
-Guidelines:
-- Always react to user messages with a random and funny emoji using the send_reaction tool before generating the message response.
-- Use realistic data (locations, contacts, URLs, etc.)
-- For interactive lists, respect the number of options.
-- For buttons, provide clear action labels as simple strings
-- Keep text concise but informative`

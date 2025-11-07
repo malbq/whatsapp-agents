@@ -1,12 +1,67 @@
 # Progress
 
+## Refactor message+embedding tables
+
+- Migrate from libsql+atlas to postgres+drizzle
+
+Message
+
+- id (ulid)
+- user_id (->user.id)
+- model_message (json)
+- type (text, image, audio, document)
+- timestamp
+- wa_id
+- usage (json, only for assistant messages)
+- resource_id (->resource.id)
+
+Embedding
+
+- id (ulid)
+- message_id (->message.id)
+- sequence (integer)
+- content (text)
+- vector (vector)
+
+Resource
+
+- id (ulid)
+- user_id (->user.id)
+- size
+- mime type
+- uploaded at
+- hash (to prevent storing duplicates)
+- original file name
+
 ## Next
 
-- Look at convex/agent as reference to @batman/core
+- Hybrid context retrieval using PostgreSQL (FTS/tsvector + embeddings).
+- Store tool calls in message table, without embedding. No tool results embedding or vector search.
+  - This will be done at onStepFinish hook
+  - after every step, there are either: 1 assistant message with finishReason=stop or 2 assistant messages with finishReason=tool_calls
+- whatsapp media messages still split in 2 `UserModelMessage` when caption is present
 - Refactor docker/compose scripts to be used by agents. The goal is to build an executable and run it inside a container with postgres database as sibling service. Use Bun.build.
 - Replace libsql+atlas with postgres+drizzle(?)
-- Improve how messages are stored. We need to use ModelMessage type from ai package as base and extend it with our own properties.
-- We need to keep tool results in context, alongside messages. For example, if user follow-up with a question after a web search, we currently only know about agent messages. Search results were discarded. That would cause agent to search again, spending more tokens and time. Tool results must be stored in context as long as the starting message is in the "recent" list. No tool results embedding or vector search.
+- resend typing indicator after whatsapp time out while assistant is generating response
+- Improve tool instructions and anti-patterns (like re-search if recent search results are available)
+
+## Demo Agent
+
+- Transform cmd agent in demo agent:
+
+  - no history
+  - echo transcription of audio messages
+  - describe images
+  - summarize documents
+  - /web command
+  - /react command
+
+- **Human Takeover**
+
+- Steps: detect_issue → notify_human_queue → claim → resolve → handback.
+- Policies during human_active: AI restricted to assist/suggest-only; limited tool set (e.g., read-only web_fetch; block side effects).
+- Notifications and SLAs: Events on entering pending_human; timers/escalation for response SLAs.
+- Audit trail: Record transitions with actor (system/AI/human) and reason to support compliance.
 
 - **Loggingg**
 
@@ -83,6 +138,9 @@
   - [WhatsApp Cloud API Calling](https://developers.facebook.com/docs/whatsapp/cloud-api/calling)
 
 ## Learnings & Insights
+
+Pair type=file+role=user represent a file uploaded by user
+Pair type=file+role=tool represent a file sent by assistant with send_file tool
 
 ### WhatsApp
 
