@@ -29,6 +29,7 @@ Use Bun's test runner from the root. You can scope to names or files:
 
 - Run one test file: `bun test test/xyz.test.ts`
 - Run by name: `bun test -t "name substring"`
+- Always use environment variable `AGENT=1` to run tests: `AGENT=1 bun test`
 
 ## Developing agents
 

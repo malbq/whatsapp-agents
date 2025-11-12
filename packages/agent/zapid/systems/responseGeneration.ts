@@ -1,58 +1,49 @@
-import type { Frame } from '../../agent/default/frame'
-import { fetchMemoryTool } from '../../agent/default/tools/fetchMemory'
-import { googlePlacesTool } from '../../agent/default/tools/googlePlaces'
-import { searchFilesTool } from '../../agent/default/tools/searchFiles'
-import { sendFileTool } from '../../agent/default/tools/sendFile'
-import { sendReactionTool } from '../../agent/default/tools/sendReaction'
-import { updateUserProfileTool } from '../../agent/default/tools/updateUserProfile'
-import { webFetchTool } from '../../agent/default/tools/webFetch'
-import { webSearchTool } from '../../agent/default/tools/webSearch'
-import { recentMessages as recentMessagesPrompt } from '../../agent/zapid/prompts/recentMessages'
-import { userProfile } from '../../agent/zapid/prompts/userProfile'
-import type { AIMessage } from '../core-ai'
-import { ResponseGenerationError } from '../errors'
-import type { MessageType } from '../infra/db'
-import { extractFilename } from '../utils/storageKey'
-
-//const logger = getLogger(['app', 'agent', 'responseGeneration'])
-
-function formatWithTag(type: MessageType, content: string, filename?: string) {
-  switch (type) {
-    case 'audio':
-      return `[aud] ${content}`
-    case 'image':
-      return `[img] ${content}`
-    case 'document':
-      return `[doc${filename ? `:${filename}` : ''}] ${content}`
-    default:
-      return content
-  }
-}
+import { ResponseGenerationError } from '@batman/core/errors'
+import { extractFilename } from '@batman/core/utils/storageKey'
+import { toSystemModelMessage } from '@batman/core/utils/toModelMessage'
+import type { ModelMessage } from 'ai'
+import { ok } from 'node:assert'
+import type { Frame } from '../frame'
+import { recentMessages as recentMessagesPrompt } from '../prompts/recentMessages'
+import { userProfile } from '../prompts/userProfile'
+import type { Deps } from '../types'
 
 export async function responseGeneration(frame: Frame, deps: Deps) {
-  if (!frame.user) throw new ResponseGenerationError('User not found')
-  if (!frame.inbound?.text && !frame.inbound?.media?.transcription)
-    throw new ResponseGenerationError('User message not found')
+  ok(frame.user, new ResponseGenerationError('User not found'))
 
   // BUILD CONTEXT
-  const messagesForAgent: Array<AIMessage> = []
+  const messagesForAgent: Array<ModelMessage> = []
 
-  // CONTEXT: USER PROFILE
-  if (frame.user.profile.length) {
-    messagesForAgent.push({ role: 'system', content: userProfile(frame.user.profile) })
+  if (frame.user.profile.length > 0) {
+    messagesForAgent.push(userProfile(frame.user.profile))
     console.log('Context included: user profile')
   }
 
   // CONTEXT: RECENT THREAD
   const recentMessages = await deps.db.findRecentMessages({ userId: frame.user.id })
   if (recentMessages.length) {
-    messagesForAgent.push({ role: 'system', content: recentMessagesPrompt })
-    recentMessages.forEach((message) => {
+    messagesForAgent.push(toSystemModelMessage(recentMessagesPrompt))
+    for (const message of recentMessages) {
+      // Extract role from modelMessage if present, otherwise infer from type
+      const role = message.modelMessage
+        ? (message.modelMessage as { role?: string }).role ?? 'user'
+        : 'user'
+
+      // Fetch filename from resource if present
+      let filename: string | undefined
+      if (message.resourceId) {
+        const resource = await deps.db.findResource({
+          userId: frame.user.id,
+          resourceId: message.resourceId,
+        })
+        filename = resource?.originalFilename ? extractFilename(resource.storageKey) : undefined
+      }
+
       messagesForAgent.push({
-        role: message.role,
-        content: formatWithTag(message.type, message.content, extractFilename(message.storageKey)),
+        role,
+        content: formatWithTag(message.type, message.content, filename),
       })
-    })
+    }
     console.log(`Context: recent messages (${recentMessages.length})`)
   }
 
@@ -71,19 +62,23 @@ export async function responseGeneration(frame: Frame, deps: Deps) {
     messagesForAgent.push({ role: 'user', content: frame.inbound.text })
   }
 
+  // Helper for sending explanation messages
+  const sendExplanation = async (explanation: string) => {
+    const externalChatId = await deps.chat.sendText({ text: explanation })
+    frame.outboundMessages.push({
+      externalChatId,
+      type: 'text',
+      text: explanation,
+    })
+  }
+
+  // Track last search results for send_file validation
+  let lastSearchResults: Array<{ messageId: string; filename: string | undefined }> = []
+
   try {
     const response = await deps.ai.respond({
       messages: messagesForAgent,
-      tools: [
-        fetchMemoryTool(frame, deps, recentMessages),
-        searchFilesTool(frame, deps),
-        sendFileTool(frame, deps),
-        webSearchTool(frame, deps),
-        webFetchTool(frame, deps),
-        googlePlacesTool(frame, deps),
-        sendReactionTool(frame, deps),
-        updateUserProfileTool(frame, deps),
-      ],
+      tools: [],
     })
 
     for await (const chunk of response.stream) {
@@ -106,4 +101,29 @@ export async function responseGeneration(frame: Frame, deps: Deps) {
     })
     throw error
   }
+}
+
+// Helper function to store outbound media files
+async function storeOutboundMedia(
+  frame: Frame,
+  deps: Deps,
+  data: ArrayBuffer,
+  mimeType: string,
+  filename?: string
+): Promise<string> {
+  if (!frame.user) throw new Error('User required for storing media')
+
+  const uuid = Bun.randomUUIDv7('base64url')
+  const { newStorageKey } = await import('@batman/core/utils/storageKey')
+  const storageFilename = newStorageKey(uuid, filename, mimeType)
+  const storageKey = `${frame.user.id}/${storageFilename}`
+
+  await deps.storage.store({
+    key: storageKey,
+    data,
+    mimeType,
+    filename,
+  })
+
+  return storageKey
 }

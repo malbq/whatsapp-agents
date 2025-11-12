@@ -1,10 +1,8 @@
 import type { Frame } from '../frame'
 import type { Deps } from '../types'
-import { IngestionError } from '../../../core/errors'
-import { parsePdf } from '../../../core/utils/parsePdf'
-import { spreadError } from '../../../core/utils/spreadError'
-
-//const logger = getLogger(['app', 'agent', 'ingestion', 'document'])
+import { IngestionError } from '@batman/core/errors'
+import { parsePdf } from '@batman/core/utils/parsePdf'
+import { spreadError } from '@batman/core/utils/spreadError'
 
 export async function ingestDocument(frame: Frame, deps: Deps): Promise<void> {
   if (!frame.inbound?.media?.data)

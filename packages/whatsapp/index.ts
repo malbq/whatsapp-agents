@@ -4,6 +4,19 @@ export type { WhatsappConfig } from './client'
 export { createWebhookApp } from './webhook'
 export type { WebhookConfig, WebhookHandlers } from './webhook'
 
+export {
+  contactMessageSchema,
+  documentMessageSchema,
+  imageMessageSchema,
+  interactiveButtonMessageSchema,
+  interactiveCtaUrlMessageSchema,
+  interactiveListMessageSchema,
+  locationMessageSchema,
+  reactionMessageSchema,
+  templateMessageSchema,
+  textMessageSchema,
+} from './schema'
+
 export type {
   AudioMessage,
   Chat,

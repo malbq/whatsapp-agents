@@ -4,3 +4,6 @@
 !example.env
 node_modules/
 storage/
+eval/
+poc/
+spec/

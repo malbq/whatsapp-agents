@@ -7,7 +7,7 @@ import { spreadError } from '../utils/spreadError'
 
 export interface FetchMemoryContext {
   userId: string
-  findSimilarMessages: DB['findSimilarMessages']
+  findSimilarMessages: DB.Repository['findSimilarSnippets']
 }
 
 export function createFetchMemoryTool(ctx: FetchMemoryContext) {
@@ -36,16 +36,16 @@ Generate an optimized search query for finding relevant files and documents.`,
         })
         console.debug('fetch_memory results', { query, similarMessages })
 
-        return similarMessages.map((message) => ({
-          role: message.role,
-          type: message.type,
-          content: message.content,
-          chunk:
-            message.totalChunks > 1
-              ? `${message.chunkSequence} of ${message.totalChunks}`
-              : undefined,
-          timestamp: message.timestamp.toISOString(),
-        }))
+        return []
+        // similarMessages.map((message) => ({
+        //   type: message.type,
+        //   content: message.content,
+        //   chunk:
+        //     message.totalChunks > 1
+        //       ? `${message.chunkSequence} of ${message.totalChunks}`
+        //       : undefined,
+        //   timestamp: message.timestamp.toISOString(),
+        // }))
       } catch (error) {
         console.error('fetch_memory failed', {
           query,

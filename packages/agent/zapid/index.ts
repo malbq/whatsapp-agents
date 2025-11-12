@@ -1,98 +1,51 @@
-/*
-Key concepts
-  - Frame: per-request state holder.
-  - Systems: small functions that read/write the Frame and use injected deps.
-  - ResponseGeneration assembles system prompt, profile, recent messages, and current input.
-  - Delivery happens inside responseGeneration.
+import { FilesystemStorage } from '@batman/core/infra/storageFilesystem'
+import { WebSearchBrave } from '@batman/core/infra/webSearchBrave'
+import { createServer } from '@batman/server'
+import { createWebhookApp, createWhatsappClient } from '@batman/whatsapp'
+import { ok } from 'node:assert'
+import { agent } from './agent'
+import { runContext } from './context'
+import { dbFactory } from './db'
+import pkg from './package.json'
 
-Agent Workflow
-  User -[send message]-> Agent
-  Agent: create Frame
-  Agent: persistUser
-    - if missing user: Agent -[Fallback]-> User (abort)
-  Agent -[send "status read" and "typing indicator"]-> User
-  Agent: ingestMessage
-    - text
-    - voice
-    - audio
-    - image
-    - document
-  Agent -[generate response]-> AI Provider
-  - tools may be called:
-    - fetch_memory
-    - search_files
-    - send_file: Server -[media message]-> User
-    - web_search
-    - web_fetch
-    - google_places: Server -[location/contact message]-> User
-    - send_reaction: Server -[reaction message]-> User
-    - update_user_profile
-  AI Provider -[text answer]-> Agent
-  Agent -[send text message]-> User
-  Post-response:
-    Agent: store media (document/image) + embed messages
-    Agent: store message exchange
-    Agent: add user's message id to updated profile version
+ok(import.meta.env.META_WEBHOOK_VERIFY_TOKEN, 'META_WEBHOOK_VERIFY_TOKEN is required')
+ok(import.meta.env.META_API_TOKEN, 'META_API_TOKEN is required')
+ok(import.meta.env.META_APP_SECRET, 'META_APP_SECRET is required')
+ok(import.meta.env.WA_BUSINESS_PHONE_ID, 'WA_BUSINESS_PHONE_ID is required')
+ok(import.meta.env.OPENAI_API_KEY, 'OPENAI_API_KEY is required')
+ok(import.meta.env.GOOGLE_AI_API_KEY, 'GOOGLE_AI_API_KEY is required')
+ok(import.meta.env.BRAVE_SEARCH_API_KEY, 'BRAVE_SEARCH_API_KEY is required')
+ok(import.meta.env.GOOGLE_PLACES_API_KEY, 'GOOGLE_PLACES_API_KEY is required')
 
-Error segmentation
-  - Response flow: on failure, log and send a polite fallback; continue.
-  - Post-tasks: best-effort; failures are logged and do not affect the user.
-*/
-import { Frame } from './frame'
-import { embedMessages } from './systems/embedMessages'
-import { ingestMessage } from './systems/ingestMessage'
-import { persistUser } from './systems/persistUser'
-import { responseGeneration } from './systems/responseGeneration'
-import { storeMedia } from './systems/storeMedia'
-import { storeMessageExchange } from './systems/storeMessageExchange'
-import { updateProfileVersionMessageId } from './systems/updateProfileVersionMessageId'
-import { spreadError } from '../../core/utils/spreadError'
-import type { Deps, IncomingMessage } from './types'
+const apiToken = import.meta.env.META_API_TOKEN
+const businessPhoneId = import.meta.env.WA_BUSINESS_PHONE_ID
+const appSecret = import.meta.env.META_APP_SECRET
+const verifyToken = import.meta.env.META_WEBHOOK_VERIFY_TOKEN
 
-export type { Deps, IncomingMessage }
+const chat = createWhatsappClient({ apiToken, businessPhoneId })
+const db = dbFactory()
+const storage = FilesystemStorage.storage('./storage')
+const webSearch = WebSearchBrave.createWebSearch()
 
-export async function agent(deps: Deps, message: IncomingMessage): Promise<void> {
-  console.log('Starting agent response flow', { message })
-  const frame = new Frame()
-
-  await persistUser(frame, deps, {
-    userName: message.userName,
-    userExternalId: message.userExternalId,
-  })
-
-  if (!frame.user) {
-    // Não podemos fazer nada sem um usuário, nem salvar a resposta no banco
-    console.error('User not found')
-    deps.chat.sendText({ text: 'Desculpe, tive um problema e não consigo te responder agora.' })
-    return
-  }
-
-  // await withContext(
-  //   { userId: frame.user.id, userName: frame.user.name, userExternalId: frame.user.externalId },
-  //   async () => {
-  deps.chat.acknowledgeMessage(message.externalId)
-  try {
-    await ingestMessage(frame, deps, message)
-    await responseGeneration(frame, deps)
-  } catch (error) {
-    console.error(`Agent response flow error: ${String(error)}`, { ...spreadError(error) })
-    if (frame.outboundMessages.length === 0) {
-      const errorText = 'Desculpe, tive um problema ao processar sua mensagem.'
-      deps.chat.sendText({ text: errorText })
-      frame.outboundMessages.push({
-        type: 'text',
-        text: errorText,
+const webhookApp = createWebhookApp(
+  chat,
+  { appSecret, verifyToken },
+  {
+    onMessage: async (notification) => {
+      await runContext(notification, async () => {
+        await agent({
+          chat,
+          db,
+          storage,
+          webSearch,
+        })
       })
-    }
+    },
   }
+)
 
-  try {
-    await Promise.all([storeMedia(frame, deps), embedMessages(frame, deps)])
-    await storeMessageExchange(frame, deps)
-    await updateProfileVersionMessageId(frame, deps)
-  } catch (error) {
-    console.error(`Error after agent's response: ${String(error)}`, { ...spreadError(error) })
-  }
-  // }
-  // )
-}
+const port = parseInt(import.meta.env.PORT || '8080')
+const { app, serve } = createServer({ name: 'Zapid agent', version: pkg.version, port })
+app.route('/webhook', webhookApp)
+
+serve()

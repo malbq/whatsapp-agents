@@ -1,4 +1,4 @@
-import { LibSql } from '@batman/core/infra/dbLibSql'
+import { Postgres } from '@batman/core/infra/dbPostgres'
 import { createServer } from '@batman/server'
 import { createWebhookApp, createWhatsappClient } from '@batman/whatsapp'
 import { ok } from 'node:assert'
@@ -21,7 +21,7 @@ ok(import.meta.env.TEMPLATE_NAME, 'TEMPLATE_NAME is required')
 ok(import.meta.env.OPENAI_API_KEY, 'OPENAI_API_KEY is required')
 ok(import.meta.env.START_SECRET_TOKEN, 'START_SECRET_TOKEN is required')
 
-const db = LibSql.db({ url: 'file:./storage/frm.db' })
+const db = Postgres.dbFactory({ url: 'postgresql://localhost/frm' })
 
 const apiToken = import.meta.env.META_API_TOKEN
 const businessPhoneId = import.meta.env.WA_BUSINESS_PHONE_ID
@@ -40,7 +40,7 @@ const { app, serve } = createServer({ name: 'FRM agent', version: pkg.version, p
 app.route('/webhook', webhookApp)
 
 // API routes for candidate CRUD
-const candidateRoutes = createCandidateRoutes(db)
+const candidateRoutes = createCandidateRoutes()
 app.post('/api/candidates', candidateRoutes.create)
 app.get('/api/candidates', candidateRoutes.list)
 app.get('/api/candidates/:id', candidateRoutes.get)

@@ -1,38 +1,14 @@
 import { openai } from '@ai-sdk/openai'
-import { generateText } from '@batman/core/ai/generateText'
-import type { WhatsappResponseSchema } from '@batman/core/ai/schema'
-import type { Chat } from '@batman/whatsapp'
-import { stepCountIs, tool } from 'ai'
-import { z } from 'zod'
+import {
+  generateWhatsappMessage,
+  type WhatsappResponseSchema,
+} from '@batman/core/ai/generateWhatsappMessage'
+import { stepCountIs } from 'ai'
 
 const model = openai.responses('gpt-5-mini-2025-08-07')
-// const model = openai('gpt-5-nano-2025-08-07')
 
-export async function generate(
-  command: string,
-  chat: Chat,
-  userId: string,
-  targetMessageId: string
-): Promise<WhatsappResponseSchema> {
-  const sendReactionTool = tool({
-    description:
-      'Send a reaction emoji to the user message. Use random and funny emojis for quick acknowledgments and emotional responses.',
-    inputSchema: z.object({
-      emoji: z.string().describe('The emoji to send as a reaction (e.g., 👍, ❤️, 😊)'),
-    }),
-    execute: async ({ emoji }) => {
-      chat.sendReaction(userId, {
-        emoji,
-        targetMessageId,
-      })
-    },
-    toModelOutput: () => ({
-      type: 'text',
-      value: 'Reaction delivered to user',
-    }),
-  })
-
-  const result = await generateText({
+export async function generate(command: string): Promise<WhatsappResponseSchema['message']> {
+  const result = await generateWhatsappMessage({
     model,
     messages: [
       {
@@ -46,7 +22,7 @@ export async function generate(
 - /text - Generate a text message with interesting content
 - /contact - Generate a contact with realistic name and phone number
 - /location - Generate a location with coordinates, name, and address
-- /options {N} - Generate an interactive list of {N} options`,
+- /options {N} - Generate an interactive list of {N} options using interactive_list or interactive_button, depending on the number of options.`,
       },
       {
         role: 'system',
@@ -57,48 +33,38 @@ export async function generate(
 - Keep text concise but informative`,
       },
       {
-        role: 'system',
-        content:
-          'Always react to user messages with a random and funny emoji using the send_reaction tool before generating the message response.',
-      },
-      {
         role: 'user',
-        content: command,
+        content: [
+          {
+            type: 'text',
+            text: command,
+          },
+        ],
       },
     ],
-    tools: {
-      send_reaction: sendReactionTool,
-    },
     providerOptions: {
       openai: {
-        reasoningEffort: 'low',
+        reasoningEffort: 'minimal',
         textVerbosity: 'low',
+        reasoningSummary: null,
       },
     },
     stopWhen: stepCountIs(10),
   })
 
-  console.log('result', result.content)
+  console.log('result', result.output)
 
   Bun.write(
     'agent-cmd-messages.json',
     JSON.stringify(
-      result.steps.map((step) => ({
-        messages:
-          step.finishReason === 'stop'
-            ? step.response.messages.at(-1)
-            : step.response.messages.slice(-2),
-        usage: step.usage,
-        toolCalls: step.finishReason === 'tool-calls' ? step.toolCalls : undefined,
-        toolResults: step.finishReason === 'tool-calls' ? step.toolResults : undefined,
-        finishReason: step.finishReason,
-        sources: step.sources,
+      result.messages.map(({ modelMessage, usage }) => ({
+        modelMessage,
+        usage,
       })),
       null,
       2
     )
   )
-  // Bun.write('agent-cmd-messages.json', JSON.stringify(result.response.messages, null, 2))
 
-  return result.output.message
+  return result.output
 }

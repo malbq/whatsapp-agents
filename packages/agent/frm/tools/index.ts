@@ -2,7 +2,7 @@ import type { Chat } from '@batman/whatsapp'
 import type { Tool } from 'ai'
 import type { Candidate } from '../types'
 import { createCancelInterviewTool } from './cancelInterview'
-import { createConsultScheduleTool } from './consultSchedule'
+import createConsultScheduleTool from './consultSchedule'
 import { createRescheduleInterviewTool } from './rescheduleInterview'
 import { createScheduleInterviewTool } from './scheduleInterview'
 

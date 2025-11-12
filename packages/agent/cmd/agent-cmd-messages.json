@@ -1,0 +1,35 @@
+[
+  {
+    "modelMessage": {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "reasoning",
+          "text": "",
+          "providerOptions": {
+            "openai": {
+              "itemId": "rs_0347ee5218bddddf006913e6b7d67c81919c5dfc94f9337efb",
+              "reasoningEncryptedContent": null
+            }
+          }
+        },
+        {
+          "type": "text",
+          "text": "{\"message\":{\"type\":\"text\",\"text\":\"Quick tip: Back up your phone photos to a cloud service this week — local storage fails more often than we think. If you want, I can suggest free backup options and step-by-step setup.\"}}",
+          "providerOptions": {
+            "openai": {
+              "itemId": "msg_0347ee5218bddddf006913e6b81b04819194f35f1a8271c46e"
+            }
+          }
+        }
+      ]
+    },
+    "usage": {
+      "inputTokens": 929,
+      "outputTokens": 59,
+      "totalTokens": 988,
+      "reasoningTokens": 0,
+      "cachedInputTokens": 0
+    }
+  }
+]

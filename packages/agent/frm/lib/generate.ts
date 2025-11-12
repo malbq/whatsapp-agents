@@ -1,5 +1,6 @@
 import { openai } from '@ai-sdk/openai'
-import { generateText, stepCountIs, type ModelMessage, type Tool } from 'ai'
+import { generateWhatsappMessage } from '@batman/core/ai/generateWhatsappMessage'
+import { stepCountIs, type ModelMessage, type Tool } from 'ai'
 import { createSystemPrompt } from '../prompts/system'
 import { dataStore } from './dataStore'
 
@@ -12,17 +13,21 @@ export interface GenerateParams {
   tools: Tool[]
 }
 
-export async function generate({ messages, tools }: GenerateParams): Promise<string> {
+export async function generate({ messages, tools }: GenerateParams): Promise<{
+  text: string
+  messages: ModelMessage[]
+}> {
   console.log('Generating response with input:', { messages })
-  const result = await generateText({
+  const result = await generateWhatsappMessage({
     model,
     system: createSystemPrompt(dataStore),
     messages,
-    tools: Object.fromEntries(
-      tools.map((tool) => [(tool as unknown as { name: string }).name, tool])
-    ),
+    tools: Object.fromEntries(tools.map((tool) => [tool.title, tool])),
     stopWhen: stepCountIs(MAX_STEPS),
   })
 
-  return result.text
+  return {
+    text: result.text,
+    messages: result.response.messages,
+  }
 }

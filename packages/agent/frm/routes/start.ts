@@ -3,7 +3,7 @@ import type { Chat } from '@batman/whatsapp'
 import type { Context } from 'hono'
 import { findCandidateByPhone, saveData, updateCandidate } from '../lib/dataStore'
 
-export function createStartRoute(db: DB, chat: Chat) {
+export function createStartRoute(db: DB.Repository, chat: Chat) {
   return async function startRoute(c: Context) {
     // Verify bearer token
     const authHeader = c.req.header('Authorization')
@@ -38,7 +38,7 @@ export function createStartRoute(db: DB, chat: Chat) {
 
       // Store user in database first
       const user = await db.persistUser({
-        externalId: phoneNumber,
+        waId: phoneNumber,
         name: candidate.name,
       })
 
@@ -57,9 +57,17 @@ export function createStartRoute(db: DB, chat: Chat) {
       await db.storeMessage([
         {
           userId: user.id,
-          role: 'assistant',
-          externalId: templateMessageId,
+          waId: templateMessageId,
           type: 'text',
+          modelMessage: {
+            role: 'assistant',
+            content: `Olá ${candidate.name},
+
+Somos do Departamento de Recrutamento e Seleção da empresa FRM.
+Com alegria informamos que o seu currículo foi selecionado para participar do processo seletivo para a vaga de *${candidate.position}*.
+
+Gostaria de dar sequência no agendamento da entrevista?`,
+          },
           content: [
             {
               content: `Olá ${candidate.name},

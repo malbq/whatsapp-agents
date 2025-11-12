@@ -1,9 +1,7 @@
 import type { Frame } from '../frame'
 import type { Deps } from '../types'
-import { IngestionError } from '../../../core/errors'
-import { spreadError } from '../../../core/utils/spreadError'
-
-//const logger = getLogger(['app', 'agent', 'ingestion', 'voice'])
+import { IngestionError } from '@batman/core/errors'
+import { spreadError } from '@batman/core/utils/spreadError'
 
 export async function ingestVoice(frame: Frame, deps: Deps): Promise<void> {
   if (!frame.inbound?.media?.data) throw new IngestionError('Media is required for voice ingestion')

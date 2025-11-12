@@ -32,8 +32,8 @@ export function createWebhookApp(
       return c.text(challenge)
     }
 
-    console.warn('Webhook verification failed', { mode, token: token ? '[REDACTED]' : undefined })
-    return c.body('', 403)
+    console.warn('Webhook verification failed')
+    return c.body(null, 401)
   })
 
   // Webhook notification endpoint

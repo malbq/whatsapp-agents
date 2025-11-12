@@ -1,16 +1,11 @@
 import { tool } from 'ai'
 import { z } from 'zod'
 import type { ToolExecutionError } from '../errors'
+import type { WebSearch } from '../infra/webSearch'
 import { spreadError } from '../utils/spreadError'
 
-export interface WebSearchResult {
-  title: string
-  url: string
-  description: string
-}
-
 export interface WebSearchContext {
-  webSearch: (params: { query: string; signal?: AbortSignal }) => Promise<Array<WebSearchResult>>
+  webSearch: WebSearch
   onExplanation?: (explanation: string) => Promise<void> | void
 }
 

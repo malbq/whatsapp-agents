@@ -1,6 +1,6 @@
+import type { Message } from '@batman/core/infra/db'
 import type { Frame } from '../frame'
 import type { Deps } from '../types'
-import type { DbMessageInput } from '../../../core/infra/db'
 
 //const logger = getLogger(['app', 'agent', 'storeMessageExchange'])
 
@@ -11,39 +11,71 @@ export async function storeMessageExchange(frame: Frame, deps: Deps): Promise<vo
     return
   }
 
-  const messagesToStore: DbMessageInput[] = []
+  const messagesToStore: Message[] = []
 
+  // Handle inbound media message with transcription
   if (frame.inbound.media?.transcriptionEmbedding) {
+    let resourceId: string | undefined
+    if (frame.inbound.media.storageKey) {
+      const resource = await deps.db.createResource({
+        userId: frame.user.id,
+        storageKey: frame.inbound.media.storageKey,
+        mimeType: frame.inbound.media.mimeType,
+        originalFilename: frame.inbound.media.filename,
+      })
+      resourceId = resource.id
+    }
+
     messagesToStore.push({
       userId: frame.user.id,
-      role: 'user',
-      externalId: frame.inbound.externalChatId,
+      waId: frame.inbound.externalChatId,
       type: frame.inbound.type,
-      storageKey: frame.inbound.media.storageKey,
+      modelMessage: {
+        role: 'user',
+        content: frame.inbound.media.transcription ?? '',
+      },
+      resourceId,
       content: frame.inbound.media.transcriptionEmbedding,
     })
   }
 
+  // Handle inbound text message
   if (frame.inbound.textEmbedding) {
     messagesToStore.push({
       userId: frame.user.id,
-      role: 'user',
-      externalId: frame.inbound.externalChatId,
+      waId: frame.inbound.externalChatId,
       // when transcription is present we already stored a message with `inbound.type` (previous `if` block)
       // Then this must be a caption and we store it as `text` message
       type: frame.inbound.media?.transcriptionEmbedding ? 'text' : frame.inbound.type,
+      modelMessage: {
+        role: 'user',
+        content: frame.inbound.text ?? '',
+      },
       content: frame.inbound.textEmbedding,
     })
   }
 
+  // Handle outbound messages
   for (const outboundMessage of frame.outboundMessages) {
+    let resourceId: string | undefined
+    if (outboundMessage.storageKey) {
+      const resource = await deps.db.createResource({
+        userId: frame.user.id,
+        storageKey: outboundMessage.storageKey,
+      })
+      resourceId = resource.id
+    }
+
     messagesToStore.push({
       userId: frame.user.id,
-      role: 'assistant',
-      externalId: outboundMessage.externalChatId,
+      waId: outboundMessage.externalChatId,
       type: outboundMessage.type,
+      modelMessage: {
+        role: 'assistant',
+        content: outboundMessage.text,
+      },
       content: outboundMessage.textEmbedding ?? [],
-      storageKey: outboundMessage.storageKey,
+      resourceId,
     })
   }
 
@@ -55,6 +87,6 @@ export async function storeMessageExchange(frame: Frame, deps: Deps): Promise<vo
 
   console.log(
     `Stored ${messageIds.length} messages (${inboundMessageCount} user, ${assistantMessageCount} assistant)`,
-    { messages: messagesToStore.map((m) => `${m.role}/${m.type}`) }
+    { messages: messagesToStore.map((m) => `${(m.modelMessage as any)?.role}/${m.type}`) }
   )
 }

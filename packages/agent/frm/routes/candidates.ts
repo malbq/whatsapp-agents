@@ -1,15 +1,14 @@
-import type { DB } from '@batman/core/infra/db'
 import type { Context } from 'hono'
 import { dataStore, saveData } from '../lib/dataStore'
 import type { Candidate } from '../types'
 
-export function createCandidateRoutes(db: DB) {
+export function createCandidateRoutes() {
   return {
     // Create new candidate
     async create(c: Context) {
       try {
         const body = await c.req.json()
-        
+
         if (!body.name || !body.phone || !body.position) {
           return c.json({ error: 'Name, phone, and position are required' }, 400)
         }

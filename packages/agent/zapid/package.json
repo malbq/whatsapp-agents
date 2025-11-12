@@ -1,5 +1,6 @@
 {
   "name": "@batman/agent-zapid",
+  "version": "0.0.1",
   "module": "index.ts",
   "type": "module",
   "private": true,
@@ -8,8 +9,15 @@
     "lint": "oxlint --fix"
   },
   "dependencies": {
-    "zod": "catalog:",
-    "@batman/core": "workspace:*"
+    "@batman/core": "workspace:*",
+    "@batman/server": "workspace:*",
+    "@batman/whatsapp": "workspace:*",
+    "@ai-sdk/openai": "catalog:",
+    "@ai-sdk/google": "catalog:",
+    "ai": "catalog:",
+    "drizzle-orm": "catalog:",
+    "postgres": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@types/bun": "catalog:",

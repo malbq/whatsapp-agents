@@ -1,7 +1,7 @@
 import type { DB } from '@batman/core/infra/db'
 import type { Context } from 'hono'
 
-export function createClearMessagesRoute(db: DB) {
+export function createClearMessagesRoute(db: DB.Repository) {
   return async function clearMessagesRoute(c: Context) {
     const userId = c.req.param('userId')
 
@@ -10,8 +10,7 @@ export function createClearMessagesRoute(db: DB) {
     }
 
     try {
-      // Delete all messages for the user (embeddings will cascade delete)
-      await db.query('DELETE FROM message WHERE user_id = ?', [userId])
+      await db.deleteMessages({ userId })
 
       return c.json({ success: true })
     } catch (error) {

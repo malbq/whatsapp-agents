@@ -2,9 +2,9 @@ import { tool } from 'ai'
 import { z } from 'zod'
 import { getAvailableSlots } from '../lib/dataStore'
 
-export function createConsultScheduleTool() {
-  return tool({
-    name: 'consult_schedule',
+export const createConsultScheduleTool = () =>
+  tool({
+    title: 'consult_schedule',
     description: 'Consult available interview slots for scheduling.',
     inputSchema: z.object({}),
     execute: async () => {
@@ -15,15 +15,12 @@ export function createConsultScheduleTool() {
       }
 
       // Group by date
-      const groupedByDate = slots.reduce(
-        (acc: Record<string, string[]>, slot) => {
-          const dateKey = slot.date
-          if (!acc[dateKey]) acc[dateKey] = []
-          acc[dateKey].push(slot.time)
-          return acc
-        },
-        {} as Record<string, string[]>
-      )
+      const groupedByDate = slots.reduce((acc: Record<string, string[]>, slot) => {
+        const dateKey = slot.date
+        if (!acc[dateKey]) acc[dateKey] = []
+        acc[dateKey].push(slot.time)
+        return acc
+      }, {} as Record<string, string[]>)
 
       let response = 'Available interview slots:\n'
       Object.entries(groupedByDate).forEach(([date, times]) => {
@@ -33,4 +30,3 @@ export function createConsultScheduleTool() {
       return response
     },
   })
-}

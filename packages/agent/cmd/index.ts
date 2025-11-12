@@ -23,6 +23,7 @@ const webhookApp = createWebhookApp(
   {
     onMessage: async (notification) => {
       const { message, userId } = notification
+      console.log('message received', message)
 
       const command = extractCommand(message)
       console.log('command extracted', command)
@@ -38,45 +39,23 @@ const webhookApp = createWebhookApp(
           return
         }
 
-        const response = await generate(command, chat, userId, message.messageId)
+        const response = await generate(command)
 
         switch (response.type) {
           case 'text':
-            await chat.sendText(userId, { text: response.text })
+            await chat.sendText(userId, response)
             break
           case 'location':
-            await chat.sendLocation(userId, {
-              latitude: response.latitude,
-              longitude: response.longitude,
-              name: response.name,
-              address: response.address,
-            })
+            await chat.sendLocation(userId, response)
             break
           case 'contact':
-            await chat.sendContact(userId, {
-              name: response.name,
-              phone: response.phone,
-            })
+            await chat.sendContact(userId, response)
             break
-          case 'interactive':
-            if (response.options.length <= 3) {
-              await chat.sendInteractiveButton(userId, {
-                body: response.text,
-                buttons: response.options,
-              })
-            } else {
-              await chat.sendInteractiveList(userId, {
-                body: response.text,
-                openListButton: response.openListLabel,
-                sections: [
-                  {
-                    options: response.options.map((option) => ({
-                      title: option,
-                    })),
-                  },
-                ],
-              })
-            }
+          case 'interactive_button':
+            await chat.sendInteractiveButton(userId, response)
+            break
+          case 'interactive_list':
+            await chat.sendInteractiveList(userId, response)
             break
         }
       } catch (error) {

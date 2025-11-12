@@ -1,12 +1,14 @@
-import type { DB, User } from '@batman/core/infra/db'
-import type { Chat, MessageNotification } from '@batman/whatsapp'
+import type { DB } from '@batman/core/infra/db'
+import { toDbMessage } from '@batman/core/utils/toDbMessage'
+import { toAssistantModelMessage } from '@batman/core/utils/toModelMessage'
+import type { Chat, MessageNotification, TextMessage } from '@batman/whatsapp'
 import type { ModelMessage } from 'ai'
 import { createTools } from '../tools'
 import { findCandidateByPhone } from './dataStore'
 import { generate } from './generate'
 
 export interface ProcessMessageDeps {
-  db: DB
+  db: DB.Repository
   chat: Chat
 }
 
@@ -18,7 +20,6 @@ export const processMessage =
 
     const ackPromise = deps.chat.acknowledgeMessage(message.messageId)
 
-    // Find candidate by phone number
     const candidate = findCandidateByPhone(userWhatsappId)
     if (!candidate) {
       deps.chat.sendText(userWhatsappId, {
@@ -27,45 +28,66 @@ export const processMessage =
       return
     }
 
-    let user: User
-    try {
-      user = await deps.db.persistUser({ externalId: userWhatsappId, name: userName })
-    } catch (error) {
-      deps.chat.sendText(userWhatsappId, {
-        text: 'Desculpe, tive um problema ao processar sua mensagem e não consigo te responder agora.',
+    const user = await deps.db
+      .persistUser({ waId: userWhatsappId, name: userName })
+      .catch((error) => {
+        deps.chat.sendText(userWhatsappId, {
+          text: 'Desculpe, tive um problema ao processar sua mensagem e não consigo te responder agora.',
+        })
+        console.error('Error persisting user:', error)
+        return null
       })
-      console.error('Error persisting user:', error)
-      return
-    }
+
+    if (!user) return
 
     if (message.type !== 'text') {
-      deps.chat.sendText(userWhatsappId, {
+      const response: TextMessage = {
+        type: 'text',
         text: 'Desculpe, não entendo este tipo de mensagem. Por favor, envie uma mensagem de texto.',
-      })
+      }
+      deps.chat.sendText(userWhatsappId, response)
+      deps.db.storeMessage([
+        toDbMessage({
+          userId: user.id,
+          waId: message.messageId,
+          modelMessage: {
+            role: 'user',
+            content: 'Error: Unsupported message type',
+          },
+          type: 'unsupported',
+        }),
+        toDbMessage({
+          userId: user.id,
+          modelMessage: toAssistantModelMessage(response),
+        }),
+      ])
       return
     }
 
-    const recentMessages = await deps.db.findRecentMessages({ userId: user.id }).catch((error) => {
-      console.error('Error finding recent messages:', error)
-      return []
-    })
+    const recentMessages = await deps.db
+      .findRecentMessages({ userId: user.id })
+      .catch((error: unknown) => {
+        console.error('Error finding recent messages:', error)
+        return []
+      })
 
     const messages: ModelMessage[] = [
-      ...recentMessages.map((msg) => ({ role: msg.role, content: msg.content })),
+      ...recentMessages.map((msg) => msg.modelMessage),
       { role: 'user', content: message.text },
     ]
 
+    const tools = createTools({
+      userWhatsappId,
+      chat: deps.chat,
+      candidate,
+    })
     let responseText: string
     try {
-      const tools = createTools({
-        userWhatsappId,
-        chat: deps.chat,
-        candidate,
-      })
-      responseText = await generate({
+      const generateResponse = await generate({
         messages,
         tools,
       })
+      responseText = generateResponse.text
     } catch (error) {
       console.error('Error generating response:', JSON.stringify(error, null, 2))
       await deps.chat.sendText(userWhatsappId, {
@@ -80,16 +102,16 @@ export const processMessage =
       await deps.db.storeMessage([
         {
           userId: user.id,
-          role: 'user',
-          externalId: message.messageId,
+          waId: message.messageId,
           type: message.type,
+          modelMessage: { role: 'user', content: message.text },
           content: [{ content: message.text, embedding: [] }],
         },
         {
           userId: user.id,
-          role: 'assistant',
-          externalId: assistantMessageId,
+          waId: assistantMessageId,
           type: 'text',
+          modelMessage: { role: 'assistant', content: responseText },
           content: [{ content: responseText, embedding: [] }],
         },
       ])

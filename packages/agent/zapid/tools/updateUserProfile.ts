@@ -1,7 +1,7 @@
 import { tool } from 'ai'
 import { z } from 'zod'
-import type { ToolExecutionError } from '../../../core/errors'
-import { spreadError } from '../../../core/utils/spreadError'
+import type { ToolExecutionError } from '@batman/core/errors'
+import { spreadError } from '@batman/core/utils/spreadError'
 import type { Frame } from '../frame'
 
 interface UpdateUserProfileDeps {
@@ -77,7 +77,7 @@ Output requirements:
         if (improvedProfile.trim().length === 0) {
           console.warn('skipped, no improvement', {
             improvedProfile,
-            currentProfileLength: frame.user.profile.length,
+            currentProfileLength: frame.user.profile?.length ?? 0,
           })
           return 'No improvement to make'
         }
@@ -102,11 +102,11 @@ Output requirements:
         console.log('completed', {
           userId: frame.user.id,
           profileVersionId,
-          currentProfileLength: frame.user.profile.length,
+          currentProfileLength: frame.user.profile?.length ?? 0,
           improvedProfileLength: improvedProfile.length,
         })
         console.debug('profile diff', {
-          current: frame.user.profile,
+          current: frame.user.profile ?? '',
           improved: improvedProfile,
         })
 

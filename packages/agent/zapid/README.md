@@ -91,7 +91,7 @@ Um assistente pessoal baseado em chat para WhatsApp. Armazena mensagens como mem
 - Framework web: HonoJS v4 (via pacote `@batman/server`)
 - Abstração de LLM: Vercel AI SDK (`ai`) com múltiplos provedores
 - Serviços externos: Meta Business API (WhatsApp), OpenAI Responses API, Google AI Studio
-- Embeddings: Cloudflare Workers AI (geração) + vetores em libSQL
+- Embeddings: Cloudflare Workers AI (geração) + vetores em PostgreSQL
 - Armazenamento de arquivos: Cloudflare R2 (produção), `unstorage` filesystem (dev)
 - Agendador: entrega de lembretes baseada em cron
 
@@ -134,9 +134,9 @@ Características:
 
 ## Banco de Dados
 
-- LibSQL com suporte nativo a vetores
-- Tabelas base: `user`, `message`, `embedding`, `raw_incoming_message`
-- Vetores: `FLOAT32(384)` com similaridade cosseno (indexados)
+- PostgreSQL com suporte nativo a vetores (pgvector)
+- Tabelas base: `user`, `message`, `snippet`, `raw_incoming_message`
+- Vetores: `vector(768)` com similaridade cosseno (indexados)
 
 ## Dicas de Testes
 

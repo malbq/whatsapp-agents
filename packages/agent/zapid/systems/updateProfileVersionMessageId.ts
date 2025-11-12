@@ -1,6 +1,6 @@
 import type { Frame } from '../frame'
 import type { Deps } from '../types'
-import { spreadError } from '../../../core/utils/spreadError'
+import { spreadError } from '@batman/core/utils/spreadError'
 
 //const logger = getLogger(['app', 'agent', 'updateProfileVersionMessageId'])
 

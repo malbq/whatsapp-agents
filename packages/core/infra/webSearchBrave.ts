@@ -24,7 +24,7 @@ const DEFAULT_QUEUE_TIMEOUT_MS = 30_000
 const DEFAULT_REQUEST_TIMEOUT_MS = 30_000
 
 export namespace WebSearchBrave {
-  export const searchWeb = (options?: {
+  export const createWebSearch = (options?: {
     queueTimeoutMs?: number
     requestTimeoutMs?: number
   }): WebSearch => {

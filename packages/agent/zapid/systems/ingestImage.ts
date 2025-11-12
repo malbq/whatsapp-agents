@@ -1,9 +1,7 @@
 import type { Frame } from '../frame'
 import type { Deps } from '../types'
-import { IngestionError } from '../../../core/errors'
-import { spreadError } from '../../../core/utils/spreadError'
-
-//const logger = getLogger(['app', 'agent', 'ingestion', 'image'])
+import { IngestionError } from '@batman/core/errors'
+import { spreadError } from '@batman/core/utils/spreadError'
 
 export async function ingestImage(frame: Frame, deps: Deps): Promise<void> {
   if (!frame.inbound?.media?.data || !frame.inbound?.media?.mimeType)

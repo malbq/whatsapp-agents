@@ -1,6 +1,6 @@
 import { Frame } from '../frame'
 import type { Deps } from '../types'
-import { newStorageKey } from '../../../core/utils/storageKey'
+import { newStorageKey } from '@batman/core/utils/storageKey'
 
 //const logger = getLogger(['app', 'agent', 'storeMedia'])
 

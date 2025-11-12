@@ -8,33 +8,15 @@ import type {
   TemplateParameters,
 } from './types'
 import { getExtFromMimeType } from './utils'
-import type {
-  WaAcknowledgeMessageResponse,
-  WaMediaUrlResponse,
-  WaNotification,
-  WaOutgoingContact,
-  WaOutgoingDocument,
-  WaOutgoingImage,
-  WaOutgoingInteractiveButton,
-  WaOutgoingInteractiveCtaUrl,
-  WaOutgoingInteractiveList,
-  WaOutgoingLocation,
-  WaOutgoingMessageResponse,
-  WaOutgoingMessageUnion,
-  WaOutgoingReaction,
-  WaOutgoingTemplate,
-  WaOutgoingText,
-  WaTemplateComponent,
-  WaTemplateTextParameter,
-} from './whatsappTypes'
+import { WhatsAppApi } from './whatsappTypes'
+
+const WA_API_VERSION = import.meta.env.WA_API_VERSION || 'v23.0'
+const MAX_OPTIONS_PER_SECTION = 10
 
 export interface WhatsappConfig {
   apiToken: string
   businessPhoneId: string
 }
-
-const WA_API_VERSION = import.meta.env.WA_API_VERSION || 'v23.0'
-const MAX_OPTIONS_PER_SECTION = 10
 
 export function createWhatsappClient(config: WhatsappConfig): Chat {
   const authorizationHeader = `Bearer ${config.apiToken}`
@@ -48,7 +30,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
     const urlData = (await fetch(
       `https://graph.facebook.com/${WA_API_VERSION}/${mediaId}/`,
       init
-    ).then((response) => response.json())) as WaMediaUrlResponse
+    ).then((response) => response.json())) as WhatsAppApi.MediaUrlResponse
     console.debug(`Media URL: ${urlData.url}`)
 
     const mediaResponse = await fetch(urlData.url, init)
@@ -115,7 +97,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
     return uploadResult.id
   }
 
-  async function sendMessageRequest<T extends WaOutgoingMessageUnion>(
+  async function sendMessageRequest<T extends WhatsAppApi.OutgoingMessageUnion>(
     requestBody: T
   ): Promise<string> {
     const httpResponse = await fetch(
@@ -139,7 +121,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
       throw new ResponseDeliveryError('Failed to send message')
     }
 
-    const response = (await httpResponse.json()) as WaOutgoingMessageResponse
+    const response = (await httpResponse.json()) as WhatsAppApi.OutgoingMessageResponse
 
     if (!response.messages?.[0]?.id) {
       console.error('Send message request succeeded but no message ID was returned', {
@@ -159,7 +141,13 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
 
   return {
     parseNotification: async (body) => {
-      const change = (body as WaNotification).entry?.[0]?.changes?.[0]?.value
+      const waNotification = WhatsAppApi.NotificationSchema.safeParse(body)
+      if (!waNotification.success) {
+        console.debug('Failed to parse notification', waNotification.error)
+        return null
+      }
+
+      const change = waNotification.data.entry?.[0]?.changes?.[0]?.value
       if (!change) return null
 
       const contact = change.contacts?.[0]
@@ -181,67 +169,103 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
       const waMessage = change.messages?.[0]
       if (!waMessage) return null
 
-      switch (waMessage.type) {
-        case 'text':
-          return {
-            ...notification,
-            message: {
-              messageId: waMessage.id,
-              type: 'text',
-              text: waMessage.text.body,
-            },
-          }
-        case 'audio':
-          return {
-            ...notification,
-            message: {
-              messageId: waMessage.id,
-              type: waMessage.audio.voice ? 'voice' : 'audio',
-              data: await fetchReceivedMedia(waMessage.audio.id, waMessage.audio.sha256),
-              mimeType: waMessage.audio.mime_type,
-            },
-          }
-        case 'document':
-          return {
-            ...notification,
-            message: {
-              messageId: waMessage.id,
-              type: 'document',
-              caption: waMessage.document.caption,
-              filename: waMessage.document.filename,
-              data: await fetchReceivedMedia(waMessage.document.id, waMessage.document.sha256),
-              mimeType: waMessage.document.mime_type,
-            },
-          }
-        case 'image':
-          return {
-            ...notification,
-            message: {
-              messageId: waMessage.id,
-              type: 'image',
-              caption: waMessage.image.caption,
-              data: await fetchReceivedMedia(waMessage.image.id, waMessage.image.sha256),
-              mimeType: waMessage.image.mime_type,
-            },
-          }
-        case 'button':
-          return {
-            ...notification,
-            message: {
-              messageId: waMessage.id,
-              type: 'text',
-              text: waMessage.button.text,
-            },
-          }
-        default:
-          return {
-            ...notification,
-            message: {
-              messageId: waMessage.id,
-              type: 'unsupported',
-              unsupportedType: waMessage.type,
-            },
-          }
+      const textMessage = WhatsAppApi.TextMessageSchema.safeParse(waMessage)
+      if (textMessage.success) {
+        return {
+          ...notification,
+          message: {
+            messageId: textMessage.data.id,
+            type: 'text',
+            text: textMessage.data.text.body,
+          },
+        }
+      }
+
+      const audioMessage = WhatsAppApi.AudioMessageSchema.safeParse(waMessage)
+      if (audioMessage.success) {
+        return {
+          ...notification,
+          message: {
+            messageId: audioMessage.data.id,
+            type: audioMessage.data.audio.voice ? 'voice' : 'audio',
+            data: await fetchReceivedMedia(
+              audioMessage.data.audio.id,
+              audioMessage.data.audio.sha256
+            ),
+            mimeType: audioMessage.data.audio.mime_type,
+          },
+        }
+      }
+
+      const documentMessage = WhatsAppApi.DocumentMessageSchema.safeParse(waMessage)
+      if (documentMessage.success) {
+        return {
+          ...notification,
+          message: {
+            messageId: documentMessage.data.id,
+            type: 'document',
+            caption: documentMessage.data.document.caption,
+            filename: documentMessage.data.document.filename,
+            data: await fetchReceivedMedia(
+              documentMessage.data.document.id,
+              documentMessage.data.document.sha256
+            ),
+            mimeType: documentMessage.data.document.mime_type,
+          },
+        }
+      }
+
+      const imageMessage = WhatsAppApi.ImageMessageSchema.safeParse(waMessage)
+      if (imageMessage.success) {
+        return {
+          ...notification,
+          message: {
+            messageId: imageMessage.data.id,
+            type: 'image',
+            caption: imageMessage.data.image.caption,
+            data: await fetchReceivedMedia(
+              imageMessage.data.image.id,
+              imageMessage.data.image.sha256
+            ),
+            mimeType: imageMessage.data.image.mime_type,
+          },
+        }
+      }
+
+      const buttonMessage = WhatsAppApi.TemplateButtonMessageSchema.safeParse(waMessage)
+      if (buttonMessage.success) {
+        return {
+          ...notification,
+          message: {
+            messageId: buttonMessage.data.id,
+            type: 'text',
+            text: buttonMessage.data.button.text,
+          },
+        }
+      }
+
+      const interactiveMessage = WhatsAppApi.InteractiveReplyMessageSchema.safeParse(waMessage)
+      if (interactiveMessage.success) {
+        return {
+          ...notification,
+          message: {
+            messageId: interactiveMessage.data.id,
+            type: 'text',
+            text:
+              interactiveMessage.data.interactive.button_reply?.title ||
+              interactiveMessage.data.interactive.list_reply?.title ||
+              '',
+          },
+        }
+      }
+
+      return {
+        ...notification,
+        message: {
+          messageId: waMessage.id,
+          type: 'unsupported',
+          unsupportedType: waMessage.type,
+        },
       }
     },
 
@@ -270,7 +294,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
               code: error.code,
             },
           }
-        })) as WaAcknowledgeMessageResponse
+        })) as WhatsAppApi.AcknowledgeMessageResponse
 
       if (response.success) {
         console.log(`Message acknowledged: ${messageId}`)
@@ -309,7 +333,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
               code: error.code,
             },
           }
-        })) as WaAcknowledgeMessageResponse
+        })) as WhatsAppApi.AcknowledgeMessageResponse
 
       if (response.success) {
         console.log(`Typing indicator sent: ${messageId}`)
@@ -322,8 +346,9 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
       )
     },
 
-    sendText: async (userId, { text, replyingTo }) => {
-      const requestBody: WaOutgoingText = {
+    sendText: async (userId, message) => {
+      const { text, replyingTo } = message
+      const requestBody: WhatsAppApi.OutgoingText = {
         messaging_product: 'whatsapp',
         to: userId,
         type: 'text',
@@ -334,10 +359,11 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
       return await sendMessageRequest(requestBody)
     },
 
-    sendImage: async (userId, { data, caption, mimeType, replyingTo }) => {
+    sendImage: async (userId, message) => {
+      const { data, caption, mimeType, replyingTo } = message
       const mediaId = await uploadMedia(data, mimeType)
 
-      const message: WaOutgoingImage = {
+      const requestBody: WhatsAppApi.OutgoingImage = {
         messaging_product: 'whatsapp',
         to: userId,
         type: 'image',
@@ -347,13 +373,14 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
         },
         ...(replyingTo && { context: { message_id: replyingTo } }),
       }
-      return await sendMessageRequest(message)
+      return await sendMessageRequest(requestBody)
     },
 
-    sendDocument: async (userId, { data, filename, caption, mimeType, replyingTo }) => {
+    sendDocument: async (userId, message) => {
+      const { data, filename, caption, mimeType, replyingTo } = message
       const mediaId = await uploadMedia(data, mimeType, filename)
 
-      const message: WaOutgoingDocument = {
+      const requestBody: WhatsAppApi.OutgoingDocument = {
         messaging_product: 'whatsapp',
         to: userId,
         type: 'document',
@@ -365,11 +392,12 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
         ...(replyingTo && { context: { message_id: replyingTo } }),
       }
 
-      return await sendMessageRequest(message)
+      return await sendMessageRequest(requestBody)
     },
 
-    sendLocation: async (userId, { latitude, longitude, name, address, replyingTo }) => {
-      const requestBody: WaOutgoingLocation = {
+    sendLocation: async (userId, message) => {
+      const { latitude, longitude, name, address, replyingTo } = message
+      const requestBody: WhatsAppApi.OutgoingLocation = {
         messaging_product: 'whatsapp',
         to: userId,
         type: 'location',
@@ -385,8 +413,9 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
       return await sendMessageRequest(requestBody)
     },
 
-    sendReaction: async (userId, { targetMessageId, emoji }) => {
-      const requestBody: WaOutgoingReaction = {
+    sendReaction: async (userId, message) => {
+      const { targetMessageId, emoji } = message
+      const requestBody: WhatsAppApi.OutgoingReaction = {
         messaging_product: 'whatsapp',
         to: userId,
         type: 'reaction',
@@ -399,14 +428,11 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
       return await sendMessageRequest(requestBody)
     },
 
-    sendContact: async (userId, contact) => {
-      const name = contact.name.trim()
-      const phone = normalizePhoneNumber(contact.phone)
-      if (name.length === 0 || phone.length === 0) {
-        throw new ResponseDeliveryError('Name and phone are required')
-      }
+    sendContact: async (userId, message) => {
+      const name = message.name.trim()
+      const phone = normalizePhoneNumber(message.phone)
 
-      const requestBody: WaOutgoingContact = {
+      const requestBody: WhatsAppApi.OutgoingContact = {
         messaging_product: 'whatsapp',
         to: userId,
         type: 'contacts',
@@ -421,11 +447,9 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
       return await sendMessageRequest(requestBody)
     },
 
-    sendInteractiveList: async (
-      userId,
-      { header, body, footer, openListButton, sections, replyingTo }
-    ) => {
-      const $sections: WaOutgoingInteractiveList['interactive']['action']['sections'] = []
+    sendInteractiveList: async (userId, message) => {
+      const { header, body, footer, openListButton, sections, replyingTo } = message
+      const $sections: WhatsAppApi.OutgoingInteractiveList['interactive']['action']['sections'] = []
       let used = 0
       for (const section of sections) {
         if (used >= MAX_OPTIONS_PER_SECTION) break
@@ -446,7 +470,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
         })
         used += rows.length
       }
-      const requestBody: WaOutgoingInteractiveList = {
+      const requestBody: WhatsAppApi.OutgoingInteractiveList = {
         messaging_product: 'whatsapp',
         to: userId,
         type: 'interactive',
@@ -465,8 +489,9 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
       return await sendMessageRequest(requestBody)
     },
 
-    sendInteractiveButton: async (userId, { header, body, footer, buttons, replyingTo }) => {
-      const requestBody: WaOutgoingInteractiveButton = {
+    sendInteractiveButton: async (userId, message) => {
+      const { header, body, footer, buttons, replyingTo } = message
+      const requestBody: WhatsAppApi.OutgoingInteractiveButton = {
         messaging_product: 'whatsapp',
         to: userId,
         type: 'interactive',
@@ -476,7 +501,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
           body: { text: body.slice(0, 1024) },
           footer: footer ? { text: footer.slice(0, 60) } : undefined,
           action: {
-            buttons: buttons.map((button) => ({
+            buttons: buttons.slice(0, 3).map((button) => ({
               type: 'reply',
               reply: {
                 id: button,
@@ -490,8 +515,9 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
       return await sendMessageRequest(requestBody)
     },
 
-    sendInteractiveCtaUrl: async (userId, { header, body, footer, action, replyingTo }) => {
-      const requestBody: WaOutgoingInteractiveCtaUrl = {
+    sendInteractiveCtaUrl: async (userId, message) => {
+      const { header, body, footer, action, replyingTo } = message
+      const requestBody: WhatsAppApi.OutgoingInteractiveCtaUrl = {
         messaging_product: 'whatsapp',
         to: userId,
         type: 'interactive',
@@ -514,11 +540,9 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
       return await sendMessageRequest(requestBody)
     },
 
-    sendTemplate: async (
-      userId,
-      { name, language, headerParameters, bodyParameters, footerParameters }
-    ) => {
-      const components: Array<WaTemplateComponent> = []
+    sendTemplate: async (userId, message) => {
+      const { name, language, headerParameters, bodyParameters, footerParameters } = message
+      const components: Array<WhatsAppApi.TemplateComponent> = []
       if (headerParameters) {
         components.push({
           type: 'header',
@@ -537,7 +561,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
           parameters: convertParameters(footerParameters),
         })
       }
-      const requestBody: WaOutgoingTemplate = {
+      const requestBody: WhatsAppApi.OutgoingTemplate = {
         messaging_product: 'whatsapp',
         to: userId,
         type: 'template',
@@ -566,7 +590,7 @@ function normalizePhoneNumber(phone: string): string {
   return cleaned
 }
 
-function convertParameters(params: TemplateParameters): Array<WaTemplateTextParameter> {
+function convertParameters(params: TemplateParameters): Array<WhatsAppApi.TemplateTextParameter> {
   if (Array.isArray(params)) {
     return params.map((parameter) => ({ type: 'text', text: parameter }))
   }

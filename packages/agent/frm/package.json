@@ -16,6 +16,7 @@
     "@batman/server": "workspace:*",
     "@batman/whatsapp": "workspace:*",
     "@ai-sdk/openai": "catalog:",
+    "drizzle-orm": "catalog:",
     "ai": "catalog:",
     "zod": "catalog:",
     "hono": "catalog:"

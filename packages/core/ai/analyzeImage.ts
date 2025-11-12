@@ -32,7 +32,7 @@ export const analyzeImage: AnalyzeImage = async ({
         role: 'user',
         content: [
           { type: 'image', image: imageUrl },
-          ...(caption ? [{ type: 'text', text: caption } as TextPart] : []),
+          ...(caption ? [{ type: 'text', text: caption } satisfies TextPart] : []),
         ],
       },
     ],

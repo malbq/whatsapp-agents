@@ -2,13 +2,16 @@ import type { DB } from '@batman/core/infra/db'
 import type { Context } from 'hono'
 import { ThreadsPage } from '../ui/pages'
 
-export function createThreadsRoute(db: DB) {
+export function createThreadsRoute(db: DB.Repository) {
   return async function threadsRoute(c: Context) {
-    const users = await db.query(
-      `SELECT DISTINCT u.* FROM user u
-       INNER JOIN message m ON u.id = m.user_id
-       ORDER BY u.joined_at DESC`
-    )
+    const users = await db.client.query.user.findMany({
+      columns: {
+        id: true,
+        name: true,
+        waId: true,
+      },
+      orderBy: (user, { desc }) => [desc(user.joinedAt)],
+    })
 
     const threads: Array<{
       userId: string
@@ -23,14 +26,14 @@ export function createThreadsRoute(db: DB) {
       }>
     }> = []
 
-    for (const user of users.rows) {
+    for (const user of users) {
       const userId = user.id
       if (!userId) continue
 
-      const messages = await db.query(
-        'SELECT * FROM message WHERE user_id = ? ORDER BY timestamp ASC',
-        [userId]
-      )
+      const messages = await db.client.query.message.findMany({
+        where: (message, { eq }) => eq(message.userId, userId),
+        orderBy: (message, { asc }) => [asc(message.timestamp)],
+      })
 
       const messagesWithContent: Array<{
         id: string
@@ -40,30 +43,44 @@ export function createThreadsRoute(db: DB) {
         content: string
       }> = []
 
-      for (const msg of messages.rows) {
+      for (const msg of messages) {
         const msgId = msg.id
         if (!msgId) continue
 
-        const embeddings = await db.query(
-          'SELECT content FROM embedding WHERE message_id = ? ORDER BY sequence ASC',
-          [msgId]
-        )
+        const snippets = await db.client.query.snippet.findMany({
+          columns: {
+            content: true,
+          },
+          where: (snippet, { eq }) => eq(snippet.messageId, msgId),
+          orderBy: (snippet, { asc }) => [asc(snippet.sequence)],
+        })
 
-        const content = embeddings.rows.map((e) => e.content as string).join('\n') || (msg.type as string)
+        const content = snippets.map((e) => e.content).join('\n') || msg.type
+
+        let role = 'unknown'
+        if (msg.modelMessage) {
+          try {
+            const modelMessage =
+              typeof msg.modelMessage === 'string' ? JSON.parse(msg.modelMessage) : msg.modelMessage
+            role = modelMessage.role || 'unknown'
+          } catch {
+            role = 'unknown'
+          }
+        }
 
         messagesWithContent.push({
-          id: msgId as string,
-          role: msg.role as string,
-          type: msg.type as string,
-          timestamp: msg.timestamp as string,
+          id: msgId,
+          role,
+          type: msg.type,
+          timestamp: msg.timestamp.toISOString(),
           content,
         })
       }
 
       threads.push({
-        userId: userId as string,
-        userName: user.name as string,
-        externalId: user.external_id as string,
+        userId,
+        userName: user.name,
+        externalId: user.waId,
         messages: messagesWithContent,
       })
     }

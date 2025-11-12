@@ -1,41 +1,25 @@
 # Progress
 
-## Refactor message+embedding tables
+## Media ingestion
 
-- Migrate from libsql+atlas to postgres+drizzle
+At arrival, media is sent as raw binary to model in the current user message.
+It's then processed in background:
 
-Message
+- Stored in object storage
+- Transcribed and the transcription is embedded
+- All metadata is stored in resource table
 
-- id (ulid)
-- user_id (->user.id)
-- model_message (json)
-- type (text, image, audio, document)
-- timestamp
-- wa_id
-- usage (json, only for assistant messages)
-- resource_id (->resource.id)
+In parallel, after model responds to user, before persisting message exchange:
 
-Embedding
+- message with content.type=file/image is transformed in content.type=text with id+summary+metadata
 
-- id (ulid)
-- message_id (->message.id)
-- sequence (integer)
-- content (text)
-- vector (vector)
-
-Resource
-
-- id (ulid)
-- user_id (->user.id)
-- size
-- mime type
-- uploaded at
-- hash (to prevent storing duplicates)
-- original file name
+In subsequent messages, if model needs to read a media again, it will use a new tool called `fetch_resource` to retrieve media URL from object storage, by media id. We'll use `toModelOutput` tool property to deliver the media URL to the model.
+Tool calls and results of `fetch_resource` must be erased from history before persisting the assistant output.
 
 ## Next
 
-- Hybrid context retrieval using PostgreSQL (FTS/tsvector + embeddings).
+- Turn sendFile tool into structured output
+- Simplify dependency injection by providing/injecting only individual operations, instead of entire interfaces (DB, Storage, AI, etc).
 - Store tool calls in message table, without embedding. No tool results embedding or vector search.
   - This will be done at onStepFinish hook
   - after every step, there are either: 1 assistant message with finishReason=stop or 2 assistant messages with finishReason=tool_calls
@@ -44,6 +28,23 @@ Resource
 - Replace libsql+atlas with postgres+drizzle(?)
 - resend typing indicator after whatsapp time out while assistant is generating response
 - Improve tool instructions and anti-patterns (like re-search if recent search results are available)
+- Test Parallel Search API: https://parallel.ai/blog/introducing-parallel-search
+- Should we halt generation when user sends another message before assistant responds?
+- Sticker messages must be treated as reactions, just ignore.
+- Retry when model fails to respect output schema
+
+## Hybrid context retrieval using PostgreSQL (FTS/tsvector + embeddings + RRF).
+
+- Generate embeddings only for non-tool messages.
+- Add a plain TSVECTOR column message.fts (NOT GENERATED). Populate it at INSERT/UPDATE using SQL: fts = to_tsvector('simple', unaccent($normalizedText)), where $normalizedText is extracted in TypeScript from model_message. Do not store a separate message.text or any model_message.normalized_text. Create GIN index: CREATE INDEX idx_message_fts ON message USING gin (fts). Enable unaccent extension.
+- Vector search runs over embedding chunks filtered by user_id, ordered by vector distance, with a LIMIT K. Aggregate chunk similarities to message-level using max(similarity) by default (allow top-k mean as an option). Keep the best chunk per message for snippet.
+- Apply a configurable similarity/distance threshold to vector hits before fusion; discard messages whose aggregated semantic score falls below the threshold.
+- Hybrid ranking must combine vector and text results at message level using Reciprocal Rank Fusion with k = 10: score = 1/(vectorRank + k) + 1/(textRank + k). Missing ranks count as ∞ (i.e., contribute only from the present list).
+- The fused candidate set must be the top N messages by RRF score (N = limit), after thresholding the vector list.
+- Include text-only matches (messages present only in the FTS list) up to the remaining budget without duplicating messages already selected via vector hits.
+- Deduplicate the final set strictly by message id.
+- Make these parameters configurable per query: limit (default 10), vector similarity/distance threshold (default 0.0 equivalent), RRF k (default 10), chunk aggregation mode (default max).
+- Out of scope for now: FTS over chunks; only message-level FTS via message.fts.
 
 ## Demo Agent
 

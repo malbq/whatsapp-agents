@@ -1,3 +1,21 @@
+import type { z } from 'zod'
+import type {
+  audioMessageSchema,
+  contactMessageSchema,
+  documentMessageSchema,
+  imageMessageSchema,
+  interactiveButtonMessageSchema,
+  interactiveCtaUrlMessageSchema,
+  interactiveListMessageSchema,
+  locationMessageSchema,
+  reactionMessageSchema,
+  templateMessageSchema,
+  templateParametersSchema,
+  textMessageSchema,
+  unsupportedMessageSchema,
+  voiceMessageSchema,
+} from './schema'
+
 export type MessageType =
   | 'text'
   | 'voice'
@@ -13,112 +31,23 @@ export type MessageType =
   | 'template'
   | 'unsupported'
 
-interface BaseMessage {
-  messageId: string
-  type: MessageType
+export type TextMessage = z.infer<typeof textMessageSchema>
+export type VoiceMessage = z.infer<typeof voiceMessageSchema>
+export type AudioMessage = z.infer<typeof audioMessageSchema>
+export type DocumentMessage = z.infer<typeof documentMessageSchema>
+export type ImageMessage = z.infer<typeof imageMessageSchema>
+export type LocationMessage = z.infer<typeof locationMessageSchema>
+export type ContactMessage = z.infer<typeof contactMessageSchema>
+export type ReactionMessage = z.infer<typeof reactionMessageSchema>
+export type InteractiveListMessage = z.infer<typeof interactiveListMessageSchema>
+export type InteractiveButtonMessage = z.infer<typeof interactiveButtonMessageSchema>
+export type InteractiveCtaUrlMessage = z.infer<typeof interactiveCtaUrlMessageSchema>
+export type TemplateParameters = z.infer<typeof templateParametersSchema>
+export type TemplateMessage = z.infer<typeof templateMessageSchema>
+export type UnsupportedMessage = z.infer<typeof unsupportedMessageSchema>
+
+export type ReplyMessage = {
   replyingTo?: string
-}
-
-export interface TextMessage extends BaseMessage {
-  type: 'text'
-  text: string
-}
-
-export interface VoiceMessage extends BaseMessage {
-  type: 'voice'
-  data: ArrayBuffer
-  mimeType: string
-}
-
-export interface AudioMessage extends BaseMessage {
-  type: 'audio'
-  data: ArrayBuffer
-  mimeType: string
-}
-
-export interface DocumentMessage extends BaseMessage {
-  type: 'document'
-  data: ArrayBuffer
-  mimeType: string
-  filename: string
-  caption?: string
-}
-
-export interface ImageMessage extends BaseMessage {
-  type: 'image'
-  data: ArrayBuffer
-  mimeType: string
-  caption?: string
-}
-
-export interface LocationMessage extends BaseMessage {
-  type: 'location'
-  latitude: number
-  longitude: number
-  name?: string
-  address?: string
-}
-
-export interface ReactionMessage extends BaseMessage {
-  type: 'reaction'
-  emoji: string
-  targetMessageId: string
-}
-
-export interface ContactMessage extends BaseMessage {
-  type: 'contact'
-  name: string
-  phone: string
-}
-
-export interface InteractiveListMessage extends BaseMessage {
-  type: 'interactive_list'
-  header?: string
-  body: string
-  footer?: string
-  openListButton: string
-  sections: Array<{
-    title?: string
-    options: Array<{
-      title: string
-      description?: string
-    }>
-  }>
-}
-
-export interface InteractiveButtonMessage extends BaseMessage {
-  type: 'interactive_button'
-  header?: string
-  body: string
-  footer?: string
-  buttons: Array<string>
-}
-
-export interface InteractiveCtaUrlMessage extends BaseMessage {
-  type: 'interactive_cta_url'
-  header?: string
-  body: string
-  footer?: string
-  action: {
-    text: string
-    url: string
-  }
-}
-
-export type TemplateParameters = Array<string> | Record<string, string>
-
-export interface TemplateMessage extends BaseMessage {
-  type: 'template'
-  name: string
-  language: string
-  headerParameters?: TemplateParameters
-  bodyParameters: TemplateParameters
-  footerParameters?: TemplateParameters
-}
-
-export interface UnsupportedMessage extends BaseMessage {
-  type: 'unsupported'
-  unsupportedType?: string
 }
 
 export type Message =
@@ -141,10 +70,8 @@ export interface Notification {
   userName: string
 }
 
-export type MessageNotification = Notification & {
-  message: Message
-}
-
+export type IncomingMessage = Message & ReplyMessage & { messageId: string }
+export type MessageNotification = Notification & { message: IncomingMessage }
 export type StatusUpdateNotification = Notification & {
   statusUpdate: StatusUpdate
 }
@@ -157,38 +84,38 @@ export interface Chat {
   ) => Promise<MessageNotification | StatusUpdateNotification | null>
   acknowledgeMessage: (messageId: string) => Promise<void>
   sendTypingIndicator: (messageId: string) => Promise<void>
-  sendText: (userId: string, message: Omit<TextMessage, 'messageId' | 'type'>) => Promise<string>
-  sendImage: (userId: string, message: Omit<ImageMessage, 'messageId' | 'type'>) => Promise<string>
+  sendText: (userId: string, message: Omit<TextMessage, 'type'> & ReplyMessage) => Promise<string>
+  sendImage: (userId: string, message: Omit<ImageMessage, 'type'> & ReplyMessage) => Promise<string>
   sendDocument: (
     userId: string,
-    message: Omit<DocumentMessage, 'messageId' | 'type'>
+    message: Omit<DocumentMessage, 'type'> & ReplyMessage
   ) => Promise<string>
   sendLocation: (
     userId: string,
-    message: Omit<LocationMessage, 'messageId' | 'type'>
+    message: Omit<LocationMessage, 'type'> & ReplyMessage
   ) => Promise<string>
   sendReaction: (
     userId: string,
-    message: Omit<ReactionMessage, 'messageId' | 'type'>
+    message: Omit<ReactionMessage, 'type'> & ReplyMessage
   ) => Promise<string>
   sendContact: (
     userId: string,
-    message: Omit<ContactMessage, 'messageId' | 'type'>
+    message: Omit<ContactMessage, 'type'> & ReplyMessage
   ) => Promise<string>
   sendInteractiveList: (
     userId: string,
-    message: Omit<InteractiveListMessage, 'messageId' | 'type'>
+    message: Omit<InteractiveListMessage, 'type'> & ReplyMessage
   ) => Promise<string>
   sendInteractiveButton: (
     userId: string,
-    message: Omit<InteractiveButtonMessage, 'messageId' | 'type'>
+    message: Omit<InteractiveButtonMessage, 'type'> & ReplyMessage
   ) => Promise<string>
   sendInteractiveCtaUrl: (
     userId: string,
-    message: Omit<InteractiveCtaUrlMessage, 'messageId' | 'type'>
+    message: Omit<InteractiveCtaUrlMessage, 'type'> & ReplyMessage
   ) => Promise<string>
   sendTemplate: (
     userId: string,
-    message: Omit<TemplateMessage, 'messageId' | 'type'>
+    message: Omit<TemplateMessage, 'type'> & ReplyMessage
   ) => Promise<string>
 }

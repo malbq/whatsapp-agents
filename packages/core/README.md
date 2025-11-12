@@ -21,7 +21,7 @@ This package is ESM-only and exposes module subpaths for clear boundaries:
   - `generateEmbeddings` — batch embedding with chunking
   - `transcribeAudio`, `transcribeDocument`, `analyzeImage`
 - `@batman/core/infra/*` — Infra primitives
-  - `db`, `dbLibSql` — DB interfaces and libSQL implementation
+  - `db`, `dbPostgres` — DB interfaces and PostgreSQL implementation
   - `storage`, `storageFilesystem` — object storage interfaces and filesystem adapter (dev)
   - `scheduler`, `schedulerSystemd` — scheduler interfaces and systemd adapter (optional)
   - `webSearch`, `webSearchBrave` — web search interfaces and Brave implementation
@@ -37,8 +37,8 @@ Types are exported alongside each module (see source files for details). Prefer 
 - Baseline schema: user, message, embedding, raw_incoming_message, and supporting views/tables.
 - Vectors: FLOAT32(384) with cosine similarity (indexed).
 - Each agent owns its database lifecycle. Recommended order:
-  1) Apply core baseline migrations
-  2) Apply agent-specific extension migrations
+  1. Apply core baseline migrations
+  2. Apply agent-specific extension migrations
 
 From repository root:
 
@@ -50,8 +50,8 @@ Note: keep core schema minimal and stable. Agents should add extension tables re
 
 - Compose these modules in your agent composition root.
 - Persist inbound/outbound messages through infra/db.
-- Generate/store embeddings through ai/generateEmbeddings and infra/dbLibSql.
-- Use tools/* for model tool-calling. The tools expect dependencies to be injected (no global state).
+- Generate/store embeddings through ai/generateEmbeddings and infra/dbPostgres.
+- Use tools/\* for model tool-calling. The tools expect dependencies to be injected (no global state).
 
 ## Guidelines
 
@@ -66,7 +66,6 @@ Note: keep core schema minimal and stable. Agents should add extension tables re
 Typical env used by submodules (agents must provide them):
 
 - Cloudflare AI: `CF_ACCOUNT_ID`, `CF_API_TOKEN`
-- Database (libSQL): `LIBSQL_URL`, `LIBSQL_AUTH_TOKEN`
 - Brave Search (optional): `BRAVE_API_KEY`
 
 ## Examples
@@ -88,13 +87,20 @@ import { createWebSearchTool } from '@batman/core/tools/webSearch'
 const tool = createWebSearchTool({ webSearch }, 'Explain why searching helps here')
 ```
 
-- Persist a message (libSQL implementation example):
+- Persist a message (PostgreSQL implementation example):
 
 ```ts
-import { createDb } from '@batman/core/infra/dbLibSql'
+import { Postgres } from '@batman/core/infra/dbPostgres'
 
-const db = await createDb({ url: process.env.LIBSQL_URL!, authToken: process.env.LIBSQL_AUTH_TOKEN! })
-await db.storeMessage([{ userId, role: 'user', type: 'text', content: [{ content: 'hi', embedding: [] }] }])
+const db = Postgres.db({ url: process.env.DATABASE_URL! })
+await db.storeMessage([
+  {
+    userId,
+    type: 'text',
+    modelMessage: { role: 'user', content: 'hi' },
+    content: [{ content: 'hi', embedding: [] }],
+  },
+])
 ```
 
 ## Status

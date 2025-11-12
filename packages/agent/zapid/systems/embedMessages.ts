@@ -1,3 +1,4 @@
+import { generateEmbeddings } from '@batman/core/ai/generateEmbeddings'
 import type { Frame } from '../frame'
 import type { Deps } from '../types'
 
@@ -16,7 +17,7 @@ export async function embedMessages(frame: Frame, deps: Deps) {
     return
   }
 
-  const embeddings = await deps.ai.generateEmbeddings(textsToEmbed)
+  const embeddings = await generateEmbeddings(textsToEmbed)
 
   for (let i = frame.outboundMessages.length - 1; i >= 0; i--) {
     frame.outboundMessages[i]!.textEmbedding = embeddings.pop()

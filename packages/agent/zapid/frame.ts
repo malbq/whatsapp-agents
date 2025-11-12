@@ -1,18 +1,14 @@
-import type { ChunkData, MessageType, User } from '../../core/infra/db'
+import type { ChunkData, MessageType } from '@batman/core/infra/db'
+import type { AssistantModelMessage, ToolModelMessage, UserModelMessage } from 'ai'
+import type { UserWithProfile } from './db'
 
 export class Frame {
-  user?: User
-  inbound?: FrameInboundMessage
-  outboundMessages: FrameOutboundMessage[] = []
-  lastSearchFiles?: Array<{
-    messageId: string
-    filename?: string
-  }>
-  profileVersionId?: string
-  profileVersionSourceMessageId?: string
+  user?: UserWithProfile
+  inbound?: UserModelMessage
+  outbound: (AssistantModelMessage | ToolModelMessage)[] = []
 }
 
-export interface FrameInboundMessage {
+interface FrameInboundMessage {
   externalChatId?: string
   type: MessageType
   text?: string
@@ -29,7 +25,7 @@ export interface FrameInboundMessage {
   }
 }
 
-export interface FrameOutboundMessage {
+interface FrameOutboundMessage {
   externalChatId?: string
   type: MessageType
   text: string

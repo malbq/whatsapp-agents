@@ -1,8 +1,6 @@
+import { spreadError } from '@batman/core/utils/spreadError'
 import type { Frame } from '../frame'
-import { spreadError } from '../../../core/utils/spreadError'
 import type { Deps } from '../types'
-
-//const logger = getLogger(['app', 'agent', 'persistUser'])
 
 export async function persistUser(
   frame: Frame,
@@ -12,7 +10,7 @@ export async function persistUser(
   console.log(`Persisting incoming user`, incomingUser)
   await deps.db
     .persistUser({
-      externalId: incomingUser.userExternalId,
+      waId: incomingUser.userExternalId,
       name: incomingUser.userName,
     })
     .then((user) => {

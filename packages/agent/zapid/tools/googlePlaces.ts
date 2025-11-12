@@ -1,7 +1,7 @@
 import { tool } from 'ai'
 import { z } from 'zod'
-import type { ToolExecutionError } from '../../../core/errors'
-import { spreadError } from '../../../core/utils/spreadError'
+import type { ToolExecutionError } from '@batman/core/errors'
+import { spreadError } from '@batman/core/utils/spreadError'
 import { toolUsageExplanation } from '../prompts/toolUsageExplanation'
 import type { Frame } from '../frame'
 

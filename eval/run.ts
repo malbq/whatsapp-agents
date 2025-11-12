@@ -32,19 +32,22 @@
  */
 
 import { createXai } from '@ai-sdk/xai'
-import { createClient, type Client } from '@libsql/client'
 import { generateText } from 'ai'
+import { sql } from 'drizzle-orm'
+import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import crypto from 'node:crypto'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
+import postgres from 'postgres'
 import { z } from 'zod'
-import { agent } from '../packages/core/agent'
-import { configureEvalLogging } from '../packages/server/config/logging'
+import { agent } from '../packages/agent/zapid'
 import { AIProvider } from '../packages/core/ai'
-import type { Chat, IncomingMessage } from '../packages/whastapp/chat'
-import { LibSql } from '../packages/core/infra/dbLibSql'
+import { Postgres } from '../packages/core/infra/dbPostgres'
+import { snippet } from '../packages/core/infra/dbPostgresSchema'
 import { FilesystemStorage } from '../packages/core/infra/storageFilesystem'
 import { WebSearchBrave } from '../packages/core/infra/webSearchBrave'
+import { configureEvalLogging } from '../packages/server/config/logging'
+import type { Chat, IncomingMessage } from '../packages/whatsapp/chat'
 
 const xai = createXai({
   apiKey: import.meta.env.XAI_EVAL_API_KEY,
@@ -66,12 +69,11 @@ async function main() {
   const runDir = join(import.meta.dirname, `/reports/${configName}_${runId}`)
   await mkdir(runDir, { recursive: true })
 
-  const dbPath = join(runDir, `${runId}.db`)
-  await Bun.$`atlas schema apply --env local --url sqlite://file:${dbPath} --auto-approve`.quiet()
-
-  const client = createClient({ url: `file:${dbPath}` })
+  const dbUrl = process.env.EVAL_DATABASE_URL ?? 'postgresql://localhost/zapid_eval'
+  const pgClient = postgres(dbUrl)
+  const dbClient = drizzle(pgClient)
   const deps: Deps = {
-    db: LibSql.db(client),
+    db: Postgres.db({ client: dbClient }),
     storage: FilesystemStorage.storage(join(runDir, 'media')),
     chat: evalChat,
     ai: AIProvider,
@@ -84,7 +86,7 @@ async function main() {
   if (config.conversation && config.conversation.length > 0) {
     const cache = await readEmbeddingsCache(configFile, config)
     const result = await insertPredefinedMessages(
-      client,
+      dbClient,
       config.conversation,
       userExternalId,
       cache,
@@ -131,7 +133,7 @@ async function main() {
   }
 
   const reportData = await generateReportFromDatabase(
-    client,
+    dbClient,
     predefinedMessageIds,
     lastUserMessageContent
   )
@@ -155,7 +157,7 @@ const newExternalId = () => `waimd.${crypto.randomBytes(4).toString('hex')}`
 const newUserId = () => `user_${crypto.randomBytes(4).toString('hex')}`
 
 async function insertPredefinedMessages(
-  client: Client,
+  dbClient: PostgresJsDatabase,
   conversation: Array<{ role: 'user' | 'assistant'; content: string }>,
   userExternalId: string,
   cache: EmbeddingsCache | undefined,
@@ -163,19 +165,18 @@ async function insertPredefinedMessages(
 ): Promise<{ messageIds: Set<string> }> {
   console.log('Inserting predefined conversation messages...')
 
-  const userResult = await client.execute({
-    sql: `INSERT INTO user (id, external_id, name)
-          VALUES (?, ?, ?)
-          ON CONFLICT(external_id) DO UPDATE SET name = excluded.name
-          RETURNING id`,
-    args: [Bun.randomUUIDv7(), userExternalId, 'Simulated User'],
-  })
+  const userResult = await dbClient.execute(
+    sql`INSERT INTO "user" (id, external_id, name)
+        VALUES (${Bun.randomUUIDv7()}, ${userExternalId}, ${'Simulated User'})
+        ON CONFLICT(external_id) DO UPDATE SET name = excluded.name
+        RETURNING id`
+  )
 
-  if (userResult.rows.length === 0) {
+  if (userResult.length === 0) {
     throw new Error('Failed to create user for predefined messages')
   }
 
-  const actualUserId = userResult.rows[0]?.id as string
+  const actualUserId = userResult[0]?.id as string
   if (!actualUserId) {
     throw new Error('Failed to get user ID from database result')
   }
@@ -225,20 +226,23 @@ async function insertPredefinedMessages(
     }
 
     if (!isLastUserMessage) {
-      const statements = [
-        {
-          sql: `INSERT INTO message (id, external_id, user_id, role, type, media_storage_key)
-                VALUES (?, ?, ?, ?, ?, ?)`,
-          args: [messageId, externalId, actualUserId, message.role, 'text', null],
-        },
-        ...chunks.map((chunk, sequence) => ({
-          sql: `INSERT INTO embedding (message_id, sequence, content, embedding)
-                VALUES (?, ?, ?, vector32(?))`,
-          args: [messageId, sequence + 1, chunk, JSON.stringify(embeddings[sequence])],
-        })),
-      ]
+      await dbClient.insert(message).values({
+        id: messageId,
+        userId: actualUserId,
+        waId: null,
+        type: 'text',
+        modelMessage: JSON.stringify({ role: message.role, content: message.content }),
+        resourceId: null,
+      })
 
-      await client.batch(statements)
+      for (let sequence = 0; sequence < chunks.length; sequence++) {
+        await dbClient.insert(snippet).values({
+          messageId,
+          sequence: sequence + 1,
+          content: chunks[sequence]!,
+          vector: embeddings[sequence]!,
+        })
+      }
     }
   }
 
@@ -443,46 +447,48 @@ interface ConversationMessage {
   predefined: boolean
 }
 async function generateReportFromDatabase(
-  client: Client,
+  dbClient: PostgresJsDatabase,
   predefinedMessageIds: Set<string>,
   lastUserMessageContent?: string
 ): Promise<Array<ConversationMessage>> {
   const conversation: Array<ConversationMessage> = []
 
-  const messages = await client.execute({
-    sql: `SELECT m.id, m.role, m.type, GROUP_CONCAT(e.content, '') as content, m.timestamp, m.media_storage_key
-          FROM message m
-          JOIN embedding e ON m.id = e.message_id
-          WHERE m.role IN ('user', 'assistant')
-          GROUP BY m.id, m.role, m.type, m.timestamp, m.media_storage_key
-          ORDER BY m.timestamp`,
-  })
+  const messages = await dbClient.execute(
+    sql`SELECT m.id, m.type, STRING_AGG(s.content, '') as content, m.timestamp, m.resource_id
+        FROM message m
+        JOIN snippet s ON m.id = s.message_id
+        WHERE m.type IN ('text', 'document')
+        GROUP BY m.id, m.type, m.timestamp, m.resource_id
+        ORDER BY m.timestamp`
+  )
 
-  const profileVersions = await client.execute({
-    sql: `SELECT user_id, profile, message_id
-          FROM user_profile_version
-          ORDER BY id`,
-  })
+  const profileVersions = await dbClient.execute(
+    sql`SELECT user_id, profile, message_id
+        FROM user_profile_version
+        ORDER BY id`
+  )
 
   const profileMap = new Map<string, string>()
-  for (const row of profileVersions.rows) {
+  for (const row of profileVersions) {
     profileMap.set(row.message_id as string, row.profile as string)
   }
 
-  for (const row of messages.rows) {
+  for (const row of messages) {
     const messageId = row.id as string
+    const modelMessage = row.model_message ? JSON.parse(row.model_message as string) : null
+    const role = modelMessage?.role || 'unknown'
     const isLastPredefinedByContent =
       !!lastUserMessageContent &&
-      (row.role as string) === 'user' &&
+      role === 'user' &&
       (row.content as string) === lastUserMessageContent
     const isPredefined = predefinedMessageIds.has(messageId) || isLastPredefinedByContent
 
     conversation.push({
-      role: row.role as string,
+      role,
       content: row.content as string,
       type: row.type as string,
       improvedProfile: profileMap.get(messageId),
-      mediaStorageKey: row.media_storage_key?.toString(),
+      mediaStorageKey: row.resource_id?.toString(),
       predefined: isPredefined,
     })
   }
