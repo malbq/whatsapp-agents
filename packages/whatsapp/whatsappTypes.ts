@@ -10,20 +10,36 @@ export namespace WhatsAppApi {
 
   export const StatusUpdateSchema = z.object({
     id: z.string(),
-    status: z.enum(['read', 'delivered', 'sent']),
+    status: z.enum(['read', 'delivered', 'sent', 'failed']),
     timestamp: z.string(),
     recipient_id: z.string(),
-    conversation: z.object({
-      id: z.string(),
-      origin: z.object({
-        type: z.string(),
-      }),
-    }),
-    pricing: z.object({
-      billable: z.boolean(),
-      pricing_model: z.string(),
-      category: z.string(),
-    }),
+    conversation: z
+      .object({
+        id: z.string(),
+        origin: z.object({
+          type: z.string(),
+        }),
+      })
+      .optional(),
+    pricing: z
+      .object({
+        billable: z.boolean(),
+        pricing_model: z.string(),
+        category: z.string(),
+      })
+      .optional(),
+    errors: z
+      .array(
+        z.object({
+          code: z.number(),
+          title: z.string(),
+          message: z.string(),
+          error_data: z.object({
+            details: z.string(),
+          }),
+        })
+      )
+      .optional(),
   })
 
   export const TextMessageSchema = z.object({

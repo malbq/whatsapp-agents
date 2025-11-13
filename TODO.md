@@ -32,6 +32,7 @@ Tool calls and results of `fetch_resource` must be erased from history before pe
 - Should we halt generation when user sends another message before assistant responds?
 - Sticker messages must be treated as reactions, just ignore.
 - Retry when model fails to respect output schema
+- on failed delivery, flag message as failed
 
 ## Hybrid context retrieval using PostgreSQL (FTS/tsvector + embeddings + RRF).
 

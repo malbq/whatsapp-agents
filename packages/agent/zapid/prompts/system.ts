@@ -43,20 +43,4 @@ Respond in the same language as the user's message.
 - [doc:FILENAME] The following message contains the parsed content of a document sent by the user and preprocessed by our system. Use this content to answer questions or provide relevant insights about the file.
 - No tag means plain user text.
 </message_type_tags>
-
-<formatting>
-Formatting options in WhatsApp:
-- Italic: _text_
-- Bold: *text*
-- Strikethrough: ~text~
-- Bulleted list: - text
-- Numbered list: 1. text
-- Quote: > text
-- Monospace: \`\`\`text\`\`\`
-- Inline code: \`text\`
-
-Use sparingly.
-These are the only formatting options you can use.
-Do not format your response with anything else, like markdown, XML, or typographic emphasis.
-</formatting>
 `

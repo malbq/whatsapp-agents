@@ -100,6 +100,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
   async function sendMessageRequest<T extends WhatsAppApi.OutgoingMessageUnion>(
     requestBody: T
   ): Promise<string> {
+    console.debug('Sending message request:', JSON.stringify(requestBody, null, 2))
     const httpResponse = await fetch(
       `https://graph.facebook.com/${WA_API_VERSION}/${config.businessPhoneId}/messages`,
       {
@@ -149,6 +150,11 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
 
       const change = waNotification.data.entry?.[0]?.changes?.[0]?.value
       if (!change) return null
+
+      if (change.statuses?.[0]?.errors?.length) {
+        console.debug('Status update error', change.statuses?.[0]?.errors)
+        return null
+      }
 
       const contact = change.contacts?.[0]
       if (!contact) return null

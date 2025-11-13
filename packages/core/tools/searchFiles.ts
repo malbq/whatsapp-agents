@@ -77,7 +77,6 @@ Step C — build the list with top files:
 LLM reviews the list and chooses one to send via send_file.
 */
 import type { ToolExecutionError } from '@batman/core/errors'
-import type { FileSearchResult } from '@batman/core/infra/db'
 import { spreadError } from '@batman/core/utils/spreadError'
 import { extractFilename } from '@batman/core/utils/storageKey'
 import { tool } from 'ai'
@@ -89,7 +88,13 @@ export interface SearchFilesDeps {
   searchFiles: (params: {
     userId: string
     queryEmbedding: Array<number>
-  }) => Promise<Array<FileSearchResult>>
+  }) => Promise<Array<{
+    messageId: string
+    resourceId: string
+    timestamp: Date
+    score: number
+    snippet: string
+  }>>
   findResourceById: (params: {
     userId: string
     resourceId: string

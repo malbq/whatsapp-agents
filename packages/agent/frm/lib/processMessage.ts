@@ -1,14 +1,15 @@
 import type { DB } from '@batman/core/infra/db'
 import { toDbMessage } from '@batman/core/utils/toDbMessage'
-import { toAssistantModelMessage } from '@batman/core/utils/toModelMessage'
+import { toAssistantModelMessage, toUserModelMessage } from '@batman/core/utils/toModelMessage'
 import type { Chat, MessageNotification, TextMessage } from '@batman/whatsapp'
 import type { ModelMessage } from 'ai'
+import type { FrmDB } from '../db'
 import { createTools } from '../tools'
-import { findCandidateByPhone } from './dataStore'
 import { generate } from './generate'
 
 export interface ProcessMessageDeps {
   db: DB.Repository
+  frmDB: FrmDB
   chat: Chat
 }
 
@@ -18,9 +19,9 @@ export const processMessage =
 
     const { message, userId: userWhatsappId, userName } = notification
 
-    const ackPromise = deps.chat.acknowledgeMessage(message.messageId)
+    deps.chat.acknowledgeMessage(message.messageId)
 
-    const candidate = findCandidateByPhone(userWhatsappId)
+    const candidate = await deps.frmDB.findCandidateByPhone(userWhatsappId)
     if (!candidate) {
       deps.chat.sendText(userWhatsappId, {
         text: 'Desculpe, não encontramos seu cadastro. Por favor, entre em contato com o RH.',
@@ -64,6 +65,8 @@ export const processMessage =
       return
     }
 
+    deps.chat.sendTypingIndicator(message.messageId)
+
     const recentMessages = await deps.db
       .findRecentMessages({ userId: user.id })
       .catch((error: unknown) => {
@@ -71,23 +74,26 @@ export const processMessage =
         return []
       })
 
+    const userModelMessage = await toUserModelMessage(message)
     const messages: ModelMessage[] = [
       ...recentMessages.map((msg) => msg.modelMessage),
-      { role: 'user', content: message.text },
+      userModelMessage,
     ]
 
     const tools = createTools({
       userWhatsappId,
       chat: deps.chat,
       candidate,
+      frmDB: deps.frmDB,
     })
-    let responseText: string
+
+    let generateResponse
     try {
-      const generateResponse = await generate({
+      generateResponse = await generate({
         messages,
         tools,
+        frmDB: deps.frmDB,
       })
-      responseText = generateResponse.text
     } catch (error) {
       console.error('Error generating response:', JSON.stringify(error, null, 2))
       await deps.chat.sendText(userWhatsappId, {
@@ -96,29 +102,59 @@ export const processMessage =
       return
     }
 
-    const assistantMessageId = await deps.chat.sendText(userWhatsappId, { text: responseText })
+    const outputMessage = generateResponse.output
+    let assistantMessageId: string
+
+    // Send appropriate message type based on structured output
+    switch (outputMessage.type) {
+      case 'text':
+        assistantMessageId = await deps.chat.sendText(userWhatsappId, { text: outputMessage.text })
+        break
+      case 'location':
+        assistantMessageId = await deps.chat.sendLocation(userWhatsappId, outputMessage)
+        break
+      case 'contact':
+        assistantMessageId = await deps.chat.sendContact(userWhatsappId, outputMessage)
+        break
+      case 'interactive_button':
+        assistantMessageId = await deps.chat.sendInteractiveButton(userWhatsappId, outputMessage)
+        break
+      case 'interactive_list':
+        assistantMessageId = await deps.chat.sendInteractiveList(userWhatsappId, outputMessage)
+        break
+      default:
+        console.error('Unsupported message type:', outputMessage)
+        assistantMessageId = await deps.chat.sendText(userWhatsappId, {
+          text: 'Desculpe, ocorreu um erro ao processar a resposta.',
+        })
+    }
 
     try {
-      await deps.db.storeMessage([
-        {
+      const messagesToStore = [
+        toDbMessage({
           userId: user.id,
           waId: message.messageId,
           type: message.type,
-          modelMessage: { role: 'user', content: message.text },
-          content: [{ content: message.text, embedding: [] }],
-        },
-        {
-          userId: user.id,
-          waId: assistantMessageId,
-          type: 'text',
-          modelMessage: { role: 'assistant', content: responseText },
-          content: [{ content: responseText, embedding: [] }],
-        },
-      ])
+          modelMessage: userModelMessage,
+        }),
+        ...generateResponse.messages.map((enrichedMsg, i, arr) =>
+          toDbMessage({
+            userId: user.id,
+            waId: i === arr.length - 1 ? assistantMessageId : undefined,
+            type:
+              i === arr.length - 1
+                ? outputMessage.type
+                : enrichedMsg.modelMessage.role === 'tool'
+                ? 'tool-result'
+                : 'tool-call',
+            modelMessage: enrichedMsg.modelMessage,
+            usage: enrichedMsg.usage,
+          })
+        ),
+      ]
+
+      await deps.db.storeMessage(messagesToStore)
     } catch (error) {
       console.error('Error storing message:', error)
-    } finally {
-      const { saveData } = await import('./dataStore')
-      await Promise.all([ackPromise, saveData()])
     }
   }

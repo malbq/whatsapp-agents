@@ -1,23 +1,21 @@
 import type { Context } from 'hono'
-import { dataStore, freeSlot, saveData } from '../lib/dataStore'
+import type { FrmDB } from '../db'
 
-export function createDeleteInterviewRoute() {
+export function createDeleteInterviewRoute(frmDB: FrmDB) {
   return async (c: Context) => {
     const interviewId = c.req.param('id')
 
-    const interview = dataStore.interviews.get(interviewId)
+    const interview = await frmDB.getInterview(interviewId)
     if (!interview) {
       return c.json({ success: false, error: 'Interview not found' }, 404)
     }
 
-    // Cancel interview
-    interview.status = 'cancelled'
+    await frmDB.updateInterview({
+      ...interview,
+      status: 'cancelled',
+    })
 
-    // Free up the slot
-    freeSlot(interview.slotId)
-
-    // Save data
-    await saveData()
+    await frmDB.freeSlot(interview.slotId)
 
     return c.json({ success: true })
   }

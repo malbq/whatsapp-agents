@@ -1,5 +1,4 @@
 import type { InferInsertModel, InferSelectModel, Table, TableConfig } from 'drizzle-orm'
-import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import type { PostgresSchema } from './dbPostgresSchema'
 
 type ExtractTable<T> = T extends Table<TableConfig> ? T : never
@@ -19,8 +18,14 @@ export namespace DB {
     | 'audio'
     | 'document'
     | 'image'
+    | 'location'
+    | 'contact'
+    | 'interactive_list'
+    | 'interactive_button'
+    | 'interactive_cta_url'
     | 'reaction'
     | 'unsupported'
+    | 'tool-call'
     | 'tool-result'
 
   export type Message = SelectModel<'message'>
@@ -29,7 +34,6 @@ export namespace DB {
   export type Reminder = SelectModel<'reminder'>
 
   export interface Repository {
-    client: PostgresJsDatabase<typeof PostgresSchema>
     storeRawIncomingMessage: (payload: string, waId: string) => Promise<boolean>
     persistUser: (user: InsertModel<'user'>) => Promise<User>
     storeMessage: (

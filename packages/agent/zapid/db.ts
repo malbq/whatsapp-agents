@@ -1,13 +1,14 @@
 import type { DB } from '@batman/core/infra/db'
 import { Postgres } from '@batman/core/infra/dbPostgres'
 import { desc, eq } from 'drizzle-orm'
-import { userProfileVersion } from './dbSchema'
+import { drizzle } from 'drizzle-orm/bun-sql'
+import * as schema from './dbSchema'
 
 export interface UserWithProfile extends DB.User {
   profile: string
 }
 
-export interface ZapidDB extends DB.Repository {
+export interface ZapidDB extends DB.Repository<typeof schema> {
   updateUserProfile: (params: { userId: string; profile: string }) => Promise<string | null>
   updateProfileVersionMessageId: (params: {
     profileVersionId: string
@@ -19,7 +20,13 @@ export interface ZapidDB extends DB.Repository {
 }
 
 export const dbFactory = (): ZapidDB => {
-  const coreDB = Postgres.dbFactory({ url: 'postgresql://localhost/zapid' })
+  const url = import.meta.env.DATABASE_URL
+  if (!url) {
+    throw new Error('DATABASE_URL is required')
+  }
+
+  const client = drizzle(url, { schema })
+  const coreDB = Postgres.dbFactory({ client })
 
   return {
     ...coreDB,
@@ -29,10 +36,10 @@ export const dbFactory = (): ZapidDB => {
       const user = await coreDB.persistUser(params)
 
       const profileResult = await coreDB.client
-        .select({ profile: userProfileVersion.profile })
-        .from(userProfileVersion)
-        .where(eq(userProfileVersion.userId, user.id))
-        .orderBy(desc(userProfileVersion.id))
+        .select({ profile: schema.userProfileVersion.profile })
+        .from(schema.userProfileVersion)
+        .where(eq(schema.userProfileVersion.userId, user.id))
+        .orderBy(desc(schema.userProfileVersion.id))
         .limit(1)
 
       const profile = profileResult[0]?.profile ?? ''
@@ -48,21 +55,21 @@ export const dbFactory = (): ZapidDB => {
       if (profile.length === 0) return null
 
       const insertResult = await coreDB.client
-        .insert(userProfileVersion)
+        .insert(schema.userProfileVersion)
         .values({
           userId,
           profile,
         })
-        .returning({ id: userProfileVersion.id })
+        .returning({ id: schema.userProfileVersion.id })
 
       return insertResult[0]!.id
     },
 
     async updateProfileVersionMessageId({ profileVersionId, messageId }) {
       await coreDB.client
-        .update(userProfileVersion)
+        .update(schema.userProfileVersion)
         .set({ messageId })
-        .where(eq(userProfileVersion.id, profileVersionId))
+        .where(eq(schema.userProfileVersion.id, profileVersionId))
     },
   }
 }

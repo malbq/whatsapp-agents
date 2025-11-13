@@ -8,8 +8,9 @@ import {
 import {
   generateText as aiGenerateText,
   Output,
+  type AssistantModelMessage,
   type LanguageModelUsage,
-  type ModelMessage,
+  type ToolModelMessage,
   type ToolSet,
 } from 'ai'
 import { z } from 'zod'
@@ -27,7 +28,7 @@ export const whatsappResponseSchema = z.object({
 export type WhatsappResponseSchema = z.infer<typeof whatsappResponseSchema>
 
 export interface EnrichedMessage {
-  modelMessage: ModelMessage
+  modelMessage: AssistantModelMessage | ToolModelMessage
   usage?: LanguageModelUsage
 }
 
@@ -36,18 +37,40 @@ export interface GenerateResponse {
   messages: EnrichedMessage[]
 }
 
-export async function generateWhatsappMessage<TOOLS extends ToolSet>(
-  options: Omit<
-    Parameters<typeof aiGenerateText<TOOLS, Output.Output<WhatsappResponseSchema>>>[0],
-    'output' | 'experimental_output'
-  >
-): Promise<GenerateResponse> {
+type GenerateOptions<TOOLS extends ToolSet> = Parameters<
+  typeof aiGenerateText<TOOLS, Output.Output<WhatsappResponseSchema>>
+>[0]
+
+type GenerateWaOptions<TOOLS extends ToolSet> = Omit<
+  GenerateOptions<TOOLS>,
+  'output' | 'experimental_output'
+>
+
+const formattingGuidelines = `Formatting options for text messages and for interactive messages body:
+- Italic: _text_
+- Bold: *text*
+- Strikethrough: ~text~
+- Bulleted list: - text
+- Numbered list: 1. text
+- Quote: > text
+- Monospace block: \`\`\`text\`\`\`
+- Inline monospace: \`text\`
+
+Use formatting sparingly.
+These are the only formatting options you can use.
+Do not format text with anything else, like markdown, XML, or typographic emphasis.`
+
+export async function generateWhatsappMessage<TOOLS extends ToolSet>({
+  system,
+  ...options
+}: GenerateWaOptions<TOOLS>): Promise<GenerateResponse> {
   const result = await aiGenerateText<TOOLS, Output.Output<WhatsappResponseSchema>>({
     ...options,
+    system: `${system ?? ''}\n\n${formattingGuidelines}`.trim(),
     output: Output.object({
       schema: whatsappResponseSchema,
     }),
-  } as Parameters<typeof aiGenerateText<TOOLS, Output.Output<WhatsappResponseSchema>>>[0])
+  } as GenerateOptions<TOOLS>)
 
   const messages: EnrichedMessage[] = []
 

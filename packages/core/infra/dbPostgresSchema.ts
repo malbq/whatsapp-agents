@@ -36,7 +36,7 @@ export namespace PostgresSchema {
       resourceId: text().references(() => resource.id),
       timestamp: timestamp({ mode: 'date' }).notNull().defaultNow(),
     },
-    (table) => [index().on(table.userId), index().on(table.waId)]
+    (table) => [index().on(table.userId)]
   )
 
   export const snippet = pgTable(

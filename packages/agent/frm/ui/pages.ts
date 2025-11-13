@@ -1,4 +1,4 @@
-import type { Candidate, InterviewSlot, Interview } from '../types'
+import type { Candidate, CompanyInfo, Interview, InterviewSlot } from '../types'
 
 export function Layout(title: string, content: string) {
   return `
@@ -269,6 +269,7 @@ interface DashboardPageProps {
   candidates: Candidate[]
   slots: InterviewSlot[]
   interviews: Interview[]
+  companyInfo: CompanyInfo
   startSecretToken: string
 }
 
@@ -312,15 +313,15 @@ function generateSlotsGrid(
         const dateParts = slot.date.split('-')
         if (dateParts.length === 3) {
           const dateObj = new Date(
-            parseInt(dateParts[0] || '0'), 
-            parseInt(dateParts[1] || '0') - 1, 
+            parseInt(dateParts[0] || '0'),
+            parseInt(dateParts[1] || '0') - 1,
             parseInt(dateParts[2] || '0')
           )
-          formattedDate = dateObj.toLocaleDateString('pt-BR', { 
-            weekday: 'short', 
-            year: 'numeric', 
-            month: 'short', 
-            day: 'numeric' 
+          formattedDate = dateObj.toLocaleDateString('pt-BR', {
+            weekday: 'short',
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
           })
         }
       } catch {
@@ -359,7 +360,9 @@ function generateSlotsGrid(
                   ? `
               <div class="interview-info-row">
                 <span class="interview-info-label">Result:</span>
-                <span style="font-weight: 600; color: ${interview.result === 'approved' ? '#28a745' : '#dc3545'}">
+                <span style="font-weight: 600; color: ${
+                  interview.result === 'approved' ? '#28a745' : '#dc3545'
+                }">
                   ${interview.result.toUpperCase()}
                 </span>
               </div>
@@ -378,7 +381,7 @@ function generateSlotsGrid(
             </div>
           `
               : isBooked && candidate
-                ? `
+              ? `
             <div class="interview-info">
               <div class="interview-info-row">
                 <span class="interview-info-label">Candidate:</span>
@@ -390,7 +393,7 @@ function generateSlotsGrid(
               </div>
             </div>
           `
-                : ''
+              : ''
           }
         </div>
       `
@@ -400,7 +403,13 @@ function generateSlotsGrid(
   return `<div class="slots-grid">${slotCards}</div>`
 }
 
-export function DashboardPage({ candidates, slots, interviews, startSecretToken }: DashboardPageProps) {
+export function DashboardPage({
+  candidates,
+  slots,
+  interviews,
+  companyInfo,
+  startSecretToken,
+}: DashboardPageProps) {
   const candidateRows = candidates
     .map(
       (candidate) => `
@@ -442,6 +451,24 @@ export function DashboardPage({ candidates, slots, interviews, startSecretToken 
     .join('')
 
   const content = `
+    <div class="card">
+      <h2>Company Information</h2>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 15px;">
+        <div>
+          <div style="font-size: 12px; color: #666; margin-bottom: 5px; font-weight: 600;">Company Name</div>
+          <div style="font-size: 16px; color: #333;">${companyInfo.name}</div>
+        </div>
+        <div>
+          <div style="font-size: 12px; color: #666; margin-bottom: 5px; font-weight: 600;">Location</div>
+          <div style="font-size: 16px; color: #333;">${companyInfo.location}</div>
+        </div>
+        <div>
+          <div style="font-size: 12px; color: #666; margin-bottom: 5px; font-weight: 600;">Contact</div>
+          <div style="font-size: 16px; color: #333;">${companyInfo.contact}</div>
+        </div>
+      </div>
+    </div>
+
     <div class="card">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
         <h2 style="margin: 0;">Candidates</h2>
@@ -485,14 +512,42 @@ export function DashboardPage({ candidates, slots, interviews, startSecretToken 
           </tr>
         </thead>
         <tbody>
-          ${candidateRows || '<tr><td colspan="5" style="text-align: center; color: #666;">No candidates yet. Click "Add Candidate" to get started.</td></tr>'}
+          ${
+            candidateRows ||
+            '<tr><td colspan="5" style="text-align: center; color: #666;">No candidates yet. Click "Add Candidate" to get started.</td></tr>'
+          }
         </tbody>
       </table>
     </div>
 
     <!-- Slots and Interviews Section -->
     <div class="card">
-      <h2>Interview Slots & Scheduled Interviews</h2>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="margin: 0;">Interview Slots & Scheduled Interviews</h2>
+        <button class="btn" onclick="showCreateSlotForm()">+ Create Slot</button>
+      </div>
+
+      <!-- Create Slot Form Modal -->
+      <div id="slotModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 8px; min-width: 400px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+          <h2 style="margin-bottom: 20px;">Create Interview Slot</h2>
+          <form id="slotForm" onsubmit="return false;" lang="pt-BR">
+            <div style="margin-bottom: 15px;">
+              <label style="display: block; margin-bottom: 5px; font-weight: 600;">Date *</label>
+              <input type="date" id="slotDate" required lang="pt-BR" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" />
+            </div>
+            <div style="margin-bottom: 15px;">
+              <label style="display: block; margin-bottom: 5px; font-weight: 600;">Time *</label>
+              <input type="time" id="slotTime" required lang="pt-BR" step="900" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" />
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+              <button type="button" onclick="hideSlotModal()" class="btn" style="background: #6c757d;">Cancel</button>
+              <button type="submit" onclick="saveSlot()" class="btn btn-success">Create</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
       ${generateSlotsGrid(slots, interviews, candidates)}
     </div>
 
@@ -644,6 +699,51 @@ export function DashboardPage({ candidates, slots, interviews, startSecretToken 
           hideModal();
         }
       });
+
+      function showCreateSlotForm() {
+        document.getElementById('slotDate').value = '';
+        document.getElementById('slotTime').value = '';
+        document.getElementById('slotModal').style.display = 'block';
+      }
+
+      function hideSlotModal() {
+        document.getElementById('slotModal').style.display = 'none';
+      }
+
+      async function saveSlot() {
+        const date = document.getElementById('slotDate').value;
+        const time = document.getElementById('slotTime').value;
+
+        if (!date || !time) {
+          alert('Date and time are required');
+          return;
+        }
+
+        try {
+          const response = await fetch('/api/slots', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ date, time })
+          });
+          
+          const data = await response.json();
+          
+          if (data.success) {
+            hideSlotModal();
+            window.location.reload();
+          } else {
+            alert('Error: ' + (data.error || 'Failed to create slot'));
+          }
+        } catch (error) {
+          alert('Error: ' + error.message);
+        }
+      }
+
+      document.getElementById('slotModal')?.addEventListener('click', function(e) {
+        if (e.target === this) {
+          hideSlotModal();
+        }
+      });
     </script>
   `
 
@@ -654,7 +754,7 @@ interface Message {
   id: string
   role: string
   type: string
-  timestamp: string
+  timestamp: Date
   content: string
 }
 
@@ -696,8 +796,8 @@ export function ThreadsPage({ threads }: ThreadsPageProps) {
                     (msg) => `
             <div class="message message-${msg.role === 'user' ? 'user' : 'assistant'}">
               <div class="message-header">
-                <strong>${msg.role === 'user' ? 'User' : 'Assistant'}</strong> • 
-                ${new Date(msg.timestamp).toLocaleString('pt-BR')}
+                <strong>${msg.role}</strong> • 
+                ${msg.timestamp.toLocaleString('pt-BR')}
               </div>
               <div>${msg.content}</div>
             </div>

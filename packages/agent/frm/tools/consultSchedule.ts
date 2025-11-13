@@ -1,14 +1,14 @@
 import { tool } from 'ai'
 import { z } from 'zod'
-import { getAvailableSlots } from '../lib/dataStore'
+import type { FrmToolContext } from './index'
 
-export const createConsultScheduleTool = () =>
+export const createConsultScheduleTool = (ctx: FrmToolContext) =>
   tool({
     title: 'consult_schedule',
     description: 'Consult available interview slots for scheduling.',
     inputSchema: z.object({}),
     execute: async () => {
-      const slots = getAvailableSlots()
+      const slots = await ctx.frmDB.getAvailableSlots()
 
       if (slots.length === 0) {
         return 'No available slots found.'

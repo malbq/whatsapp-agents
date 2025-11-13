@@ -5,11 +5,11 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "bun run --hot index.ts --no-clear-screen",
+    "dev": "bun run --hot --no-clear-screen index.ts",
     "typecheck": "tsc",
     "lint": "oxlint --fix",
-    "db:migrate": "bun --eval \"import { Database } from 'bun:sqlite'; import { readFileSync } from 'fs'; const db = new Database('./storage/frm.db'); db.run(readFileSync('./migrations/schema.sql', 'utf-8')); db.close(); console.log('Schema applied');\"",
-    "db:clean": "bun --eval \"import { Database } from 'bun:sqlite'; const db = new Database('./storage/frm.db'); db.run('DELETE FROM embedding'); db.run('DELETE FROM message'); db.close(); console.log('Tables cleaned');\""
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
     "@batman/core": "workspace:*",
@@ -24,6 +24,7 @@
   "devDependencies": {
     "@types/bun": "catalog:",
     "@types/node": "catalog:",
+    "drizzle-kit": "catalog:",
     "oxlint": "catalog:",
     "typescript": "catalog:"
   }

@@ -1,6 +1,7 @@
 {
   "extends": "../../../tsconfig.json",
   "compilerOptions": {
+    "skipLibCheck": true,
     "paths": {
       "@batman/core/*": ["../../core/*"],
       "@batman/server": ["../../server/index.ts"],

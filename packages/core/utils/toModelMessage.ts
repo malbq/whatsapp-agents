@@ -46,6 +46,39 @@ export function toAssistantModelMessage(message: Message): AssistantModelMessage
   switch (message.type) {
     case 'text':
       return { role: 'assistant', content: [{ type: 'text', text: message.text }] }
+    case 'interactive_button':
+      return {
+        role: 'assistant',
+        content: [
+          { type: 'text', text: message.body },
+          ...(message.header ? [{ type: 'text', text: `Header: ${message.header}` } satisfies TextPart] : []),
+          ...(message.footer ? [{ type: 'text', text: `Footer: ${message.footer}` } satisfies TextPart] : []),
+        ],
+      }
+    case 'interactive_list':
+      return {
+        role: 'assistant',
+        content: [
+          { type: 'text', text: message.body },
+          ...(message.header ? [{ type: 'text', text: `Header: ${message.header}` } satisfies TextPart] : []),
+          ...(message.footer ? [{ type: 'text', text: `Footer: ${message.footer}` } satisfies TextPart] : []),
+        ],
+      }
+    case 'location':
+      return {
+        role: 'assistant',
+        content: [
+          {
+            type: 'text',
+            text: `Location: ${message.name ?? 'Unnamed'} (${message.latitude}, ${message.longitude})${message.address ? ` - ${message.address}` : ''}`,
+          },
+        ],
+      }
+    case 'contact':
+      return {
+        role: 'assistant',
+        content: [{ type: 'text', text: `Contact: ${message.name} (${message.phone})` }],
+      }
     default:
       throw new Error(`Unsupported message type ${message.type}`)
   }

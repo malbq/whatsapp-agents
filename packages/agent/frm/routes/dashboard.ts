@@ -1,11 +1,14 @@
 import type { Context } from 'hono'
-import { dataStore } from '../lib/dataStore'
+import type { FrmDB } from '../db'
 import { DashboardPage } from '../ui/pages'
 
-export async function dashboardRoute(c: Context) {
-  const candidates = Array.from(dataStore.candidates.values())
-  const slots = dataStore.availableSlots
-  const interviews = Array.from(dataStore.interviews.values())
-  const startSecretToken = import.meta.env.START_SECRET_TOKEN || ''
-  return c.html(DashboardPage({ candidates, slots, interviews, startSecretToken }))
+export function createDashboardRoute(frmDB: FrmDB) {
+  return async (c: Context) => {
+    const candidates = await frmDB.listCandidates()
+    const slots = await frmDB.getAllSlots()
+    const interviews = await frmDB.listInterviews()
+    const companyInfo = await frmDB.getCompanyInfo()
+    const startSecretToken = import.meta.env.START_SECRET_TOKEN || ''
+    return c.html(DashboardPage({ candidates, slots, interviews, companyInfo, startSecretToken }))
+  }
 }

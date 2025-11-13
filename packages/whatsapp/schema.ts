@@ -1,9 +1,13 @@
 import { z } from 'zod'
 
-export const textMessageSchema = z.object({
-  type: z.literal('text'),
-  text: z.string(),
-})
+export const textMessageSchema = z
+  .object({
+    type: z.literal('text'),
+    text: z.string(),
+  })
+  .describe(
+    'Default and primary response type. Prefer this in most situations. If uncertain about which type to use, respond with a text message.'
+  )
 
 export const voiceMessageSchema = z.object({
   type: z.literal('voice'),
@@ -32,19 +36,27 @@ export const imageMessageSchema = z.object({
   caption: z.string().optional(),
 })
 
-export const locationMessageSchema = z.object({
-  type: z.literal('location'),
-  latitude: z.number(),
-  longitude: z.number(),
-  name: z.string().optional(),
-  address: z.string().optional(),
-})
+export const locationMessageSchema = z
+  .object({
+    type: z.literal('location'),
+    latitude: z.number(),
+    longitude: z.number(),
+    name: z.string().optional(),
+    address: z.string().optional(),
+  })
+  .describe(
+    'Use only when sharing a place is necessary to satisfy the user request; otherwise prefer a text message.'
+  )
 
-export const contactMessageSchema = z.object({
-  type: z.literal('contact'),
-  name: z.string(),
-  phone: z.string(),
-})
+export const contactMessageSchema = z
+  .object({
+    type: z.literal('contact'),
+    name: z.string(),
+    phone: z.string(),
+  })
+  .describe(
+    'Use only when sharing a specific contact is necessary; otherwise prefer a text message.'
+  )
 
 export const reactionMessageSchema = z.object({
   type: z.literal('reaction'),
@@ -155,7 +167,7 @@ export const interactiveCtaUrlMessageSchema = z
     }),
   })
   .describe(
-    'Interactive CTA URL message with a single button that opens a URL. Use this when you need to direct the user to an external link.'
+    'Interactive CTA URL message with a single button that opens a URL. Use this only when directing the user to an external link is essential. If the link is optional or informational, prefer a text message with the URL inline.'
   )
 
 export const templateParametersSchema = z.union([
