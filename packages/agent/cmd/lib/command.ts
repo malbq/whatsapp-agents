@@ -1,8 +1,8 @@
-import type { Chat, Message } from '@batman/whatsapp'
+import type { Chat, IncominMessage } from '@batman/whatsapp'
 
 const commands = ['help', 'text', 'contact', 'location', 'options'] as const
 export type Command = (typeof commands)[number]
-export function extractCommand(message: Message): string | null {
+export function extractCommand(message: IncominMessage): string | null {
   if (message.type !== 'text' || !message.text) return null
   const match = message.text.match(/^\/(help|text|contact|location|options \d+)$/)
   if (!match) return null

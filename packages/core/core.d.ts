@@ -9,7 +9,7 @@ declare global {
     CF_ACCOUNT_ID: string
     CF_API_TOKEN: string
     GOOGLE_GENERATIVE_AI_API_KEY: string
-    BRAVE_API_KEY: string
+    BRAVE_SEARCH_API_KEY: string
   }
 }
 

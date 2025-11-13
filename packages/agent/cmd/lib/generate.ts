@@ -1,13 +1,13 @@
 import { openai } from '@ai-sdk/openai'
 import {
   generateWhatsappMessage,
-  type WhatsappResponseSchema,
+  type GeneratedWhatsappMessage,
 } from '@batman/core/ai/generateWhatsappMessage'
 import { stepCountIs } from 'ai'
 
 const model = openai.responses('gpt-5-mini-2025-08-07')
 
-export async function generate(command: string): Promise<WhatsappResponseSchema['message']> {
+export async function generate(command: string): Promise<GeneratedWhatsappMessage> {
   const result = await generateWhatsappMessage({
     model,
     messages: [

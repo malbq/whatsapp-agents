@@ -4,7 +4,7 @@ import type { FrmToolContext } from './index'
 
 export function createScheduleInterviewTool(ctx: FrmToolContext) {
   return tool({
-    name: 'schedule_interview',
+    title: 'schedule_interview',
     description: 'Schedule an interview for a candidate at a specific date and time.',
     inputSchema: z.object({
       date: z.string().describe('Date in YYYY-MM-DD format'),

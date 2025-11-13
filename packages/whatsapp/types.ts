@@ -50,10 +50,8 @@ export type ReplyMessage = {
   replyingTo?: string
 }
 
-export type Message =
+export type OutgoingMessage =
   | TextMessage
-  | VoiceMessage
-  | AudioMessage
   | DocumentMessage
   | ImageMessage
   | LocationMessage
@@ -63,15 +61,27 @@ export type Message =
   | InteractiveButtonMessage
   | InteractiveCtaUrlMessage
   | TemplateMessage
-  | UnsupportedMessage
+
+export type IncominMessage = (
+  | TextMessage
+  | VoiceMessage
+  | AudioMessage
+  | DocumentMessage
+  | ImageMessage
+  | LocationMessage
+  | ReactionMessage
+  | ContactMessage
+) &
+  ReplyMessage & { messageId: string }
 
 export interface Notification {
-  userId: string
+  userWaId: string
   userName: string
+  userPhone: string
+  timestamp: Date
 }
-
-export type IncomingMessage = Message & ReplyMessage & { messageId: string }
-export type MessageNotification = Notification & { message: IncomingMessage }
+export type MessageNotification = Notification & { message: IncominMessage }
+export type UnsupportedMessageNotification = Notification & { unsupportedType: string }
 export type StatusUpdateNotification = Notification & {
   statusUpdate: StatusUpdate
 }
@@ -81,7 +91,9 @@ export type StatusUpdate = 'read' | 'delivered' | 'sent'
 export interface Chat {
   parseNotification: (
     notification: unknown
-  ) => Promise<MessageNotification | StatusUpdateNotification | null>
+  ) => Promise<
+    MessageNotification | StatusUpdateNotification | UnsupportedMessageNotification | null
+  >
   acknowledgeMessage: (messageId: string) => Promise<void>
   sendTypingIndicator: (messageId: string) => Promise<void>
   sendText: (userId: string, message: Omit<TextMessage, 'type'> & ReplyMessage) => Promise<string>

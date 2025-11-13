@@ -38,60 +38,67 @@ Error segmentation
   - Response flow: on failure, log and send a polite fallback; continue.
   - Post-tasks: best-effort; failures are logged and do not affect the user.
 */
-import { spreadError } from '@batman/core/utils/spreadError'
+import { toDbMessage } from '@batman/core/utils/toDbMessage'
 import { toAssistantModelMessage, toUserModelMessage } from '@batman/core/utils/toModelMessage'
 import type { TextMessage } from '@batman/whatsapp'
+import { ok } from 'node:assert'
 import { getContext } from './context'
-import { Frame } from './frame'
-import { embedMessages } from './systems/embedMessages'
 import { persistUser } from './systems/persistUser'
 import { responseGeneration } from './systems/responseGeneration'
-import { storeMedia } from './systems/storeMedia'
 import { storeMessageExchange } from './systems/storeMessageExchange'
-import { updateProfileVersionMessageId } from './systems/updateProfileVersionMessageId'
-import type { Deps } from './types'
 
-export async function agent(deps: Deps): Promise<void> {
-  const { message, userId, userName } = getContext()
+export async function agent(): Promise<void> {
+  const context = getContext()
+  const { message, userWaId, userName } = context.notification
   console.log('Starting agent response flow', { message })
-  const frame = new Frame()
 
-  deps.chat.acknowledgeMessage(message.messageId)
+  context.chat.acknowledgeMessage(message.messageId)
 
-  await persistUser(frame, deps, {
-    userName: userName,
-    userExternalId: userId,
-  })
-
-  if (!frame.user) {
+  try {
+    await persistUser({ userName, userWaId })
+  } catch (error) {
     // Não podemos fazer nada sem um usuário, nem salvar a resposta no banco
-    console.error('User not found')
-    deps.chat.sendText(userId, {
+    console.error(`Error persisting user: ${userName} (${userWaId})`, error)
+    context.chat.sendText(userWaId, {
+      // FIXME: what language should we use here?
       text: 'Desculpe, tive um problema e não consigo te responder agora.',
     })
     return
   }
 
-  deps.chat.sendTypingIndicator(message.messageId)
+  ok(context.user, 'User not found')
+
+  context.chat.sendTypingIndicator(message.messageId)
 
   try {
-    frame.inbound = await toUserModelMessage(message)
-    await responseGeneration(frame, deps)
+    context.inbound = toDbMessage({
+      userId: context.user.id,
+      notification: context.notification,
+      //FIXME Reaction messages will break here
+      userModelMessage: (await toUserModelMessage(message))!,
+    })
+    await responseGeneration()
   } catch (error) {
-    console.error(`Agent response flow error: ${String(error)}`, { ...spreadError(error) })
+    console.error('Agent response flow error', error)
     const errorMessage: TextMessage = {
       type: 'text',
       text: 'Desculpe, tive um problema ao processar sua mensagem.',
     }
-    deps.chat.sendText(userId, errorMessage)
-    frame.outbound.push(toAssistantModelMessage(errorMessage))
+    const errorMessageId = await context.chat.sendText(userWaId, errorMessage)
+    context.outbound = [
+      toDbMessage({
+        userId: context.user.id,
+        waId: errorMessageId,
+        modelMessage: toAssistantModelMessage(errorMessage)!,
+      }),
+    ]
   }
 
   try {
-    await Promise.all([storeMedia(frame, deps), embedMessages(frame, deps)])
-    await storeMessageExchange(frame, deps)
-    await updateProfileVersionMessageId(frame, deps)
+    // await Promise.all([storeMedia(frame, deps), embedMessages(frame, deps)])
+    await storeMessageExchange()
+    // await updateProfileVersionMessageId()
   } catch (error) {
-    console.error(`Error after agent's response: ${String(error)}`, { ...spreadError(error) })
+    console.error("Error after agent's response", error)
   }
 }

@@ -8,9 +8,9 @@ export interface WebhookConfig {
 }
 
 export interface WebhookHandlers {
-  onMessage: (notification: MessageNotification) => Promise<void> | void
-  onStatusUpdate?: (statusUpdate: StatusUpdateNotification) => Promise<void> | void
-  onUnknownNotification?: (body: unknown) => Promise<void> | void
+  onMessage: (notification: MessageNotification, raw: string) => Promise<void> | void
+  onStatusUpdate?: (statusUpdate: StatusUpdateNotification, raw: string) => Promise<void> | void
+  onUnknownNotification?: (raw: string) => Promise<void> | void
 }
 
 export function createWebhookApp(
@@ -49,22 +49,21 @@ export function createWebhookApp(
     const notification = await chat.parseNotification(JSON.parse(body))
 
     if (!notification) {
-      await handlers.onUnknownNotification?.(JSON.parse(body))
+      handlers.onUnknownNotification?.(body)
       return c.body('', 200)
     }
 
     if ('statusUpdate' in notification) {
-      await handlers.onStatusUpdate?.(notification)
+      handlers.onStatusUpdate?.(notification, body)
       return c.body('', 200)
     }
 
     if ('message' in notification) {
-      console.debug('WhatsApp message received:', body)
-      await handlers.onMessage(notification)
+      handlers.onMessage(notification, body)
       return c.body('', 200)
     }
 
-    await handlers.onUnknownNotification?.(JSON.parse(body))
+    handlers.onUnknownNotification?.(body)
     return c.body('', 200)
   })
 

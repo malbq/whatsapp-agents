@@ -4,7 +4,7 @@ import type { FrmToolContext } from './index'
 
 export function createRescheduleInterviewTool(ctx: FrmToolContext) {
   return tool({
-    name: 'reschedule_interview',
+    title: 'reschedule_interview',
     description: 'Reschedule an existing interview to a new date and time.',
     inputSchema: z.object({
       newDate: z.string().describe('New date in YYYY-MM-DD format'),

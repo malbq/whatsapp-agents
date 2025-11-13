@@ -1,3 +1,4 @@
+import type { Thread } from '../db'
 import type { Candidate, CompanyInfo, Interview, InterviewSlot } from '../types'
 
 export function Layout(title: string, content: string) {
@@ -119,6 +120,11 @@ export function Layout(title: string, content: string) {
         font-size: 11px;
         color: #666;
         margin-bottom: 5px;
+      }
+      .message-content {
+        font-size: 12px;
+        margin-bottom: 5px;
+        white-space: pre-wrap;
       }
       .nav {
         display: flex;
@@ -750,21 +756,6 @@ export function DashboardPage({
   return Layout('Dashboard', content)
 }
 
-interface Message {
-  id: string
-  role: string
-  type: string
-  timestamp: Date
-  content: string
-}
-
-interface Thread {
-  userId: string
-  userName: string
-  externalId: string
-  messages: Message[]
-}
-
 interface ThreadsPageProps {
   threads: Thread[]
 }
@@ -794,12 +785,16 @@ export function ThreadsPage({ threads }: ThreadsPageProps) {
               : thread.messages
                   .map(
                     (msg) => `
-            <div class="message message-${msg.role === 'user' ? 'user' : 'assistant'}">
+            <div class="message message-${msg.modelMessage.role === 'user' ? 'user' : 'assistant'}">
               <div class="message-header">
-                <strong>${msg.role}</strong> • 
+                <strong>${msg.modelMessage.role}</strong> • 
                 ${msg.timestamp.toLocaleString('pt-BR')}
               </div>
-              <div>${msg.content}</div>
+              <pre class="message-content">${JSON.stringify(
+                msg.modelMessage.content,
+                null,
+                2
+              )}</pre>
             </div>
           `
                   )

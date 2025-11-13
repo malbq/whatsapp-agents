@@ -5,22 +5,24 @@
   "type": "module",
   "private": true,
   "scripts": {
+    "dev": "bun run --hot --no-clear-screen index.ts",
     "typecheck": "tsc",
-    "lint": "oxlint --fix"
+    "lint": "oxlint --fix",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
     "@batman/core": "workspace:*",
     "@batman/server": "workspace:*",
     "@batman/whatsapp": "workspace:*",
     "@ai-sdk/openai": "catalog:",
-    "@ai-sdk/google": "catalog:",
     "ai": "catalog:",
     "drizzle-orm": "catalog:",
-    "postgres": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@types/bun": "catalog:",
+    "drizzle-kit": "catalog:",
     "oxlint": "catalog:",
     "typescript": "catalog:"
   }

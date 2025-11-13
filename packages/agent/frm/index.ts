@@ -23,7 +23,7 @@ ok(import.meta.env.OPENAI_API_KEY, 'OPENAI_API_KEY is required')
 ok(import.meta.env.START_SECRET_TOKEN, 'START_SECRET_TOKEN is required')
 ok(import.meta.env.DATABASE_URL, 'DATABASE_URL is required')
 
-const frmDB = dbFactory({ url: import.meta.env.DATABASE_URL })
+const frmDB = dbFactory()
 
 const apiToken = import.meta.env.META_API_TOKEN
 const businessPhoneId = import.meta.env.WA_BUSINESS_PHONE_ID

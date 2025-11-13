@@ -19,10 +19,9 @@ export namespace Postgres {
     client: BunSQLDatabase<TSchema>
   }): DB.Repository => {
     return {
-      async storeRawIncomingMessage(payload, waId) {
+      async storeRawIncomingMessage(payload) {
         try {
           await client.insert(PostgresSchema.rawIncomingMessage).values({
-            waId,
             payload,
           })
           return true

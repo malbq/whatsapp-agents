@@ -1,26 +1,17 @@
-import { spreadError } from '@batman/core/utils/spreadError'
-import type { Frame } from '../frame'
-import type { Deps } from '../types'
+import { getContext } from '../context'
+import type { UserWithProfile } from '../db'
 
-export async function persistUser(
-  frame: Frame,
-  deps: Deps,
-  incomingUser: { userExternalId: string; userName: string }
-): Promise<void> {
+export async function persistUser(incomingUser: {
+  userWaId: string
+  userName: string
+}): Promise<UserWithProfile | undefined> {
   console.log(`Persisting incoming user`, incomingUser)
-  await deps.db
-    .persistUser({
-      waId: incomingUser.userExternalId,
-      name: incomingUser.userName,
-    })
-    .then((user) => {
-      frame.user = user
-      console.debug('User persisted', { ...user })
-    })
-    .catch((error) => {
-      console.error('Error persisting user', {
-        ...incomingUser,
-        ...spreadError(error),
-      })
-    })
+  const context = getContext()
+  const user = await context.db.persistUser({
+    waId: incomingUser.userWaId,
+    name: incomingUser.userName,
+  })
+  context.user = user
+  console.debug('User persisted', { ...user })
+  return user
 }

@@ -1,13 +1,29 @@
-import type { MessageNotification } from '@batman/whatsapp'
+import type { DB } from '@batman/core/infra/db'
+import type { Storage } from '@batman/core/infra/storage'
+import type { WebSearch } from '@batman/core/infra/webSearch'
+import type { Chat, MessageNotification } from '@batman/whatsapp'
 import { ok } from 'node:assert'
 import { AsyncLocalStorage } from 'node:async_hooks'
+import type { UserWithProfile, ZapidDB } from './db'
 
-type Context = MessageNotification
+type Context = {
+  notification: MessageNotification
+  db: ZapidDB
+  storage: Storage
+  chat: Chat
+  webSearch: WebSearch
+  user?: UserWithProfile
+  inbound?: DB.MessageInsert
+  outbound: DB.MessageInsert[]
+}
 
 const asyncLocalStorage = new AsyncLocalStorage<Context>()
 
-export function runContext<T>(context: Context, callback: () => Promise<T>): Promise<T> {
-  return asyncLocalStorage.run(context, callback)
+export function runContext<T>(
+  initContext: Omit<Context, 'outbound'> & { outbound?: Context['outbound'] },
+  callback: () => Promise<T>
+): Promise<T> {
+  return asyncLocalStorage.run({ ...initContext, outbound: initContext.outbound ?? [] }, callback)
 }
 
 export const getContext = () => {

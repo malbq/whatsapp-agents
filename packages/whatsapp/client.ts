@@ -6,6 +6,7 @@ import type {
   StatusUpdate,
   StatusUpdateNotification,
   TemplateParameters,
+  UnsupportedMessageNotification,
 } from './types'
 import { getExtFromMimeType } from './utils'
 import { WhatsAppApi } from './whatsappTypes'
@@ -117,7 +118,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
       console.error(`Failed to send message: ${httpResponse.status} ${httpResponse.statusText}`, {
         status: httpResponse.status,
         statusText: httpResponse.statusText,
-        body: await httpResponse.text(),
+        body: await httpResponse.json(),
       })
       throw new ResponseDeliveryError('Failed to send message')
     }
@@ -159,21 +160,26 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
       const contact = change.contacts?.[0]
       if (!contact) return null
 
-      const notification: Notification = {
-        userId: contact.wa_id,
-        userName: contact.profile.name,
-      }
-
       const statusUpdate = change.statuses?.[0]
       if (statusUpdate) {
         return {
-          ...notification,
+          userWaId: contact.wa_id,
+          userName: contact.profile.name,
+          userPhone: contact.wa_id,
+          timestamp: new Date(Number(statusUpdate.timestamp) * 1000),
           statusUpdate: statusUpdate.status as StatusUpdate,
-        } satisfies StatusUpdateNotification
+        } as StatusUpdateNotification
       }
 
       const waMessage = change.messages?.[0]
       if (!waMessage) return null
+
+      const notification: Notification = {
+        userWaId: contact.wa_id,
+        userName: contact.profile.name,
+        userPhone: contact.wa_id,
+        timestamp: new Date(Number(waMessage.timestamp) * 1000),
+      }
 
       const textMessage = WhatsAppApi.TextMessageSchema.safeParse(waMessage)
       if (textMessage.success) {
@@ -267,12 +273,8 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
 
       return {
         ...notification,
-        message: {
-          messageId: waMessage.id,
-          type: 'unsupported',
-          unsupportedType: waMessage.type,
-        },
-      }
+        unsupportedType: waMessage.type,
+      } as UnsupportedMessageNotification
     },
 
     acknowledgeMessage: async (messageId) => {

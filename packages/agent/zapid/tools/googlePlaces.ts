@@ -1,9 +1,9 @@
-import { tool } from 'ai'
-import { z } from 'zod'
 import type { ToolExecutionError } from '@batman/core/errors'
 import { spreadError } from '@batman/core/utils/spreadError'
-import { toolUsageExplanation } from '../prompts/toolUsageExplanation'
-import type { Frame } from '../frame'
+import { toAssistantModelMessage } from '@batman/core/utils/toModelMessage'
+import type { LocationMessage } from '@batman/whatsapp'
+import { tool } from 'ai'
+import { z } from 'zod'
 
 interface PlacesSearchResponse {
   places?: GooglePlace[]
@@ -43,12 +43,11 @@ interface GooglePlacesDeps {
     }) => Promise<void>
     sendContact: (params: { name: string; phone: string }) => Promise<void>
   }
-  googlePlacesApiKey: string
 }
 
-export const googlePlacesTool = (frame: Frame, deps: GooglePlacesDeps) =>
+export const googlePlacesTool = (deps: GooglePlacesDeps) =>
   tool({
-    name: 'google_places',
+    title: 'google_places',
     description: `Search for business and place information via Google Places.
 Use when the user requests place discovery, addresses, hours, ratings, contact details, or "places near me" style queries.
 
@@ -88,23 +87,9 @@ If multiple matches exist, only the search results will be returned regardless o
         .describe(
           'Set to true if the user explicitly requests contact details or phone number. The tool will send a contact card only if exactly one result is found and has a phone number.'
         ),
-      explanation: z.string().describe(toolUsageExplanation),
     }),
-    execute: async (params, { abortSignal }) => {
-      const {
-        query,
-        maxResults = 5,
-        sendLocation = false,
-        sendContact = false,
-        explanation,
-      } = params
-
-      const externalChatId = await deps.chat.sendText({ text: explanation })
-      frame.outboundMessages.push({
-        externalChatId,
-        type: 'text',
-        text: explanation,
-      })
+    execute: async (params, { abortSignal, messages }) => {
+      const { query, maxResults = 5, sendLocation = false, sendContact = false } = params
 
       try {
         const searchResponse = await fetch('https://places.googleapis.com/v1/places:searchText', {
@@ -112,7 +97,7 @@ If multiple matches exist, only the search results will be returned regardless o
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-Goog-Api-Key': deps.googlePlacesApiKey,
+            'X-Goog-Api-Key': import.meta.env.GOOGLE_PLACES_API_KEY,
             'X-Goog-FieldMask':
               'places.displayName,' +
               'places.formattedAddress,' +
@@ -155,13 +140,15 @@ If multiple matches exist, only the search results will be returned regardless o
         const hasSingleMatch = places.length === 1
 
         if (sendLocation && hasSingleMatch && firstPlace?.location) {
-          const location = {
+          const location: LocationMessage = {
+            type: 'location',
             latitude: firstPlace.location.latitude,
             longitude: firstPlace.location.longitude,
             name: firstPlace.displayName?.text,
             address: firstPlace.formattedAddress,
           }
-          await deps.chat.sendLocation(location)
+          const locationMessageId = await deps.chat.sendLocation(location)
+          messages.push(toAssistantModelMessage(location)!)
           console.debug('sent location message', location)
         }
 
@@ -200,4 +187,3 @@ If multiple matches exist, only the search results will be returned regardless o
       }
     },
   })
-

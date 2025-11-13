@@ -8,9 +8,8 @@ import { createRescheduleInterviewTool } from './rescheduleInterview'
 import { createScheduleInterviewTool } from './scheduleInterview'
 
 export interface FrmToolContext {
-  userWhatsappId: string
-  chat: Chat
   candidate: Candidate
+  chat: Chat
   frmDB: FrmDB
 }
 

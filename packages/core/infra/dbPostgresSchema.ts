@@ -92,7 +92,7 @@ export namespace PostgresSchema {
   )
 
   export const rawIncomingMessage = pgTable('raw_incoming_message', {
-    waId: text().primaryKey(),
+    id: uuidv7().primaryKey(),
     timestamp: timestamp({ mode: 'date' }).notNull().defaultNow(),
     payload: text().notNull(),
   })

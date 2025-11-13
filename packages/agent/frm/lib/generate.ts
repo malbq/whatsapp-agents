@@ -1,7 +1,7 @@
 import { openai } from '@ai-sdk/openai'
 import {
   generateWhatsappMessage,
-  type GenerateResponse,
+  type GeneratedResponse,
 } from '@batman/core/ai/generateWhatsappMessage'
 import { stepCountIs, type ModelMessage, type Tool } from 'ai'
 import type { FrmDB } from '../db'
@@ -21,7 +21,7 @@ export async function generate({
   messages,
   tools,
   frmDB,
-}: GenerateParams): Promise<GenerateResponse> {
+}: GenerateParams): Promise<GeneratedResponse> {
   console.log('Generating response with input:', { messages })
   const companyInfo = await frmDB.getCompanyInfo()
   const result = await generateWhatsappMessage({

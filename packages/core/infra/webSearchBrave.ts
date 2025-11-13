@@ -49,7 +49,7 @@ export namespace WebSearchBrave {
     const defaultHeaders = new Headers({
       Accept: 'application/json',
       'Accept-Encoding': 'gzip',
-      'X-Subscription-Token': import.meta.env.BRAVE_API_KEY,
+      'X-Subscription-Token': import.meta.env.BRAVE_SEARCH_API_KEY,
     })
 
     function calculateRemainingWait(): number {

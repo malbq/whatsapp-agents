@@ -4,7 +4,7 @@ import type { FrmToolContext } from './index'
 
 export function createCancelInterviewTool(ctx: FrmToolContext) {
   return tool({
-    name: 'cancel_interview',
+    title: 'cancel_interview',
     description: 'Cancel a scheduled interview for a candidate.',
     inputSchema: z.object({}),
     execute: async () => {

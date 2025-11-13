@@ -1,24 +1,15 @@
 import type { DB } from '@batman/core/infra/db'
 import { Postgres } from '@batman/core/infra/dbPostgres'
-import { extractText } from '@batman/core/utils/extractTextContent'
 import { and, eq } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/bun-sql'
 import * as schema from './dbSchema'
 import type { Candidate, CompanyInfo, Interview, InterviewSlot } from './types'
 
-export interface ThreadMessage {
-  id: string
-  role: string
-  type: string
-  timestamp: Date
-  content: string
-}
-
 export interface Thread {
   userId: string
   userName: string
   externalId: string
-  messages: Array<ThreadMessage>
+  messages: Array<DB.Message>
 }
 
 export interface FrmDB extends DB.Repository {
@@ -48,8 +39,8 @@ export interface FrmDB extends DB.Repository {
   listThreads: () => Promise<Array<Thread>>
 }
 
-export const dbFactory = ({ url }: { url: string }): FrmDB => {
-  const client = drizzle(url, { schema })
+export const dbFactory = (): FrmDB => {
+  const client = drizzle(import.meta.env.DATABASE_URL, { schema })
   const coreDB = Postgres.dbFactory({ client })
 
   return {
@@ -417,26 +408,11 @@ export const dbFactory = ({ url }: { url: string }): FrmDB => {
           orderBy: (message, { asc }) => [asc(message.timestamp)],
         })
 
-        const messagesWithContent: Array<ThreadMessage> = []
-
-        for (const msg of messages) {
-          const msgId = msg.id
-          if (!msgId) continue
-
-          messagesWithContent.push({
-            id: msgId,
-            role: msg.modelMessage.role,
-            type: msg.type,
-            timestamp: msg.timestamp,
-            content: extractText(msg.modelMessage) ?? '',
-          })
-        }
-
         threads.push({
           userId,
           userName: user.name,
           externalId: user.waId,
-          messages: messagesWithContent,
+          messages,
         })
       }
 

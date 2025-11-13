@@ -29,16 +29,15 @@ export namespace DB {
     | 'tool-result'
 
   export type Message = SelectModel<'message'>
+  export type MessageInsert = InsertModel<'message'>
   export type User = SelectModel<'user'>
   export type Resource = SelectModel<'resource'>
   export type Reminder = SelectModel<'reminder'>
 
   export interface Repository {
-    storeRawIncomingMessage: (payload: string, waId: string) => Promise<boolean>
+    storeRawIncomingMessage: (payload: string) => Promise<boolean>
     persistUser: (user: InsertModel<'user'>) => Promise<User>
-    storeMessage: (
-      params: InsertModel<'message'> | Array<InsertModel<'message'>>
-    ) => Promise<Array<string>>
+    storeMessage: (params: MessageInsert | Array<MessageInsert>) => Promise<Array<string>>
     findRecentMessages: (params: { userId: string }) => Promise<Array<Message>>
     findSimilarSnippets: (params: {
       userId: string

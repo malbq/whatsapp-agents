@@ -8,7 +8,7 @@ export interface UserWithProfile extends DB.User {
   profile: string
 }
 
-export interface ZapidDB extends DB.Repository<typeof schema> {
+export interface ZapidDB extends DB.Repository {
   updateUserProfile: (params: { userId: string; profile: string }) => Promise<string | null>
   updateProfileVersionMessageId: (params: {
     profileVersionId: string
@@ -20,12 +20,7 @@ export interface ZapidDB extends DB.Repository<typeof schema> {
 }
 
 export const dbFactory = (): ZapidDB => {
-  const url = import.meta.env.DATABASE_URL
-  if (!url) {
-    throw new Error('DATABASE_URL is required')
-  }
-
-  const client = drizzle(url, { schema })
+  const client = drizzle(import.meta.env.DATABASE_URL, { schema })
   const coreDB = Postgres.dbFactory({ client })
 
   return {
@@ -35,7 +30,7 @@ export const dbFactory = (): ZapidDB => {
     async persistUser(params) {
       const user = await coreDB.persistUser(params)
 
-      const profileResult = await coreDB.client
+      const profileResult = await client
         .select({ profile: schema.userProfileVersion.profile })
         .from(schema.userProfileVersion)
         .where(eq(schema.userProfileVersion.userId, user.id))
@@ -54,7 +49,7 @@ export const dbFactory = (): ZapidDB => {
       profile = profile.trim()
       if (profile.length === 0) return null
 
-      const insertResult = await coreDB.client
+      const insertResult = await client
         .insert(schema.userProfileVersion)
         .values({
           userId,
@@ -66,7 +61,7 @@ export const dbFactory = (): ZapidDB => {
     },
 
     async updateProfileVersionMessageId({ profileVersionId, messageId }) {
-      await coreDB.client
+      await client
         .update(schema.userProfileVersion)
         .set({ messageId })
         .where(eq(schema.userProfileVersion.id, profileVersionId))

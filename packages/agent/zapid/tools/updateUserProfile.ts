@@ -1,7 +1,7 @@
-import { tool } from 'ai'
-import { z } from 'zod'
 import type { ToolExecutionError } from '@batman/core/errors'
 import { spreadError } from '@batman/core/utils/spreadError'
+import { tool } from 'ai'
+import { z } from 'zod'
 import type { Frame } from '../frame'
 
 interface UpdateUserProfileDeps {
@@ -12,7 +12,7 @@ interface UpdateUserProfileDeps {
 
 export const updateUserProfileTool = (frame: Frame, deps: UpdateUserProfileDeps) =>
   tool({
-    name: 'update_user_profile',
+    title: 'update_user_profile',
     description: `Goal: Enrich the user profile with only explicit, minimal facts that aid personalization, strictly following Brazil'S GPD and privacy rules.
 
 Sensitive data (never store or infer): racial/ethnic origin, religion, politics, unions, health/sex life, genetic/biometric data, or any inferences about these (e.g., family implying genetics, hobbies implying beliefs, job implying unions).
@@ -95,9 +95,9 @@ Output requirements:
           profile: improvedProfile,
         })
 
-        if (profileVersionId) {
-          frame.profileVersionId = profileVersionId
-        }
+        // if (profileVersionId) {
+        //   frame.profileVersionId = profileVersionId
+        // }
 
         console.log('completed', {
           userId: frame.user.id,
