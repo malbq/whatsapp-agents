@@ -11,11 +11,11 @@ import type { DB } from '../infra/db'
 export function toDbMessage({
   userId,
   notification,
-  userModelMessage,
+  modelMessage,
 }: {
   userId: string
   notification: MessageNotification
-  userModelMessage: UserModelMessage
+  modelMessage: UserModelMessage
 }): DB.MessageInsert
 
 export function toDbMessage({
@@ -55,7 +55,6 @@ export function toDbMessage({
   resourceId,
   timestamp,
   notification,
-  userModelMessage,
   assistantWaMessageId,
   response,
 }: {
@@ -67,16 +66,15 @@ export function toDbMessage({
   resourceId?: string
   timestamp?: Date
   notification?: MessageNotification
-  userModelMessage?: UserModelMessage
   assistantWaMessageId?: string
   response?: GeneratedResponse
 }): DB.MessageInsert | DB.MessageInsert[] {
-  if (notification && userModelMessage) {
+  if (notification && modelMessage) {
     return {
       userId,
       waId: notification.message.messageId,
       type: notification.message.type,
-      modelMessage: userModelMessage,
+      modelMessage,
       timestamp: notification.timestamp,
     }
   }

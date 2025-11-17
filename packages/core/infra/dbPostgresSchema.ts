@@ -63,11 +63,11 @@ export namespace PostgresSchema {
       storageKey: text().notNull(),
       size: bigint({ mode: 'number' }),
       mimeType: text(),
-      hash: text(),
+      hash: text().notNull().unique(),
       originalFilename: text(),
       uploadedAt: timestamp({ mode: 'date' }).notNull().defaultNow(),
     },
-    (table) => [index().on(table.userId), index().on(table.hash)]
+    (table) => [index().on(table.userId)]
   )
 
   export const reminder = pgTable(

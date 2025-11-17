@@ -7,6 +7,7 @@ import {
 } from '@batman/whatsapp'
 import {
   generateText as aiGenerateText,
+  APICallError,
   Output,
   type AssistantModelMessage,
   type FinishReason,
@@ -70,6 +71,11 @@ export async function generateWhatsappMessage<TOOLS extends ToolSet>({
   system,
   ...options
 }: GenerateWaOptions<TOOLS>): Promise<GeneratedResponse> {
+  const modelName =
+    typeof options.model === 'string'
+      ? options.model
+      : `${options.model.provider}/${options.model.modelId}`
+  console.debug(`Generating WhatsApp message with model ${modelName}`)
   const messages: MessageWithDetails[] = []
   const result = await aiGenerateText<TOOLS, Output.Output<GeneratedWhatsappResponse>>({
     ...options,
@@ -77,24 +83,36 @@ export async function generateWhatsappMessage<TOOLS extends ToolSet>({
     output: Output.object({
       schema: whatsappResponseSchema,
     }),
-    onStepFinish: (step) => {
-      if (step.response.messages.at(-1)?.role === 'tool') {
-        step.response.messages.slice(-2).forEach((message) => {
+    prepareStep: ({ stepNumber, steps }) => {
+      console.debug(`Preparing step ${stepNumber}`, JSON.stringify(steps, null, 2))
+    },
+    onStepFinish: (stepResult) => {
+      if (stepResult.response.messages.at(-1)?.role === 'tool') {
+        stepResult.response.messages.slice(-2).forEach((message) => {
           messages.push({
             modelMessage: message,
-            usage: message.role === 'assistant' ? step.usage : undefined,
-            finishReason: step.finishReason,
+            usage: message.role === 'assistant' ? stepResult.usage : undefined,
+            finishReason: stepResult.finishReason,
           })
         })
         return
       }
       messages.push({
-        modelMessage: step.response.messages.at(-1)!,
-        usage: step.usage,
-        finishReason: step.finishReason,
+        modelMessage: stepResult.response.messages.at(-1)!,
+        usage: stepResult.usage,
+        finishReason: stepResult.finishReason,
       })
     },
-  } as GenerateOptions<TOOLS>)
+  } as GenerateOptions<TOOLS>).catch((error) => {
+    if (error instanceof APICallError) {
+      console.error(
+        'Error generating WhatsApp message',
+        JSON.stringify(error.requestBodyValues, null, 2)
+      )
+    }
+    throw error
+  })
+  console.debug(`Generated WhatsApp message with model ${modelName}`)
 
   return {
     output: result.output.message,

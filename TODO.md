@@ -2,42 +2,18 @@
 
 ## Refactor
 
-- zapid media ingestion
 - zapid embedding + similarity search
 - zapid tool: when google places tool send message, replace assistant/tool pair with location/contact message
 - zapid tool: update user profile in background
-
-## Media ingestion
-
-At arrival, media is sent as raw binary to model in the current user message.
-It's then processed in background:
-
-- Stored in object storage
-- Transcribed and the transcription is embedded
-- All metadata is stored in resource table
-
-In parallel, after model responds to user, before persisting message exchange:
-
-- message with content.type=file/image is transformed in content.type=text with id+summary+metadata
-
-In subsequent messages, if model needs to read a media again, it will use a new tool called `fetch_resource` to retrieve media URL from object storage, by media id. We'll use `toModelOutput` tool property to deliver the media URL to the model.
-Tool calls and results of `fetch_resource` must be erased from history before persisting the assistant output.
 
 ## Next
 
 - Turn sendFile tool into structured output
 - Simplify dependency injection by providing/injecting only individual operations, instead of entire interfaces (DB, Storage, AI, etc).
-- Store tool calls in message table, without embedding. No tool results embedding or vector search.
-  - This will be done at onStepFinish hook
-  - after every step, there are either: 1 assistant message with finishReason=stop or 2 assistant messages with finishReason=tool_calls
-- whatsapp media messages still split in 2 `UserModelMessage` when caption is present
-- Refactor docker/compose scripts to be used by agents. The goal is to build an executable and run it inside a container with postgres database as sibling service. Use Bun.build.
-- Replace libsql+atlas with postgres+drizzle(?)
 - resend typing indicator after whatsapp time out while assistant is generating response
 - Improve tool instructions and anti-patterns (like re-search if recent search results are available)
 - Test Parallel Search API: https://parallel.ai/blog/introducing-parallel-search
-- Should we halt generation when user sends another message before assistant responds?
-- Sticker messages must be treated as reactions, just ignore.
+- Halt generation when user sends another message before assistant responds - do not halt audio or file ingestion
 - Retry when model fails to respect output schema
 - flag assistant messages with sent/delivered/read/failed status
 
@@ -124,7 +100,8 @@ Tool calls and results of `fetch_resource` must be erased from history before pe
 
 - **Performance Optimization**:
 
-  - Token budget management for large contexts
+  - Token budget management:
+    - Batch requests close in time
   - Embedding generation optimization
   - Database query optimization for vector search
 

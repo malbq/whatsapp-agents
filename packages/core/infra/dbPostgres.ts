@@ -2,15 +2,15 @@ import { and, asc, eq, inArray, lte, or } from 'drizzle-orm'
 import type { BunSQLDatabase } from 'drizzle-orm/bun-sql'
 import { FailedToPersistUserError } from '../errors'
 import type { DB } from './db'
-import { PostgresSchema } from './dbPostgresSchema'
+import { PostgresSchema as Schema } from './dbPostgresSchema'
 
-const MAX_RECENT_MESSAGES = parseInt(import.meta.env.MAX_RECENT_MESSAGES ?? '10')
+const MAX_RECENT_MESSAGES = parseInt(import.meta.env.MAX_RECENT_MESSAGES ?? '30')
 const VECTOR_DISTANCE_THRESHOLD = parseFloat(import.meta.env.VECTOR_DISTANCE_THRESHOLD ?? '0.50')
 const MAX_SIMILAR_MESSAGES = parseInt(import.meta.env.MAX_SIMILAR_MESSAGES ?? '10')
 const MAX_FILES = parseInt(import.meta.env.FILE_SEARCH_LIMIT ?? '10')
 const SENDING_STALE_SECONDS = parseInt(import.meta.env.REMINDER_SENDING_STALE_SECONDS ?? '300')
 
-type CoreSchema = Omit<typeof PostgresSchema, 'uuidv7'>
+type CoreSchema = Omit<typeof Schema, 'uuidv7'>
 
 export namespace Postgres {
   export const dbFactory = <TSchema extends CoreSchema = CoreSchema>({
@@ -21,7 +21,7 @@ export namespace Postgres {
     return {
       async storeRawIncomingMessage(payload) {
         try {
-          await client.insert(PostgresSchema.rawIncomingMessage).values({
+          await client.insert(Schema.rawIncomingMessage).values({
             payload,
           })
           return true
@@ -41,10 +41,10 @@ export namespace Postgres {
 
       async persistUser(user) {
         const newUser = await client
-          .insert(PostgresSchema.user)
+          .insert(Schema.user)
           .values(user)
           .onConflictDoUpdate({
-            target: PostgresSchema.user.waId,
+            target: Schema.user.waId,
             set: { name: user.name },
           })
           .returning()
@@ -66,9 +66,9 @@ export namespace Postgres {
         if (messageArray.length === 0) return []
 
         const messageIds = await client
-          .insert(PostgresSchema.message)
+          .insert(Schema.message)
           .values(messageArray)
-          .returning({ id: PostgresSchema.message.id })
+          .returning({ id: Schema.message.id })
           .then((result) => result.map((r) => r.id))
 
         console.debug('Stored messages', JSON.stringify(messageArray, null, 2))
@@ -78,40 +78,55 @@ export namespace Postgres {
 
       async findRecentMessages({ userId }) {
         return await client
-          .select()
-          .from(PostgresSchema.message)
-          .where(eq(PostgresSchema.message.userId, userId))
-          .orderBy(asc(PostgresSchema.message.timestamp))
+          .select({
+            id: Schema.message.id,
+            userId: Schema.message.userId,
+            waId: Schema.message.waId,
+            type: Schema.message.type,
+            modelMessage: Schema.message.modelMessage,
+            usageInputTokens: Schema.message.usageInputTokens,
+            usageOutputTokens: Schema.message.usageOutputTokens,
+            usageTotalTokens: Schema.message.usageTotalTokens,
+            usageCachedInputTokens: Schema.message.usageCachedInputTokens,
+            usageReasoningTokens: Schema.message.usageReasoningTokens,
+            resourceId: Schema.message.resourceId,
+            timestamp: Schema.message.timestamp,
+            storageKey: Schema.resource.storageKey,
+          })
+          .from(Schema.message)
+          .leftJoin(Schema.resource, eq(Schema.message.resourceId, Schema.resource.id))
+          .where(eq(Schema.message.userId, userId))
+          .orderBy(asc(Schema.message.timestamp))
           .limit(MAX_RECENT_MESSAGES)
       },
 
       async findSimilarSnippets({ userId, queryEmbedding, excludeIds = [] }) {
-        // const distance = cosineDistance(PostgresSchema.snippet.vector, queryEmbedding)
+        // const distance = cosineDistance(Schema.snippet.vector, queryEmbedding)
 
         // const conditions = [
-        //   eq(PostgresSchema.message.userId, userId),
+        //   eq(Schema.message.userId, userId),
         //   lt(distance, VECTOR_DISTANCE_THRESHOLD),
         // ]
 
         // if (excludeIds.length > 0) {
-        //   conditions.push(notInArray(PostgresSchema.message.id, excludeIds))
+        //   conditions.push(notInArray(Schema.message.id, excludeIds))
         // }
 
         // const results = await client
         //   .select({
-        //     id: PostgresSchema.message.id,
-        //     content: PostgresSchema.snippet.content,
-        //     type: PostgresSchema.message.type,
-        //     timestamp: PostgresSchema.message.timestamp,
-        //     chunkSequence: PostgresSchema.snippet.sequence,
-        //     totalChunks: sql<number>`(SELECT COUNT(*) FROM ${PostgresSchema.snippet} e2 WHERE e2.message_id = ${PostgresSchema.message.id})`,
-        //     modelMessage: PostgresSchema.message.modelMessage,
-        //     resourceId: PostgresSchema.message.resourceId,
+        //     id: Schema.message.id,
+        //     content: Schema.snippet.content,
+        //     type: Schema.message.type,
+        //     timestamp: Schema.message.timestamp,
+        //     chunkSequence: Schema.snippet.sequence,
+        //     totalChunks: sql<number>`(SELECT COUNT(*) FROM ${Schema.snippet} e2 WHERE e2.message_id = ${Schema.message.id})`,
+        //     modelMessage: Schema.message.modelMessage,
+        //     resourceId: Schema.message.resourceId,
         //   })
-        //   .from(PostgresSchema.message)
+        //   .from(Schema.message)
         //   .innerJoin(
-        //     PostgresSchema.snippet,
-        //     eq(PostgresSchema.message.id, PostgresSchema.snippet.messageId)
+        //     Schema.snippet,
+        //     eq(Schema.message.id, Schema.snippet.messageId)
         //   )
         //   .where(and(...conditions))
         //   .orderBy(distance)
@@ -132,33 +147,51 @@ export namespace Postgres {
 
       async createResource(params) {
         const insertResult = await client
-          .insert(PostgresSchema.resource)
+          .insert(Schema.resource)
           .values({
             userId: params.userId,
             storageKey: params.storageKey,
             size: params.size ?? null,
             mimeType: params.mimeType ?? null,
-            hash: params.hash ?? null,
+            hash: params.hash,
             originalFilename: params.originalFilename ?? null,
+          })
+          .onConflictDoNothing({
+            target: Schema.resource.hash,
           })
           .returning()
 
-        return insertResult[0]!
+        if (insertResult[0]) {
+          return insertResult[0]
+        }
+
+        const existing = await client
+          .select()
+          .from(Schema.resource)
+          .where(eq(Schema.resource.hash, params.hash))
+          .limit(1)
+
+        return existing[0]!
       },
 
       async findResource({ userId, resourceId }) {
         const result = await client
           .select()
-          .from(PostgresSchema.resource)
-          .where(
-            and(
-              eq(PostgresSchema.resource.userId, userId),
-              eq(PostgresSchema.resource.id, resourceId)
-            )
-          )
+          .from(Schema.resource)
+          .where(and(eq(Schema.resource.userId, userId), eq(Schema.resource.id, resourceId)))
           .limit(1)
 
         return result[0] ?? null
+      },
+
+      async findResourceIdByHash({ userId, hash }) {
+        const result = await client
+          .select()
+          .from(Schema.resource)
+          .where(and(eq(Schema.resource.userId, userId), eq(Schema.resource.hash, hash)))
+          .limit(1)
+
+        return result[0]?.id
       },
 
       async searchFiles({ userId, queryEmbedding }) {
@@ -180,7 +213,7 @@ export namespace Postgres {
 
       async createReminder(params) {
         const insertResult = await client
-          .insert(PostgresSchema.reminder)
+          .insert(Schema.reminder)
           .values({
             userId: params.userId,
             status: 'scheduled',
@@ -196,15 +229,15 @@ export namespace Postgres {
 
       async cancelReminder({ id }) {
         const result = await client
-          .update(PostgresSchema.reminder)
+          .update(Schema.reminder)
           .set({ status: 'cancelled', updatedAt: new Date() })
           .where(
             and(
-              eq(PostgresSchema.reminder.id, id),
-              inArray(PostgresSchema.reminder.status, ['scheduled', 'sending'])
+              eq(Schema.reminder.id, id),
+              inArray(Schema.reminder.status, ['scheduled', 'sending'])
             )
           )
-          .returning({ id: PostgresSchema.reminder.id })
+          .returning({ id: Schema.reminder.id })
 
         return result.length > 0
       },
@@ -212,14 +245,9 @@ export namespace Postgres {
       async listUpcomingReminders({ userId, limit = 10 }) {
         const results = await client
           .select()
-          .from(PostgresSchema.reminder)
-          .where(
-            and(
-              eq(PostgresSchema.reminder.userId, userId),
-              eq(PostgresSchema.reminder.status, 'scheduled')
-            )
-          )
-          .orderBy(PostgresSchema.reminder.dueAt)
+          .from(Schema.reminder)
+          .where(and(eq(Schema.reminder.userId, userId), eq(Schema.reminder.status, 'scheduled')))
+          .orderBy(Schema.reminder.dueAt)
           .limit(limit)
 
         return results
@@ -231,25 +259,22 @@ export namespace Postgres {
         return await client.transaction(async (tx) => {
           const candidates = await tx
             .select({
-              id: PostgresSchema.reminder.id,
-              userId: PostgresSchema.reminder.userId,
-              message: PostgresSchema.reminder.message,
-              prevStatus: PostgresSchema.reminder.status,
+              id: Schema.reminder.id,
+              userId: Schema.reminder.userId,
+              message: Schema.reminder.message,
+              prevStatus: Schema.reminder.status,
             })
-            .from(PostgresSchema.reminder)
+            .from(Schema.reminder)
             .where(
               or(
+                and(eq(Schema.reminder.status, 'scheduled'), lte(Schema.reminder.dueAt, now)),
                 and(
-                  eq(PostgresSchema.reminder.status, 'scheduled'),
-                  lte(PostgresSchema.reminder.dueAt, now)
-                ),
-                and(
-                  eq(PostgresSchema.reminder.status, 'sending'),
-                  lte(PostgresSchema.reminder.updatedAt, staleBefore)
+                  eq(Schema.reminder.status, 'sending'),
+                  lte(Schema.reminder.updatedAt, staleBefore)
                 )
               )
             )
-            .orderBy(PostgresSchema.reminder.dueAt)
+            .orderBy(Schema.reminder.dueAt)
             .limit(limit)
             .for('update')
 
@@ -259,14 +284,14 @@ export namespace Postgres {
 
           const candidateIds = candidates.map((c) => c.id)
           await tx
-            .update(PostgresSchema.reminder)
+            .update(Schema.reminder)
             .set({ status: 'sending', updatedAt: new Date() })
-            .where(inArray(PostgresSchema.reminder.id, candidateIds))
+            .where(inArray(Schema.reminder.id, candidateIds))
 
           const updatedReminders = await tx
             .select()
-            .from(PostgresSchema.reminder)
-            .where(inArray(PostgresSchema.reminder.id, candidateIds))
+            .from(Schema.reminder)
+            .where(inArray(Schema.reminder.id, candidateIds))
 
           return updatedReminders
         })
@@ -274,29 +299,29 @@ export namespace Postgres {
 
       async markReminderSent({ id, waMessageId }) {
         await client
-          .update(PostgresSchema.reminder)
+          .update(Schema.reminder)
           .set({
             status: 'sent',
             sentAt: new Date(),
             waMessageId,
             updatedAt: new Date(),
           })
-          .where(eq(PostgresSchema.reminder.id, id))
+          .where(eq(Schema.reminder.id, id))
       },
 
       async markReminderFailed({ id, error }) {
         await client
-          .update(PostgresSchema.reminder)
+          .update(Schema.reminder)
           .set({
             status: 'failed',
             error,
             updatedAt: new Date(),
           })
-          .where(eq(PostgresSchema.reminder.id, id))
+          .where(eq(Schema.reminder.id, id))
       },
 
       async deleteMessages({ userId }) {
-        await client.delete(PostgresSchema.message).where(eq(PostgresSchema.message.userId, userId))
+        await client.delete(Schema.message).where(eq(Schema.message.userId, userId))
       },
     }
   }

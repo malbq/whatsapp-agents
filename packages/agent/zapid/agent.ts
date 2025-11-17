@@ -50,6 +50,11 @@ import { storeMessageExchange } from './systems/storeMessageExchange'
 export async function agent(): Promise<void> {
   const context = getContext()
   const { message, userWaId, userName } = context.notification
+  if (message.type === 'reaction') {
+    console.log('Reaction message, skipping agent response flow', { message })
+    return
+  }
+
   console.log('Starting agent response flow', { message })
 
   context.chat.acknowledgeMessage(message.messageId)
@@ -60,7 +65,7 @@ export async function agent(): Promise<void> {
     // Não podemos fazer nada sem um usuário, nem salvar a resposta no banco
     console.error(`Error persisting user: ${userName} (${userWaId})`, error)
     context.chat.sendText(userWaId, {
-      // FIXME: what language should we use here?
+      // FIXME: what language should we use here? infer with llm?
       text: 'Desculpe, tive um problema e não consigo te responder agora.',
     })
     return
@@ -68,15 +73,14 @@ export async function agent(): Promise<void> {
 
   ok(context.user, 'User not found')
 
-  context.chat.sendTypingIndicator(message.messageId)
-
   try {
+    const userModelMessage = await toUserModelMessage(message)
     context.inbound = toDbMessage({
       userId: context.user.id,
       notification: context.notification,
-      //FIXME Reaction messages will break here
-      userModelMessage: (await toUserModelMessage(message))!,
+      modelMessage: userModelMessage,
     })
+    context.chat.sendTypingIndicator(message.messageId)
     await responseGeneration()
   } catch (error) {
     console.error('Agent response flow error', error)
@@ -89,13 +93,13 @@ export async function agent(): Promise<void> {
       toDbMessage({
         userId: context.user.id,
         waId: errorMessageId,
-        modelMessage: toAssistantModelMessage(errorMessage)!,
+        modelMessage: toAssistantModelMessage(errorMessage),
       }),
     ]
   }
 
   try {
-    // await Promise.all([storeMedia(frame, deps), embedMessages(frame, deps)])
+    // await embedMessages(frame, deps)
     await storeMessageExchange()
     // await updateProfileVersionMessageId()
   } catch (error) {

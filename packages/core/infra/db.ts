@@ -38,7 +38,9 @@ export namespace DB {
     storeRawIncomingMessage: (payload: string) => Promise<boolean>
     persistUser: (user: InsertModel<'user'>) => Promise<User>
     storeMessage: (params: MessageInsert | Array<MessageInsert>) => Promise<Array<string>>
-    findRecentMessages: (params: { userId: string }) => Promise<Array<Message>>
+    findRecentMessages: (params: {
+      userId: string
+    }) => Promise<Array<Message & { storageKey: Resource['storageKey'] | undefined | null }>>
     findSimilarSnippets: (params: {
       userId: string
       queryEmbedding: Array<number>
@@ -46,6 +48,10 @@ export namespace DB {
     }) => Promise<Array<Message>>
     createResource: (params: InsertModel<'resource'>) => Promise<Resource>
     findResource: (params: { userId: string; resourceId: string }) => Promise<Resource | null>
+    findResourceIdByHash: (params: {
+      userId: Resource['userId']
+      hash: Resource['hash']
+    }) => Promise<Resource['id'] | undefined>
     searchFiles: (params: { userId: string; queryEmbedding: Array<number> }) => Promise<Array<any>>
     createReminder: (params: InsertModel<'reminder'>) => Promise<Reminder>
     cancelReminder: (params: { id: string }) => Promise<boolean>

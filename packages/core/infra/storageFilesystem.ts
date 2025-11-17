@@ -1,3 +1,4 @@
+import { ok } from 'node:assert'
 import { createStorage } from 'unstorage'
 import fsDriver from 'unstorage/drivers/fs'
 import type { Storage } from './storage'
@@ -8,22 +9,19 @@ export namespace FilesystemStorage {
       driver: fsDriver({ base }),
     })
     return {
-      store: async ({ key, data, mimeType, filename }) => {
+      store: async ({ key, data, mimeType }) => {
         await fsStorage.setItemRaw(key, data)
-        await fsStorage.setMeta(key, { mimeType, filename })
+        await fsStorage.setMeta(key, { mimeType })
       },
 
       retrieve: async (key) => {
         const data = await fsStorage.getItemRaw(key)
-        if (!data) {
-          throw new Error(`Object not found: ${key}`)
-        }
+        ok(data, new Error(`Object not found: ${key}`))
 
         const meta = await fsStorage.getMeta(key)
         return {
           data,
           mimeType: meta.mimeType as string,
-          filename: meta.filename as string | undefined,
         }
       },
     }

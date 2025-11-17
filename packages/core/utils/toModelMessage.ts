@@ -1,11 +1,33 @@
 import type { OutgoingMessage } from '@batman/whatsapp'
 import type { AssistantModelMessage, SystemModelMessage, TextPart, UserModelMessage } from 'ai'
-import type { IncominMessage } from '../../whatsapp/types'
+import type {
+  AudioMessage,
+  ContactMessage,
+  DocumentMessage,
+  ImageMessage,
+  IncominMessage,
+  InteractiveButtonMessage,
+  InteractiveCtaUrlMessage,
+  InteractiveListMessage,
+  LocationMessage,
+  TemplateMessage,
+  TextMessage,
+  VoiceMessage,
+} from '../../whatsapp/types'
 import { transcribeAudio } from '../ai/transcribeAudio'
 
+//TODO how should we handler reaction messages?
+
 export async function toUserModelMessage(
-  message: IncominMessage
-): Promise<UserModelMessage | undefined> {
+  message:
+    | TextMessage
+    | VoiceMessage
+    | AudioMessage
+    | DocumentMessage
+    | ImageMessage
+    | LocationMessage
+    | ContactMessage
+): Promise<UserModelMessage> {
   switch (message.type) {
     case 'text':
       return { role: 'user', content: [{ type: 'text', text: message.text }] }
@@ -66,8 +88,6 @@ export async function toUserModelMessage(
           } satisfies TextPart,
         ],
       }
-    case 'reaction':
-      return
     default: {
       // Prevent forgetting to handle a message type: Type '{ type: "video"; ... }' is not assignable to type 'never'
       const _exhaustive: never = message
@@ -77,8 +97,17 @@ export async function toUserModelMessage(
 }
 
 export function toAssistantModelMessage(
-  message: OutgoingMessage
-): AssistantModelMessage | undefined {
+  message:
+    | TextMessage
+    | DocumentMessage
+    | ImageMessage
+    | LocationMessage
+    | ContactMessage
+    | InteractiveListMessage
+    | InteractiveButtonMessage
+    | InteractiveCtaUrlMessage
+    | TemplateMessage
+): AssistantModelMessage {
   switch (message.type) {
     case 'text':
       return { role: 'assistant', content: [{ type: 'text', text: message.text }] }
@@ -94,8 +123,6 @@ export function toAssistantModelMessage(
         role: 'assistant',
         content: [{ type: 'text', text: JSON.stringify(message) }],
       }
-    case 'reaction':
-      return // TODO should we care about reaction messages?
     default: {
       // Prevent forgetting to handle a message type: Type '{ type: "video"; ... }' is not assignable to type 'never'
       const _exhaustive: never = message

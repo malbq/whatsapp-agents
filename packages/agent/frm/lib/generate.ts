@@ -32,6 +32,7 @@ export async function generate({
     stopWhen: stepCountIs(MAX_STEPS),
     providerOptions: {
       openai: {
+        serviceTier: 'flex',
         textVerbosity: 'low',
         reasoningSummary: null,
       },
