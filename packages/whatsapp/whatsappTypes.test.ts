@@ -428,7 +428,7 @@ const samples = [
 
 describe('WhatsAppApi.NotificationSchema', () => {
   test.each(samples.map((s) => [s]))('validates notification sample', (sample) => {
-    const result = WhatsAppApi.NotificationSchema.safeParse(sample)
+    const result = WhatsAppApi.notificationSchema.safeParse(sample)
     expect(result.success).toBe(true)
     if (!result.success) {
       console.error('Failed sample:', sample)
@@ -441,7 +441,7 @@ describe('WhatsAppApi.NotificationSchema', () => {
       object: 'invalid',
       entry: [],
     }
-    const result = WhatsAppApi.NotificationSchema.safeParse(invalid)
+    const result = WhatsAppApi.notificationSchema.safeParse(invalid)
     expect(result.success).toBe(false)
   })
 
@@ -449,7 +449,7 @@ describe('WhatsAppApi.NotificationSchema', () => {
     const invalid = {
       object: 'whatsapp_business_account',
     }
-    const result = WhatsAppApi.NotificationSchema.safeParse(invalid)
+    const result = WhatsAppApi.notificationSchema.safeParse(invalid)
     expect(result.success).toBe(false)
   })
 })

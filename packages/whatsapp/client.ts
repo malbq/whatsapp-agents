@@ -143,7 +143,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
 
   return {
     parseNotification: async (body) => {
-      const waNotification = WhatsAppApi.NotificationSchema.safeParse(body)
+      const waNotification = WhatsAppApi.notificationSchema.safeParse(body)
       if (!waNotification.success) {
         console.debug('Failed to parse notification', waNotification.error)
         return null
@@ -181,7 +181,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
         timestamp: new Date(Number(waMessage.timestamp) * 1000),
       }
 
-      const textMessage = WhatsAppApi.TextMessageSchema.safeParse(waMessage)
+      const textMessage = WhatsAppApi.textMessageSchema.safeParse(waMessage)
       if (textMessage.success) {
         return {
           ...notification,
@@ -193,7 +193,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
         }
       }
 
-      const audioMessage = WhatsAppApi.AudioMessageSchema.safeParse(waMessage)
+      const audioMessage = WhatsAppApi.audioMessageSchema.safeParse(waMessage)
       if (audioMessage.success) {
         return {
           ...notification,
@@ -209,7 +209,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
         }
       }
 
-      const documentMessage = WhatsAppApi.DocumentMessageSchema.safeParse(waMessage)
+      const documentMessage = WhatsAppApi.documentMessageSchema.safeParse(waMessage)
       if (documentMessage.success) {
         return {
           ...notification,
@@ -227,7 +227,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
         }
       }
 
-      const imageMessage = WhatsAppApi.ImageMessageSchema.safeParse(waMessage)
+      const imageMessage = WhatsAppApi.imageMessageSchema.safeParse(waMessage)
       if (imageMessage.success) {
         return {
           ...notification,
@@ -244,19 +244,19 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
         }
       }
 
-      const buttonMessage = WhatsAppApi.TemplateButtonMessageSchema.safeParse(waMessage)
-      if (buttonMessage.success) {
+      const buttonReply = WhatsAppApi.templateButtonReplySchema.safeParse(waMessage)
+      if (buttonReply.success) {
         return {
           ...notification,
           message: {
-            messageId: buttonMessage.data.id,
+            messageId: buttonReply.data.id,
             type: 'text',
-            text: buttonMessage.data.button.text,
+            text: buttonReply.data.button.text,
           },
         }
       }
 
-      const interactiveMessage = WhatsAppApi.InteractiveReplyMessageSchema.safeParse(waMessage)
+      const interactiveMessage = WhatsAppApi.interactiveReplyMessageSchema.safeParse(waMessage)
       if (interactiveMessage.success) {
         return {
           ...notification,

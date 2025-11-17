@@ -1,14 +1,14 @@
 import { z } from 'zod'
 
 export namespace WhatsAppApi {
-  export const ContactSchema = z.object({
+  export const contactSchema = z.object({
     wa_id: z.string(),
     profile: z.object({
       name: z.string(),
     }),
   })
 
-  export const StatusUpdateSchema = z.object({
+  export const statusUpdateSchema = z.object({
     id: z.string(),
     status: z.enum(['read', 'delivered', 'sent', 'failed']),
     timestamp: z.string(),
@@ -42,7 +42,7 @@ export namespace WhatsAppApi {
       .optional(),
   })
 
-  export const TextMessageSchema = z.object({
+  export const textMessageSchema = z.object({
     type: z.literal('text'),
     id: z.string(),
     from: z.string(),
@@ -58,7 +58,7 @@ export namespace WhatsAppApi {
       .optional(),
   })
 
-  export const AudioMessageSchema = z.object({
+  export const audioMessageSchema = z.object({
     type: z.literal('audio'),
     id: z.string(),
     from: z.string(),
@@ -71,7 +71,7 @@ export namespace WhatsAppApi {
     }),
   })
 
-  export const DocumentMessageSchema = z.object({
+  export const documentMessageSchema = z.object({
     type: z.literal('document'),
     id: z.string(),
     from: z.string(),
@@ -85,7 +85,7 @@ export namespace WhatsAppApi {
     }),
   })
 
-  export const ImageMessageSchema = z.object({
+  export const imageMessageSchema = z.object({
     type: z.literal('image'),
     id: z.string(),
     from: z.string(),
@@ -98,7 +98,7 @@ export namespace WhatsAppApi {
     }),
   })
 
-  export const TemplateButtonMessageSchema = z.object({
+  export const templateButtonReplySchema = z.object({
     type: z.literal('button'),
     id: z.string(),
     from: z.string(),
@@ -109,7 +109,7 @@ export namespace WhatsAppApi {
     }),
   })
 
-  export const InteractiveReplyMessageSchema = z.object({
+  export const interactiveReplyMessageSchema = z.object({
     type: z.literal('interactive'),
     id: z.string(),
     from: z.string(),
@@ -132,13 +132,13 @@ export namespace WhatsAppApi {
     }),
   })
 
-  export const IncomingMessageSchema = z.union([
-    TextMessageSchema,
-    AudioMessageSchema,
-    DocumentMessageSchema,
-    ImageMessageSchema,
-    TemplateButtonMessageSchema,
-    InteractiveReplyMessageSchema,
+  export const incomingMessageSchema = z.union([
+    textMessageSchema,
+    audioMessageSchema,
+    documentMessageSchema,
+    imageMessageSchema,
+    templateButtonReplySchema,
+    interactiveReplyMessageSchema,
     z.object({
       type: z.string(),
       id: z.string(),
@@ -147,32 +147,32 @@ export namespace WhatsAppApi {
     }),
   ])
 
-  export const MessagesChangeMetadataSchema = z.object({
+  export const messagesChangeMetadataSchema = z.object({
     display_phone_number: z.string(),
     phone_number_id: z.string(),
   })
 
-  export const MessagesChangeValueSchema = z.object({
+  export const messagesChangeValueSchema = z.object({
     messaging_product: z.literal('whatsapp'),
-    metadata: MessagesChangeMetadataSchema,
-    contacts: z.array(ContactSchema).optional(),
-    messages: z.array(IncomingMessageSchema).optional(),
-    statuses: z.array(StatusUpdateSchema).optional(),
+    metadata: messagesChangeMetadataSchema,
+    contacts: z.array(contactSchema).optional(),
+    messages: z.array(incomingMessageSchema).optional(),
+    statuses: z.array(statusUpdateSchema).optional(),
   })
 
-  export const MessagesChangeSchema = z.object({
+  export const messagesChangeSchema = z.object({
     field: z.literal('messages'),
-    value: MessagesChangeValueSchema,
+    value: messagesChangeValueSchema,
   })
 
-  export const EntrySchema = z.object({
+  export const entrySchema = z.object({
     id: z.string(),
-    changes: z.array(MessagesChangeSchema),
+    changes: z.array(messagesChangeSchema),
   })
 
-  export const NotificationSchema = z.object({
+  export const notificationSchema = z.object({
     object: z.literal('whatsapp_business_account'),
-    entry: z.array(EntrySchema),
+    entry: z.array(entrySchema),
   })
 
   export type AcknowledgeMessageResponse = {
@@ -189,8 +189,6 @@ export namespace WhatsAppApi {
     }
   }
 
-  export type Notification = z.infer<typeof NotificationSchema>
-
   export type OutgoingMessageResponse = {
     messaging_product: 'whatsapp'
     contacts?: Array<{
@@ -201,135 +199,6 @@ export namespace WhatsAppApi {
       id: string
       message_status: string
     }>
-  }
-
-  export type MessagesChange = z.infer<typeof MessagesChangeSchema>
-
-  export type MessageType =
-    | 'text'
-    | 'audio'
-    | 'document'
-    | 'image'
-    | 'reaction'
-    | 'location'
-    | 'contacts'
-    | 'sticker'
-    | 'button'
-    | 'interactive'
-    | 'unsupported'
-
-  export interface IncomingMessage {
-    type: MessageType
-    id: string
-    from: string
-    timestamp: string
-  }
-
-  export interface UnsupportedMessage extends IncomingMessage {
-    type: 'unsupported'
-    errors: Array<{
-      code: number
-      title: string
-      message: string
-      error_data: {
-        details: string
-      }
-    }>
-  }
-
-  export interface TextMessage extends IncomingMessage {
-    type: 'text'
-    text: {
-      body: string
-    }
-    context: {
-      from: string
-      id: string
-    }
-  }
-
-  export type Media = {
-    id: string
-    mime_type: string
-    sha256: string
-  }
-
-  export interface AudioMessage extends IncomingMessage {
-    type: 'audio'
-    audio: Media & {
-      mime_type: 'audio/ogg; codecs=opus'
-      voice: boolean
-    }
-  }
-
-  export interface DocumentMessage extends IncomingMessage {
-    type: 'document'
-    document: Media & {
-      mime_type: 'application/pdf'
-      caption?: string
-      filename: string
-    }
-  }
-
-  export interface ImageMessage extends IncomingMessage {
-    type: 'image'
-    image: Media & {
-      mime_type: 'image/jpeg'
-      caption?: string
-    }
-  }
-
-  export interface StickerMessage extends IncomingMessage {
-    type: 'sticker'
-    sticker: Media & {
-      mime_type: 'image/webp'
-      animated: boolean
-    }
-  }
-
-  export interface ContactsMessage extends IncomingMessage {
-    type: 'contacts'
-    contacts: Array<unknown>
-  }
-
-  export interface LocationMessage extends IncomingMessage {
-    type: 'location'
-    location: {
-      latitude: number
-      longitude: number
-    }
-  }
-
-  export interface ReactionMessage extends IncomingMessage {
-    type: 'reaction'
-    reaction: {
-      message_id: string
-      emoji: string
-    }
-  }
-
-  export interface TemplateButtonMessage extends IncomingMessage {
-    type: 'button'
-    button: {
-      payload: string
-      text: string
-    }
-  }
-
-  export interface InteractiveButtonReplyMessage extends IncomingMessage {
-    type: 'interactive'
-    interactive: {
-      type: 'button_reply' | 'list_reply'
-      button_reply?: {
-        id: string
-        title: string
-      }
-      list_reply?: {
-        id: string
-        title: string
-        description: string
-      }
-    }
   }
 
   export interface OutgoingMessage {
@@ -597,11 +466,6 @@ export namespace WhatsAppApi {
     | OutgoingInteractiveButton
     | OutgoingInteractiveCtaUrl
     | OutgoingTemplate
-
-  export type Entry = z.infer<typeof EntrySchema>
-  export type MessagesChangeMetadata = z.infer<typeof MessagesChangeMetadataSchema>
-  export type Contact = z.infer<typeof ContactSchema>
-  export type StatusUpdate = z.infer<typeof StatusUpdateSchema>
 
   export type MediaUrlResponse = {
     messaging_product: 'whatsapp'

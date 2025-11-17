@@ -43,33 +43,10 @@
 
 - **Human Takeover**
 
-- Steps: detect_issue → notify_human_queue → claim → resolve → handback.
-- Policies during human_active: AI restricted to assist/suggest-only; limited tool set (e.g., read-only web_fetch; block side effects).
-- Notifications and SLAs: Events on entering pending_human; timers/escalation for response SLAs.
-- Audit trail: Record transitions with actor (system/AI/human) and reason to support compliance.
-
-- **Loggingg**
-
-  - Implement custom local logging tool.
-  - Logger tool should build properties over last call:
-    - `console.log('message 1', { property1: 'value1' })` result in
-      ```
-      message 1
-        property1: value1
-      ```
-      `console.log('message 2', { property2: 'value2' })` result in
-      ```
-      message 2
-        property1: value1
-        property2: value2
-      ```
-      `console.log('message 3', { property3: 'value3' })` result in
-      ```
-      message 3
-        property1: value1
-        property2: value2
-        property3: value3
-      ```
+  - Steps: detect_issue → notify_human_queue → claim → resolve → handback.
+  - Policies during human_active: AI restricted to assist/suggest-only; limited tool set (e.g., read-only web_fetch; block side effects).
+  - Notifications and SLAs: Events on entering pending_human; timers/escalation for response SLAs.
+  - Audit trail: Record transitions with actor (system/AI/human) and reason to support compliance.
 
 - **User Management**: Complete user management system
 
