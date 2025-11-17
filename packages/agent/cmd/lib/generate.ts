@@ -44,27 +44,16 @@ export async function generate(command: string): Promise<GeneratedWhatsappMessag
     ],
     providerOptions: {
       openai: {
+        serviceTier: 'flex',
         reasoningEffort: 'minimal',
         textVerbosity: 'low',
         reasoningSummary: null,
       },
     },
-    stopWhen: stepCountIs(10),
+    stopWhen: stepCountIs(3),
   })
 
   console.log('result', result.output)
-
-  Bun.write(
-    'agent-cmd-messages.json',
-    JSON.stringify(
-      result.messages.map(({ modelMessage, usage }) => ({
-        modelMessage,
-        usage,
-      })),
-      null,
-      2
-    )
-  )
 
   return result.output
 }

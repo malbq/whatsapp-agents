@@ -6,10 +6,9 @@ import { spreadError } from '../utils/spreadError'
 
 export interface WebSearchContext {
   webSearch: WebSearch
-  onExplanation?: (explanation: string) => Promise<void> | void
 }
 
-export function createWebSearchTool(ctx: WebSearchContext, explanationPrompt: string) {
+export function createWebSearchTool(ctx: WebSearchContext) {
   return tool({
     name: 'web_search',
     description: `Search the web for current/external information (news, facts, prices, business info, etc.).
@@ -18,15 +17,12 @@ If the user's message includes a URL, do not use this tool; call \`web_fetch\` d
 After discovering relevant URLs, use \`web_fetch\` to retrieve full content when needed.`,
     inputSchema: z.object({
       query: z.string().describe('The search query to find relevant information on the web.'),
-      explanation: z.string().describe(explanationPrompt),
     }),
     execute: async (params, { abortSignal }) => {
       console.log('starting web_search tool execution', params)
 
       try {
-        const { query, explanation } = params
-
-        await ctx.onExplanation?.(explanation)
+        const { query } = params
 
         const urlMatch = query.match(/https?:\/\/\S+/i)
         if (urlMatch) {

@@ -66,4 +66,17 @@ export async function storeMessageExchange(): Promise<void> {
   const messageIds = await context.db.storeMessage(messagesToStore)
 
   console.log(`Stored ${messageIds.length} messages (1 user, ${context.outbound.length} assistant)`)
+
+  if (context.improvedProfile && context.improvedProfile.length > 0 && messageIds[0]) {
+    await context.db.updateUserProfile({
+      userId: context.user.id,
+      profile: context.improvedProfile,
+      messageId: messageIds[0],
+    })
+
+    console.log('updated user profile', {
+      userId: context.user.id,
+      profileLength: context.improvedProfile.length,
+    })
+  }
 }

@@ -8,10 +8,10 @@ export interface UserWithProfile extends DB.User {
   profile: string
 }
 
-export interface ZapidDB extends DB.Repository {
-  updateUserProfile: (params: { userId: string; profile: string }) => Promise<string | null>
-  updateProfileVersionMessageId: (params: {
-    profileVersionId: string
+export interface ZapidRepository extends DB.Repository {
+  updateUserProfile: (params: {
+    userId: string
+    profile: string
     messageId: string
   }) => Promise<void>
 
@@ -19,7 +19,7 @@ export interface ZapidDB extends DB.Repository {
   persistUser: (params: { waId: string; name: string }) => Promise<UserWithProfile>
 }
 
-export const dbFactory = (): ZapidDB => {
+export const dbFactory = (): ZapidRepository => {
   const client = drizzle(import.meta.env.DATABASE_URL, { schema })
   const coreDB = Postgres.dbFactory({ client })
 
@@ -45,26 +45,15 @@ export const dbFactory = (): ZapidDB => {
       }
     },
 
-    async updateUserProfile({ userId, profile }) {
+    async updateUserProfile({ userId, profile, messageId }) {
       profile = profile.trim()
-      if (profile.length === 0) return null
+      if (profile.length === 0) return
 
-      const insertResult = await client
-        .insert(schema.userProfileVersion)
-        .values({
-          userId,
-          profile,
-        })
-        .returning({ id: schema.userProfileVersion.id })
-
-      return insertResult[0]!.id
-    },
-
-    async updateProfileVersionMessageId({ profileVersionId, messageId }) {
-      await client
-        .update(schema.userProfileVersion)
-        .set({ messageId })
-        .where(eq(schema.userProfileVersion.id, profileVersionId))
+      await client.insert(schema.userProfileVersion).values({
+        userId,
+        profile,
+        messageId,
+      })
     },
   }
 }

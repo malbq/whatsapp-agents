@@ -4,11 +4,10 @@
   "type": "module",
   "private": true,
   "exports": {
-    "./utils/*": "./utils/*.ts",
-    "./ingestion/*": "./ingestion/*.ts",
-    "./infra/*": "./infra/*.ts",
     "./ai/*": "./ai/*.ts",
-    "./tools/*": "./tools/*.ts",
+    "./infra/*": "./infra/*.ts",
+    "./tools": "./tools/index.ts",
+    "./utils/*": "./utils/*.ts",
     "./errors": "./errors.ts"
   },
   "scripts": {

@@ -1,19 +1,13 @@
 import type { ToolExecutionError } from '@batman/core/errors'
 import { spreadError } from '@batman/core/utils/spreadError'
 import { tool } from 'ai'
+import { ok } from 'node:assert'
 import { z } from 'zod'
-import type { Frame } from '../frame'
+import { getContext } from '../context'
 
-interface UpdateUserProfileDeps {
-  db: {
-    updateUserProfile: (params: { userId: string; profile: string }) => Promise<string>
-  }
-}
-
-export const updateUserProfileTool = (frame: Frame, deps: UpdateUserProfileDeps) =>
-  tool({
-    title: 'update_user_profile',
-    description: `Goal: Enrich the user profile with only explicit, minimal facts that aid personalization, strictly following Brazil'S GPD and privacy rules.
+export const updateUserProfileTool = tool({
+  title: 'update_user_profile',
+  description: `Goal: Enrich the user profile with only explicit, minimal facts that aid personalization, strictly following Brazil'S GPD and privacy rules.
 
 Sensitive data (never store or infer): racial/ethnic origin, religion, politics, unions, health/sex life, genetic/biometric data, or any inferences about these (e.g., family implying genetics, hobbies implying beliefs, job implying unions).
 Risk flags (handle with extra caution; avoid inferences): age (esp. minors), location suggesting origins, family/best friends (genetics/affiliations), work/interests/plans that could imply politics/health/religion.
@@ -59,67 +53,53 @@ Output requirements:
 - Do not remove existing information.
 - If the info is already stored or the message is not relevant, output empty text (no quotes, no spaces, no new lines).
 - Fail silently. Do not notify user of errors from this tool.`,
-    inputSchema: z.object({
-      improvedProfile: z.string().describe('The improved profile to update'),
-    }),
-    execute: async ({ improvedProfile }) => {
-      try {
-        if (!frame.user) {
-          console.error('missing user', {
-            improvedProfile,
-            profileLength: improvedProfile.length,
-          })
-          return {
-            error: 'Missing user',
-            details: 'Could not update profile due to missing user',
-          } satisfies ToolExecutionError
-        }
-        if (improvedProfile.trim().length === 0) {
-          console.warn('skipped, no improvement', {
-            improvedProfile,
-            currentProfileLength: frame.user.profile?.length ?? 0,
-          })
-          return 'No improvement to make'
-        }
-
-        if (improvedProfile === frame.user.profile) {
-          console.warn('skipped, same profile', {
-            improvedProfile,
-            profileLength: improvedProfile.length,
-          })
-          return 'You cannot update the profile to the same profile'
-        }
-
-        const profileVersionId = await deps.db.updateUserProfile({
-          userId: frame.user.id,
-          profile: improvedProfile,
-        })
-
-        // if (profileVersionId) {
-        //   frame.profileVersionId = profileVersionId
-        // }
-
-        console.log('completed', {
-          userId: frame.user.id,
-          profileVersionId,
-          currentProfileLength: frame.user.profile?.length ?? 0,
-          improvedProfileLength: improvedProfile.length,
-        })
-        console.debug('profile diff', {
-          current: frame.user.profile ?? '',
-          improved: improvedProfile,
-        })
-
-        return 'Profile updated'
-      } catch (error) {
-        console.error('Tool execution failed', {
+  inputSchema: z.object({
+    improvedProfile: z.string().describe('The improved profile to update'),
+  }),
+  execute: async ({ improvedProfile }) => {
+    const context = getContext()
+    const user = context.user
+    ok(user, 'User not found')
+    try {
+      if (improvedProfile.trim().length === 0) {
+        console.warn('skipped, no improvement', {
           improvedProfile,
-          ...spreadError(error),
+          currentProfileLength: user.profile.length,
         })
-        return {
-          error: 'Tool execution failed',
-          details: error instanceof Error ? error.message : 'unknown',
-        } satisfies ToolExecutionError
+        return 'No improvement to make'
       }
-    },
-  })
+
+      if (improvedProfile === user.profile) {
+        console.warn('skipped, same profile', {
+          improvedProfile,
+          profileLength: improvedProfile.length,
+        })
+        return 'You cannot update the profile to the same profile'
+      }
+
+      const context = getContext()
+      context.improvedProfile = improvedProfile
+
+      console.log('stored improved profile in context', {
+        userId: user.id,
+        currentProfileLength: user.profile?.length ?? 0,
+        improvedProfileLength: improvedProfile.length,
+      })
+      console.debug('profile diff', {
+        current: user.profile ?? '',
+        improved: improvedProfile,
+      })
+
+      return 'Profile updated'
+    } catch (error) {
+      console.error('Tool execution failed', {
+        improvedProfile,
+        ...spreadError(error),
+      })
+      return {
+        error: 'Tool execution failed',
+        details: error instanceof Error ? error.message : 'unknown',
+      } satisfies ToolExecutionError
+    }
+  },
+})

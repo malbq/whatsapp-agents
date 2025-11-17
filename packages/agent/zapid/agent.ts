@@ -101,7 +101,6 @@ export async function agent(): Promise<void> {
   try {
     // await embedMessages(frame, deps)
     await storeMessageExchange()
-    // await updateProfileVersionMessageId()
   } catch (error) {
     console.error("Error after agent's response", error)
   }

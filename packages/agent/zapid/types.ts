@@ -1,10 +1,10 @@
 import type { Storage } from '@batman/core/infra/storage'
 import type { WebSearch } from '@batman/core/infra/webSearch'
 import type { Chat } from '@batman/whatsapp'
-import type { ZapidDB } from './db'
+import type { ZapidRepository } from './db'
 
 export interface Deps {
-  db: ZapidDB
+  db: ZapidRepository
   storage: Storage
   chat: Chat
   webSearch: WebSearch

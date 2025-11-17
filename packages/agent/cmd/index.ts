@@ -22,7 +22,7 @@ const webhookApp = createWebhookApp(
   { appSecret, verifyToken },
   {
     onMessage: async (notification) => {
-      const { message, userId } = notification
+      const { message, userWaId } = notification
       console.log('message received', message)
 
       const command = extractCommand(message)
@@ -35,7 +35,7 @@ const webhookApp = createWebhookApp(
       try {
         chat.sendTypingIndicator(message.messageId)
         if (command === '/help') {
-          await chat.sendText(userId, { text: helpText })
+          await chat.sendText(userWaId, { text: helpText })
           return
         }
 
@@ -43,24 +43,24 @@ const webhookApp = createWebhookApp(
 
         switch (response.type) {
           case 'text':
-            await chat.sendText(userId, response)
+            await chat.sendText(userWaId, response)
             break
           case 'location':
-            await chat.sendLocation(userId, response)
+            await chat.sendLocation(userWaId, response)
             break
           case 'contact':
-            await chat.sendContact(userId, response)
+            await chat.sendContact(userWaId, response)
             break
           case 'interactive_button':
-            await chat.sendInteractiveButton(userId, response)
+            await chat.sendInteractiveButton(userWaId, response)
             break
           case 'interactive_list':
-            await chat.sendInteractiveList(userId, response)
+            await chat.sendInteractiveList(userWaId, response)
             break
         }
       } catch (error) {
         console.error('Error processing command:', error)
-        await chat.sendText(userId, {
+        await chat.sendText(userWaId, {
           text: 'Desculpe, ocorreu um problema ao processar seu comando. Por favor, tente novamente.',
         })
       }

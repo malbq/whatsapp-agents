@@ -62,7 +62,6 @@ const formattingGuidelines = `Formatting options for text messages and for inter
 - Quote: > text
 - Monospace block: \`\`\`text\`\`\`
 - Inline monospace: \`text\`
-
 Use formatting sparingly.
 These are the only formatting options you can use.
 Do not format text with anything else, like markdown, XML, or typographic emphasis.`
@@ -79,7 +78,7 @@ export async function generateWhatsappMessage<TOOLS extends ToolSet>({
   const messages: MessageWithDetails[] = []
   const result = await aiGenerateText<TOOLS, Output.Output<GeneratedWhatsappResponse>>({
     ...options,
-    system: `${system ?? ''}\n\n${formattingGuidelines}`.trim(),
+    system: `${system ?? ''}\n${formattingGuidelines}`.trim(),
     output: Output.object({
       schema: whatsappResponseSchema,
     }),

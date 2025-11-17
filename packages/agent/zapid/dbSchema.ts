@@ -22,7 +22,7 @@ export const userProfileVersion = table(
     id: PostgresSchema.uuidv7().primaryKey(),
     userId: text('user_id').notNull(),
     profile: text('profile').notNull(),
-    messageId: text('message_id'),
+    messageId: text('message_id').notNull(),
   },
   (table) => [index('idx_user_profile_version_user_id').on(table.userId)]
 )

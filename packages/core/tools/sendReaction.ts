@@ -1,13 +1,10 @@
-import type { Chat } from '@batman/whatsapp'
 import { tool } from 'ai'
 import { z } from 'zod'
 import type { ToolExecutionError } from '../errors'
 import { spreadError } from '../utils/spreadError'
 
 export interface SendReactionContext {
-  userWhatsappId: string
-  targetMessageWhatsappId: string
-  sendReaction: Chat['sendReaction']
+  sendReaction: (emoji: string) => Promise<unknown>
 }
 
 export function createSendReactionTool(ctx: SendReactionContext) {
@@ -19,22 +16,9 @@ export function createSendReactionTool(ctx: SendReactionContext) {
       emoji: z.string().describe('The emoji to send as a reaction (e.g., 👍, ❤️, 😊)'),
     }),
     execute: async ({ emoji }) => {
-      if (!ctx.targetMessageWhatsappId) {
-        console.error('send_reaction: missing target message', { emoji })
-        return {
-          error: 'Missing target message',
-          details: 'Could not send reaction due to missing user message',
-        } satisfies ToolExecutionError
-      }
       try {
-        ctx.sendReaction(ctx.userWhatsappId, {
-          emoji,
-          targetMessageId: ctx.targetMessageWhatsappId,
-        })
-        console.log('send_reaction: sent', {
-          emoji,
-          targetMessageId: ctx.targetMessageWhatsappId,
-        })
+        ctx.sendReaction(emoji)
+        console.log('send_reaction: sent', { emoji })
         return 'Reaction delivered to user'
       } catch (error) {
         console.error('Tool execution failed', {

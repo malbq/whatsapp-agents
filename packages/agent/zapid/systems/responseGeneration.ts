@@ -3,25 +3,35 @@ import { generateWhatsappMessage } from '@batman/core/ai/generateWhatsappMessage
 import { ResponseGenerationError } from '@batman/core/errors'
 import type { DB } from '@batman/core/infra/db'
 import type { Storage } from '@batman/core/infra/storage'
+import {
+  createSendReactionTool,
+  createSendTextTool,
+  createWebSearchTool,
+  webFetchTool,
+} from '@batman/core/tools'
 import { sendWhatsappMessage } from '@batman/core/utils/sendWhatsappMessage'
 import { toDbMessage } from '@batman/core/utils/toDbMessage'
 import { toSystemModelMessage } from '@batman/core/utils/toModelMessage'
-import type { ModelMessage } from 'ai'
+import type { ModelMessage, ToolSet } from 'ai'
 import { ok } from 'node:assert'
 import { getContext } from '../context'
-import type { ZapidDB } from '../db'
+import type { ZapidRepository } from '../db'
 import { recentMessages as recentMessagesPrompt } from '../prompts/recentMessages'
 import { system } from '../prompts/system'
 import { userProfile } from '../prompts/userProfile'
+import { googlePlacesTool } from '../tools/googlePlaces'
+import { updateUserProfileTool } from '../tools/updateUserProfile'
 
 const model = openai.responses('gpt-5-mini-2025-08-07')
 
 export async function responseGeneration() {
   const context = getContext()
-  ok(context.user, new ResponseGenerationError('User not found'))
-  ok(context.inbound, new ResponseGenerationError('Inbound message not found'))
-
   const user = context.user
+  const inbound = context.inbound
+
+  ok(user, new ResponseGenerationError('User not found'))
+  ok(inbound, new ResponseGenerationError('Inbound message not found'))
+
   const agentContext: Array<ModelMessage> = []
 
   if (user.profile.length > 0) {
@@ -38,13 +48,13 @@ export async function responseGeneration() {
     )
   })
 
-  agentContext.push(context.inbound.modelMessage)
+  agentContext.push(inbound.modelMessage)
 
   const response = await generateWhatsappMessage({
     model,
     system,
     messages: agentContext,
-    // tools: [],
+    tools: createToolSet(),
     providerOptions: {
       openai: {
         serviceTier: 'flex',
@@ -65,7 +75,7 @@ export async function responseGeneration() {
 
 // TODO in production, we should fill with signed URLs instead of raw data
 async function fillMediaMessagesWithData(
-  recentMessages: Awaited<ReturnType<ZapidDB['findRecentMessages']>>,
+  recentMessages: Awaited<ReturnType<ZapidRepository['findRecentMessages']>>,
   storage: Storage
 ) {
   console.log('fillMediaMessagesWithData: Processing', recentMessages.length, 'messages')
@@ -112,4 +122,34 @@ async function fillMediaMessagesWithData(
       }
     }
   }
+}
+
+function createToolSet() {
+  const context = getContext()
+
+  const webSearchTool = createWebSearchTool({ webSearch: context.webSearch })
+  const sendReactionTool = createSendReactionTool({
+    sendReaction: (emoji) =>
+      context.chat.sendReaction(context.user!.waId, {
+        emoji,
+        targetMessageId: context.inbound!.waId!,
+      }),
+  })
+  const sendTextTool = createSendTextTool({
+    userWhatsappId: context.user!.waId,
+    sendText: (text) => context.chat.sendText(context.user!.waId, { text }),
+  })
+
+  return {
+    [webFetchTool.title!]: webFetchTool,
+    [webSearchTool.title!]: webSearchTool,
+    [sendReactionTool.title!]: sendReactionTool,
+    [sendTextTool.title!]: sendTextTool,
+    [googlePlacesTool.title!]: googlePlacesTool,
+    [updateUserProfileTool.title!]: updateUserProfileTool,
+    // TODO
+    // fetchMemory
+    // searchFiles
+    // sendFile - will turn into structured output
+  } satisfies ToolSet
 }

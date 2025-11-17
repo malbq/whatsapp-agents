@@ -3,8 +3,6 @@
 ## Refactor
 
 - zapid embedding + similarity search
-- zapid tool: when google places tool send message, replace assistant/tool pair with location/contact message
-- zapid tool: update user profile in background
 
 ## Next
 
@@ -29,17 +27,6 @@
 - Deduplicate the final set strictly by message id.
 - Make these parameters configurable per query: limit (default 10), vector similarity/distance threshold (default 0.0 equivalent), RRF k (default 10), chunk aggregation mode (default max).
 - Out of scope for now: FTS over chunks; only message-level FTS via message.fts.
-
-## Demo Agent
-
-- Transform cmd agent in demo agent:
-
-  - no history
-  - echo transcription of audio messages
-  - describe images
-  - summarize documents
-  - /web command
-  - /react command
 
 - **Human Takeover**
 

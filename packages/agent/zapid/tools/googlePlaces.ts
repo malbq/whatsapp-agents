@@ -1,9 +1,11 @@
 import type { ToolExecutionError } from '@batman/core/errors'
 import { spreadError } from '@batman/core/utils/spreadError'
 import { toAssistantModelMessage } from '@batman/core/utils/toModelMessage'
-import type { LocationMessage } from '@batman/whatsapp'
+import type { ContactMessage, LocationMessage } from '@batman/whatsapp'
 import { tool } from 'ai'
+import { ok } from 'node:assert'
 import { z } from 'zod'
+import { getContext } from '../context'
 
 interface PlacesSearchResponse {
   places?: GooglePlace[]
@@ -32,23 +34,11 @@ interface GooglePlace {
   }
 }
 
-interface GooglePlacesDeps {
-  chat: {
-    sendText: (params: { text: string }) => Promise<string>
-    sendLocation: (params: {
-      latitude: number
-      longitude: number
-      name?: string
-      address?: string
-    }) => Promise<void>
-    sendContact: (params: { name: string; phone: string }) => Promise<void>
-  }
-}
+const DEFAULT_MAX_RESULTS = 5
 
-export const googlePlacesTool = (deps: GooglePlacesDeps) =>
-  tool({
-    title: 'google_places',
-    description: `Search for business and place information via Google Places.
+export const googlePlacesTool = tool({
+  title: 'google_places',
+  description: `Search for business and place information via Google Places.
 Use when the user requests place discovery, addresses, hours, ratings, contact details, or "places near me" style queries.
 
 This tool provides verified, structured data from Google Places including:
@@ -64,126 +54,145 @@ Set sendLocation/sendContact flags when:
 
 If a single match is found and flags are true, the location/contact will be sent automatically.
 If multiple matches exist, only the search results will be returned regardless of flags.`,
-    inputSchema: z.object({
-      query: z
-        .string()
-        .describe('The search query (e.g., "CPRO Dental Clinic Lisbon" or "pizza Rome")'),
-      maxResults: z
-        .number()
-        .optional()
-        .default(5)
-        .describe('Maximum number of results to return (1-20, default: 5)'),
-      sendLocation: z
-        .boolean()
-        .optional()
-        .default(false)
-        .describe(
-          'Set to true if the user explicitly requests a location, address, or map. The tool will send a map pin only if exactly one result is found.'
-        ),
-      sendContact: z
-        .boolean()
-        .optional()
-        .default(false)
-        .describe(
-          'Set to true if the user explicitly requests contact details or phone number. The tool will send a contact card only if exactly one result is found and has a phone number.'
-        ),
-    }),
-    execute: async (params, { abortSignal, messages }) => {
-      const { query, maxResults = 5, sendLocation = false, sendContact = false } = params
+  inputSchema: z.object({
+    query: z
+      .string()
+      .describe('The search query (e.g., "CPRO Dental Clinic Lisbon" or "pizza Rome")'),
+    maxResults: z
+      .number()
+      .optional()
+      .default(DEFAULT_MAX_RESULTS)
+      .describe('Maximum number of results to return (1-20, default: 5)'),
+    sendLocation: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe(
+        'Set to true if the user explicitly requests a location, address, or map. The tool will send a map pin only if exactly one result is found.'
+      ),
+    sendContact: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe(
+        'Set to true if the user explicitly requests contact details or phone number. The tool will send a contact card only if exactly one result is found and has a phone number.'
+      ),
+  }),
+  execute: async (params, { abortSignal, messages }) => {
+    const { user, chat } = getContext()
+    ok(user, 'User not found')
 
-      try {
-        const searchResponse = await fetch('https://places.googleapis.com/v1/places:searchText', {
-          signal: abortSignal,
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Goog-Api-Key': import.meta.env.GOOGLE_PLACES_API_KEY,
-            'X-Goog-FieldMask':
-              'places.displayName,' +
-              'places.formattedAddress,' +
-              'places.location,' +
-              'places.rating,' +
-              'places.userRatingCount,' +
-              'places.internationalPhoneNumber,' +
-              'places.websiteUri,' +
-              'places.businessStatus,' +
-              'places.types,' +
-              'places.currentOpeningHours.openNow,' +
-              'places.currentOpeningHours.weekdayDescriptions,' +
-              'places.currentOpeningHours.nextOpenTime',
-          },
-          body: JSON.stringify({
-            textQuery: query,
-            maxResultCount: Math.min(Math.max(maxResults, 1), 20),
-          }),
-        })
+    const {
+      query,
+      maxResults = DEFAULT_MAX_RESULTS,
+      sendLocation = false,
+      sendContact = false,
+    } = params
 
-        if (!searchResponse.ok) {
-          const errorText = await searchResponse.text()
-          console.error('API error', {
-            ...params,
-            status: searchResponse.status,
-            statusText: searchResponse.statusText,
-            error: errorText,
-          })
-          return `Failed to search Google Places: [${searchResponse.status} ${searchResponse.statusText}] ${errorText}`
-        }
+    try {
+      const searchResponse = await fetch('https://places.googleapis.com/v1/places:searchText', {
+        signal: abortSignal,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': import.meta.env.GOOGLE_PLACES_API_KEY,
+          'X-Goog-FieldMask':
+            'places.displayName,' +
+            'places.formattedAddress,' +
+            'places.location,' +
+            'places.rating,' +
+            'places.userRatingCount,' +
+            'places.internationalPhoneNumber,' +
+            'places.websiteUri,' +
+            'places.businessStatus,' +
+            'places.types,' +
+            'places.currentOpeningHours.openNow,' +
+            'places.currentOpeningHours.weekdayDescriptions,' +
+            'places.currentOpeningHours.nextOpenTime',
+        },
+        body: JSON.stringify({
+          textQuery: query,
+          maxResultCount: Math.min(Math.max(maxResults, 1), 20),
+        }),
+      })
 
-        const { places = [] } = (await searchResponse.json()) as PlacesSearchResponse
-
-        if (places.length === 0) {
-          console.warn('no results found', params)
-          return `No places found for query: "${query}"`
-        }
-
-        const firstPlace = places[0]
-        const hasSingleMatch = places.length === 1
-
-        if (sendLocation && hasSingleMatch && firstPlace?.location) {
-          const location: LocationMessage = {
-            type: 'location',
-            latitude: firstPlace.location.latitude,
-            longitude: firstPlace.location.longitude,
-            name: firstPlace.displayName?.text,
-            address: firstPlace.formattedAddress,
-          }
-          const locationMessageId = await deps.chat.sendLocation(location)
-          messages.push(toAssistantModelMessage(location)!)
-          console.debug('sent location message', location)
-        }
-
-        if (
-          sendContact &&
-          hasSingleMatch &&
-          firstPlace?.internationalPhoneNumber &&
-          firstPlace?.displayName?.text
-        ) {
-          const contact = {
-            name: firstPlace.displayName.text,
-            phone: firstPlace.internationalPhoneNumber,
-          }
-          await deps.chat.sendContact(contact)
-          console.debug('sent contact message', contact)
-        }
-
-        console.log('completed', {
+      if (!searchResponse.ok) {
+        const errorText = await searchResponse.text()
+        console.error('API error', {
           ...params,
-          resultsCount: places.length,
-          sentLocation: sendLocation && hasSingleMatch && firstPlace?.location,
-          sentContact: sendContact && hasSingleMatch && firstPlace?.internationalPhoneNumber,
-        })
-        console.debug('results', { ...params, places })
-
-        return JSON.stringify(places)
-      } catch (error) {
-        console.error('Tool execution failed', {
-          ...params,
-          ...spreadError(error),
+          status: searchResponse.status,
+          statusText: searchResponse.statusText,
+          error: errorText,
         })
         return {
           error: 'Tool execution failed',
-          details: error instanceof Error ? error.message : 'unknown',
+          details: `Failed to search Google Places: [${searchResponse.status} ${searchResponse.statusText}] ${errorText}`,
         } satisfies ToolExecutionError
       }
-    },
-  })
+
+      const { places = [] } = (await searchResponse.json()) as PlacesSearchResponse
+
+      if (places.length === 0) {
+        console.warn('no results found', params)
+        return `No places found for query: "${query}"`
+      }
+
+      const firstPlace = places[0]
+      const hasSingleMatch = places.length === 1
+
+      if (sendLocation && hasSingleMatch && firstPlace?.location) {
+        const location: LocationMessage = {
+          type: 'location',
+          latitude: firstPlace.location.latitude,
+          longitude: firstPlace.location.longitude,
+          name: firstPlace.displayName?.text,
+          address: firstPlace.formattedAddress,
+        }
+        await chat.sendLocation(user.waId, location)
+        messages.push(toAssistantModelMessage(location))
+        console.debug('sent location message', location)
+      }
+
+      if (
+        sendContact &&
+        hasSingleMatch &&
+        firstPlace?.internationalPhoneNumber &&
+        firstPlace?.displayName?.text
+      ) {
+        const contact: ContactMessage = {
+          type: 'contact',
+          name: firstPlace.displayName.text,
+          phone: firstPlace.internationalPhoneNumber,
+        }
+        await chat.sendContact(user.waId, contact)
+        messages.push(toAssistantModelMessage(contact))
+        console.debug('sent contact message', contact)
+      }
+
+      const sentLocation = sendLocation && hasSingleMatch && firstPlace?.location
+      const sentContact = sendContact && hasSingleMatch && firstPlace?.internationalPhoneNumber
+      console.log('completed', {
+        ...params,
+        sentLocation,
+        sentContact,
+        resultsCount: places.length,
+      })
+      console.debug('results', { ...params, places })
+
+      return JSON.stringify({
+        places,
+        sentLocation,
+        sentContact,
+      })
+    } catch (error) {
+      console.error('Tool execution failed', {
+        ...params,
+        ...spreadError(error),
+      })
+      return {
+        error: 'Tool execution failed',
+        details: error instanceof Error ? error.message : 'unknown',
+      } satisfies ToolExecutionError
+    }
+  },
+})
