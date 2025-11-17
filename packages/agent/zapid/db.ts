@@ -1,7 +1,7 @@
 import type { DB } from '@batman/core/infra/db'
 import { Postgres } from '@batman/core/infra/dbPostgres'
 import { desc, eq } from 'drizzle-orm'
-import { drizzle } from 'drizzle-orm/bun-sql'
+import { BunSQLDatabase, drizzle } from 'drizzle-orm/bun-sql'
 import * as schema from './dbSchema'
 
 export interface UserWithProfile extends DB.User {
@@ -9,6 +9,7 @@ export interface UserWithProfile extends DB.User {
 }
 
 export interface ZapidRepository extends DB.Repository {
+  $client: BunSQLDatabase<typeof schema>
   updateUserProfile: (params: {
     userId: string
     profile: string
@@ -25,6 +26,7 @@ export const dbFactory = (): ZapidRepository => {
 
   return {
     ...coreDB,
+    $client: client,
 
     // Override persistUser to return UserWithProfile
     async persistUser(params) {

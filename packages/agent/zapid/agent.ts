@@ -57,7 +57,7 @@ export async function agent(): Promise<void> {
 
   console.log('Starting agent response flow', { message })
 
-  context.chat.acknowledgeMessage(message.messageId)
+  context.chat.acknowledgeMessage(message.messageWaId)
 
   try {
     await persistUser({ userName, userWaId })
@@ -80,7 +80,7 @@ export async function agent(): Promise<void> {
       notification: context.notification,
       modelMessage: userModelMessage,
     })
-    context.chat.sendTypingIndicator(message.messageId)
+    context.chat.sendTypingIndicator(message.messageWaId)
     await responseGeneration()
   } catch (error) {
     console.error('Agent response flow error', error)

@@ -72,7 +72,7 @@ export function toDbMessage({
   if (notification && modelMessage) {
     return {
       userId,
-      waId: notification.message.messageId,
+      waId: notification.message.messageWaId,
       type: notification.message.type,
       modelMessage,
       timestamp: notification.timestamp,

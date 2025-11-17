@@ -1,4 +1,4 @@
-import { getContext } from 'context'
+import { getContext } from '../context'
 import { ok } from 'node:assert'
 
 export async function storeMessageExchange(): Promise<void> {

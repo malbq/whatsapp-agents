@@ -1,9 +1,5 @@
 # Progress
 
-## Refactor
-
-- zapid embedding + similarity search
-
 ## Next
 
 - Turn sendFile tool into structured output

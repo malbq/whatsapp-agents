@@ -72,7 +72,7 @@ export type IncominMessage = (
   | ReactionMessage
   | ContactMessage
 ) &
-  ReplyMessage & { messageId: string }
+  ReplyMessage & { messageWaId: string }
 
 export interface Notification {
   userWaId: string

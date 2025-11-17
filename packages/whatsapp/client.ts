@@ -186,7 +186,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
         return {
           ...notification,
           message: {
-            messageId: textMessage.data.id,
+            messageWaId: textMessage.data.id,
             type: 'text',
             text: textMessage.data.text.body,
           },
@@ -198,7 +198,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
         return {
           ...notification,
           message: {
-            messageId: audioMessage.data.id,
+            messageWaId: audioMessage.data.id,
             type: audioMessage.data.audio.voice ? 'voice' : 'audio',
             data: await fetchReceivedMedia(
               audioMessage.data.audio.id,
@@ -214,7 +214,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
         return {
           ...notification,
           message: {
-            messageId: documentMessage.data.id,
+            messageWaId: documentMessage.data.id,
             type: 'document',
             caption: documentMessage.data.document.caption,
             filename: documentMessage.data.document.filename,
@@ -232,7 +232,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
         return {
           ...notification,
           message: {
-            messageId: imageMessage.data.id,
+            messageWaId: imageMessage.data.id,
             type: 'image',
             caption: imageMessage.data.image.caption,
             data: await fetchReceivedMedia(
@@ -249,7 +249,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
         return {
           ...notification,
           message: {
-            messageId: buttonReply.data.id,
+            messageWaId: buttonReply.data.id,
             type: 'text',
             text: buttonReply.data.button.text,
           },
@@ -261,7 +261,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
         return {
           ...notification,
           message: {
-            messageId: interactiveMessage.data.id,
+            messageWaId: interactiveMessage.data.id,
             type: 'text',
             text:
               interactiveMessage.data.interactive.button_reply?.title ||
