@@ -10,7 +10,7 @@ export interface SendTextContext {
 
 export function createSendTextTool(ctx: SendTextContext) {
   return tool({
-    name: 'send_text',
+    title: 'send_text',
     description: `Send a text message to the user.`,
     inputSchema: z.object({
       text: z.string().describe('The text message to send to the user'),

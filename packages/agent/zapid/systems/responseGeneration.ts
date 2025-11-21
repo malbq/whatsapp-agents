@@ -2,7 +2,6 @@ import { openai } from '@ai-sdk/openai'
 import { generateWhatsappMessage } from '@batman/core/ai/generateWhatsappMessage'
 import { ResponseGenerationError } from '@batman/core/errors'
 import type { DB } from '@batman/core/infra/db'
-import type { Storage } from '@batman/core/infra/storage'
 import {
   createSendReactionTool,
   createSendTextTool,
@@ -12,7 +11,7 @@ import {
 import { sendWhatsappMessage } from '@batman/core/utils/sendWhatsappMessage'
 import { toDbMessage } from '@batman/core/utils/toDbMessage'
 import { toSystemModelMessage } from '@batman/core/utils/toModelMessage'
-import type { ModelMessage, ToolSet } from 'ai'
+import { stepCountIs, type ModelMessage, type ToolSet } from 'ai'
 import { ok } from 'node:assert'
 import { getContext } from '../context'
 import type { ZapidRepository } from '../db'
@@ -23,6 +22,7 @@ import { googlePlacesTool } from '../tools/googlePlaces'
 import { updateUserProfileTool } from '../tools/updateUserProfile'
 
 const model = openai.responses('gpt-5-mini-2025-08-07')
+const MAX_STEPS = 10
 
 export async function responseGeneration() {
   const context = getContext()
@@ -41,7 +41,7 @@ export async function responseGeneration() {
 
   await context.db.findRecentMessages({ userId: user.id }).then(async (recentMessages) => {
     if (recentMessages.length === 0) return
-    await fillMediaMessagesWithData(recentMessages, context.storage)
+    await fillMediaMessagesWithData(recentMessages)
     agentContext.push(
       toSystemModelMessage(recentMessagesPrompt),
       ...recentMessages.map((message) => message.modelMessage)
@@ -55,6 +55,7 @@ export async function responseGeneration() {
     system,
     messages: agentContext,
     tools: createToolSet(),
+    stopWhen: stepCountIs(MAX_STEPS),
     providerOptions: {
       openai: {
         serviceTier: 'flex',
@@ -75,9 +76,9 @@ export async function responseGeneration() {
 
 // TODO in production, we should fill with signed URLs instead of raw data
 async function fillMediaMessagesWithData(
-  recentMessages: Awaited<ReturnType<ZapidRepository['findRecentMessages']>>,
-  storage: Storage
+  recentMessages: Awaited<ReturnType<ZapidRepository['findRecentMessages']>>
 ) {
+  const context = getContext()
   console.log('fillMediaMessagesWithData: Processing', recentMessages.length, 'messages')
 
   const messagesToFill = new Map(
@@ -90,7 +91,7 @@ async function fillMediaMessagesWithData(
 
   await Promise.all(
     keys.values().map(async (storageKey) => {
-      const fileData = await storage.retrieve(storageKey)
+      const fileData = await context.storage.retrieve(storageKey)
       console.log(
         `fillMediaMessagesWithData: Retrieved ${storageKey} - ${fileData.data.byteLength} bytes`
       )
@@ -105,18 +106,12 @@ async function fillMediaMessagesWithData(
 
   for (const [index, storageKey] of messagesToFill.entries()) {
     const message = recentMessages[index]!
-    console.log(
-      `fillMediaMessagesWithData: Filling message ${index} with storage key ${storageKey}`
-    )
     if (Array.isArray(message.modelMessage.content)) {
       for (const part of message.modelMessage.content) {
-        console.log('fillMediaMessagesWithData: Part', JSON.stringify(part, null, 2))
         if ('image' in part) {
-          console.log(`fillMediaMessagesWithData: Filling image part for message ${index}`)
           part.image = data.get(storageKey)!
         }
         if ('data' in part) {
-          console.log(`fillMediaMessagesWithData: Filling data part for message ${index}`)
           part.data = data.get(storageKey)!
         }
       }

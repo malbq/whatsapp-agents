@@ -82,8 +82,9 @@ export async function agent(): Promise<void> {
     })
     context.chat.sendTypingIndicator(message.messageWaId)
     await responseGeneration()
-  } catch (error) {
-    console.error('Agent response flow error', error)
+  } catch {
+    console.error('Agent response flow error')
+
     const errorMessage: TextMessage = {
       type: 'text',
       text: 'Desculpe, tive um problema ao processar sua mensagem.',

@@ -9,7 +9,7 @@ export interface SendReactionContext {
 
 export function createSendReactionTool(ctx: SendReactionContext) {
   return tool({
-    name: 'send_reaction',
+    title: 'send_reaction',
     description:
       'Send a reaction emoji to the user message. Use this for quick acknowledgments and emotional responses.',
     inputSchema: z.object({

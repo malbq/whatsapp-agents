@@ -54,6 +54,22 @@ export class ResponseDeliveryError extends Error {
   }
 }
 
+export class WebSearchError extends Error {
+  query: string
+  status: number
+  code: string
+  detail: string
+
+  constructor(query: string, status: number, code: string, detail: string) {
+    super(`Search failed for query "${query}": [${status} ${code}] ${detail}`)
+    this.name = 'WebSearchError'
+    this.query = query
+    this.status = status
+    this.code = code
+    this.detail = detail
+  }
+}
+
 export interface ToolExecutionError {
   error: string
   details: string

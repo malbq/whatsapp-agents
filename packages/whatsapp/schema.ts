@@ -44,9 +44,7 @@ export const locationMessageSchema = z
     name: z.string().optional(),
     address: z.string().optional(),
   })
-  .describe(
-    'Use only when sharing a place is necessary to satisfy the user request; otherwise prefer a text message.'
-  )
+  .describe('Use to share a place or business location address or coordinates.')
 
 export const contactMessageSchema = z
   .object({
@@ -54,9 +52,7 @@ export const contactMessageSchema = z
     name: z.string(),
     phone: z.string(),
   })
-  .describe(
-    'Use only when sharing a specific contact is necessary; otherwise prefer a text message.'
-  )
+  .describe('Use to share contact details like phone number or name.')
 
 export const reactionMessageSchema = z.object({
   type: z.literal('reaction'),

@@ -20,7 +20,7 @@ export const cfProvider = createOpenAI({
   fetch: createCloudflareCompatibleFetch(fetch),
 })
 
-const embeddingModel = cfProvider.textEmbeddingModel('@cf/baai/bge-m3')
+const embeddingModel = cfProvider.textEmbeddingModel('@cf/google/embeddinggemma-300m')
 
 export const generateEmbeddings: GenerateEmbeddings = async (texts) => {
   const groupedChunks = await Promise.all(

@@ -1,4 +1,5 @@
 import { tool } from 'ai'
+import { inspect } from 'node:util'
 import { z } from 'zod'
 import type { ToolExecutionError } from '../errors'
 import type { WebSearch } from '../infra/webSearch'
@@ -10,7 +11,7 @@ export interface WebSearchContext {
 
 export function createWebSearchTool(ctx: WebSearchContext) {
   return tool({
-    name: 'web_search',
+    title: 'web_search',
     description: `Search the web for current/external information (news, facts, prices, business info, etc.).
 Use when the answer depends on up-to-date internet sources.
 If the user's message includes a URL, do not use this tool; call \`web_fetch\` directly.
@@ -19,7 +20,7 @@ After discovering relevant URLs, use \`web_fetch\` to retrieve full content when
       query: z.string().describe('The search query to find relevant information on the web.'),
     }),
     execute: async (params, { abortSignal }) => {
-      console.log('starting web_search tool execution', params)
+      console.log('web_search tool execution', params)
 
       try {
         const { query } = params
@@ -37,30 +38,26 @@ After discovering relevant URLs, use \`web_fetch\` to retrieve full content when
           } satisfies ToolExecutionError
         }
 
-        console.debug('calling webSearch dependency', { query })
         const results = await ctx.webSearch({ query, signal: abortSignal })
-        console.debug('webSearch dependency returned', {
-          query,
-          resultsCount: results.length,
-        })
+        console.debug(
+          'web_search results',
+          inspect(
+            {
+              query,
+              resultsCount: results.length,
+            },
+            { depth: null }
+          )
+        )
 
         if (results.length === 0) {
-          console.warn('no results returned from search', { query })
+          console.warn('web_search no results', { query })
           return 'No relevant search results found for your query.'
         }
 
-        console.log('completed successfully', {
-          ...params,
-          resultsCount: results.length,
-        })
-        console.debug('results', {
-          ...params,
-          searchResults: results,
-        })
-
         return results
       } catch (error) {
-        console.error('tool execution failed', {
+        console.error('web_search execution failed', {
           ...params,
           error: spreadError(error),
         })

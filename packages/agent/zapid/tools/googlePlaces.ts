@@ -1,11 +1,7 @@
 import type { ToolExecutionError } from '@batman/core/errors'
 import { spreadError } from '@batman/core/utils/spreadError'
-import { toAssistantModelMessage } from '@batman/core/utils/toModelMessage'
-import type { ContactMessage, LocationMessage } from '@batman/whatsapp'
 import { tool } from 'ai'
-import { ok } from 'node:assert'
 import { z } from 'zod'
-import { getContext } from '../context'
 
 interface PlacesSearchResponse {
   places?: GooglePlace[]
@@ -47,13 +43,11 @@ This tool provides verified, structured data from Google Places including:
 - Business hours and ratings
 - Current business status (operational, closed, etc.)
 
-Set sendLocation/sendContact flags when:
-- When the user explicitly wants a location/address/map (e.g., "where is X?", "send me the location of X", "how do I get to X?").
-- When the user explicitly wants contact details (e.g., "what's the phone number for X?", "send me X's contact").
-- Set both to false when the user is exploring options, asking general questions, or the request is ambiguous.
-
-If a single match is found and flags are true, the location/contact will be sent automatically.
-If multiple matches exist, only the search results will be returned regardless of flags.`,
+Examples of queries that this tool can handle:
+- "Where is the nearest pizza place?"
+- "What's the phone number for the nearest pizza place?"
+- "Send me the location of the Eiffel Tower."
+- "Send me the contact details of Bureau de Gustave Eiffel."`,
   inputSchema: z.object({
     query: z
       .string()
@@ -63,33 +57,12 @@ If multiple matches exist, only the search results will be returned regardless o
       .optional()
       .default(DEFAULT_MAX_RESULTS)
       .describe('Maximum number of results to return (1-20, default: 5)'),
-    sendLocation: z
-      .boolean()
-      .optional()
-      .default(false)
-      .describe(
-        'Set to true if the user explicitly requests a location, address, or map. The tool will send a map pin only if exactly one result is found.'
-      ),
-    sendContact: z
-      .boolean()
-      .optional()
-      .default(false)
-      .describe(
-        'Set to true if the user explicitly requests contact details or phone number. The tool will send a contact card only if exactly one result is found and has a phone number.'
-      ),
   }),
-  execute: async (params, { abortSignal, messages }) => {
-    const { user, chat } = getContext()
-    ok(user, 'User not found')
-
-    const {
-      query,
-      maxResults = DEFAULT_MAX_RESULTS,
-      sendLocation = false,
-      sendContact = false,
-    } = params
+  execute: async (params, { abortSignal }) => {
+    const { query, maxResults = DEFAULT_MAX_RESULTS } = params
 
     try {
+      // TODO how to fetch data localized to the user's language?
       const searchResponse = await fetch('https://places.googleapis.com/v1/places:searchText', {
         signal: abortSignal,
         method: 'POST',
@@ -100,12 +73,9 @@ If multiple matches exist, only the search results will be returned regardless o
             'places.displayName,' +
             'places.formattedAddress,' +
             'places.location,' +
-            'places.rating,' +
-            'places.userRatingCount,' +
             'places.internationalPhoneNumber,' +
             'places.websiteUri,' +
             'places.businessStatus,' +
-            'places.types,' +
             'places.currentOpeningHours.openNow,' +
             'places.currentOpeningHours.weekdayDescriptions,' +
             'places.currentOpeningHours.nextOpenTime',
@@ -137,53 +107,16 @@ If multiple matches exist, only the search results will be returned regardless o
         return `No places found for query: "${query}"`
       }
 
-      const firstPlace = places[0]
-      const hasSingleMatch = places.length === 1
+      console.log('Tool google_places')
+      console.dir(
+        {
+          ...params,
+          result: places,
+        },
+        { depth: null }
+      )
 
-      if (sendLocation && hasSingleMatch && firstPlace?.location) {
-        const location: LocationMessage = {
-          type: 'location',
-          latitude: firstPlace.location.latitude,
-          longitude: firstPlace.location.longitude,
-          name: firstPlace.displayName?.text,
-          address: firstPlace.formattedAddress,
-        }
-        await chat.sendLocation(user.waId, location)
-        messages.push(toAssistantModelMessage(location))
-        console.debug('sent location message', location)
-      }
-
-      if (
-        sendContact &&
-        hasSingleMatch &&
-        firstPlace?.internationalPhoneNumber &&
-        firstPlace?.displayName?.text
-      ) {
-        const contact: ContactMessage = {
-          type: 'contact',
-          name: firstPlace.displayName.text,
-          phone: firstPlace.internationalPhoneNumber,
-        }
-        await chat.sendContact(user.waId, contact)
-        messages.push(toAssistantModelMessage(contact))
-        console.debug('sent contact message', contact)
-      }
-
-      const sentLocation = sendLocation && hasSingleMatch && firstPlace?.location
-      const sentContact = sendContact && hasSingleMatch && firstPlace?.internationalPhoneNumber
-      console.log('completed', {
-        ...params,
-        sentLocation,
-        sentContact,
-        resultsCount: places.length,
-      })
-      console.debug('results', { ...params, places })
-
-      return JSON.stringify({
-        places,
-        sentLocation,
-        sentContact,
-      })
+      return places
     } catch (error) {
       console.error('Tool execution failed', {
         ...params,

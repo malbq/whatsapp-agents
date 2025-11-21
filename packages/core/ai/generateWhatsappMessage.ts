@@ -9,12 +9,14 @@ import {
   generateText as aiGenerateText,
   APICallError,
   Output,
+  RetryError,
   type AssistantModelMessage,
   type FinishReason,
   type LanguageModelUsage,
   type ToolModelMessage,
   type ToolSet,
 } from 'ai'
+import { inspect } from 'node:util'
 import { z } from 'zod'
 
 const whatsappMessageSchema = z.discriminatedUnion('type', [
@@ -75,17 +77,17 @@ export async function generateWhatsappMessage<TOOLS extends ToolSet>({
       ? options.model
       : `${options.model.provider}/${options.model.modelId}`
   console.debug(`Generating WhatsApp message with model ${modelName}`)
+
   const messages: MessageWithDetails[] = []
+
   const result = await aiGenerateText<TOOLS, Output.Output<GeneratedWhatsappResponse>>({
     ...options,
     system: `${system ?? ''}\n${formattingGuidelines}`.trim(),
     output: Output.object({
       schema: whatsappResponseSchema,
     }),
-    prepareStep: ({ stepNumber, steps }) => {
-      console.debug(`Preparing step ${stepNumber}`, JSON.stringify(steps, null, 2))
-    },
     onStepFinish: (stepResult) => {
+      console.debug(`Step finished with reason: ${stepResult.finishReason}`)
       if (stepResult.response.messages.at(-1)?.role === 'tool') {
         stepResult.response.messages.slice(-2).forEach((message) => {
           messages.push({
@@ -103,15 +105,17 @@ export async function generateWhatsappMessage<TOOLS extends ToolSet>({
       })
     },
   } as GenerateOptions<TOOLS>).catch((error) => {
-    if (error instanceof APICallError) {
-      console.error(
-        'Error generating WhatsApp message',
-        JSON.stringify(error.requestBodyValues, null, 2)
-      )
+    if (RetryError.isInstance(error)) {
+      console.error('generateWhatsappMessage: Retry', inspect(error, { depth: null }))
+    } else if (APICallError.isInstance(error)) {
+      console.error('generateWhatsappMessage: API Call', inspect(error, { depth: null }))
+    } else {
+      console.error('generateWhatsappMessage: Error', inspect(error, { depth: null }))
     }
     throw error
   })
-  console.debug(`Generated WhatsApp message with model ${modelName}`)
+
+  console.debug(`Generated WhatsApp message with model ${modelName}: ${result.text}`)
 
   return {
     output: result.output.message,

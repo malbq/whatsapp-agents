@@ -1,16 +1,5 @@
 # Progress
 
-## Next
-
-- Turn sendFile tool into structured output
-- Simplify dependency injection by providing/injecting only individual operations, instead of entire interfaces (DB, Storage, AI, etc).
-- resend typing indicator after whatsapp time out while assistant is generating response
-- Improve tool instructions and anti-patterns (like re-search if recent search results are available)
-- Test Parallel Search API: https://parallel.ai/blog/introducing-parallel-search
-- Halt generation when user sends another message before assistant responds - do not halt audio or file ingestion
-- Retry when model fails to respect output schema
-- flag assistant messages with sent/delivered/read/failed status
-
 ## Hybrid context retrieval using PostgreSQL (FTS/tsvector + embeddings + RRF).
 
 - Generate embeddings only for non-tool messages.
@@ -24,37 +13,52 @@
 - Make these parameters configurable per query: limit (default 10), vector similarity/distance threshold (default 0.0 equivalent), RRF k (default 10), chunk aggregation mode (default max).
 - Out of scope for now: FTS over chunks; only message-level FTS via message.fts.
 
-- **Human Takeover**
+## Next
 
-  - Steps: detect_issue → notify_human_queue → claim → resolve → handback.
-  - Policies during human_active: AI restricted to assist/suggest-only; limited tool set (e.g., read-only web_fetch; block side effects).
-  - Notifications and SLAs: Events on entering pending_human; timers/escalation for response SLAs.
-  - Audit trail: Record transitions with actor (system/AI/human) and reason to support compliance.
+- Turn sendFile tool into structured output
+- Validate searchFile tool works
+- flag assistant messages with sent/delivered/read/failed status
+- Retry when model fails to respect output schema
 
-- **User Management**: Complete user management system
+## User Management
 
-  - Subscription plan management
-  - Usage tracking and limits
-  - Onboarding
-  - Generate unique code or token link, bound to the phone number, for payment and configuration
-  - https://getlago.com/docs/welcome
+- Subscription plan management
+- Usage tracking and limits
+- Onboarding
+- Generate unique code or token link, bound to the phone number, for payment and configuration
+- https://getlago.com/docs/welcome
 
-- **Privacy & Compliance**: Data management features
+## Performance & Reliability
 
-  - Write Privacy policy
-  - Write Terms of Service
-  - Privacy controls and onboarding through WhatsApp custom messages
-  - Privacy policy notice and TOS acceptance in first interaction
-  - Data export functionality
-  - Data deletion for GDPR compliance
-  - Data redacting in logs and error messages
-
-- **Performance & Reliability**: System improvements
-
+- Resend typing indicator after whatsapp time out while assistant is generating response (indicator lasts 25s)
+- Support user sending contact/location messages
 - Cost Monitoring: Set up alerts for AI provider usage thresholds (e.g., via OpenAI dashboard hooks)
-  - E2E tests for error scenarios, privacy flows, and rate limits
-  - Retry mechanisms
-  - Improved error handling
+- E2E tests for error scenarios, privacy flows, and rate limits
+- Retry mechanisms
+- Improved error handling
+- Test Parallel Search API: https://parallel.ai/blog/introducing-parallel-search
+
+## UX Improvements
+
+- Halt generation when user sends another message before assistant responds - do not halt audio or file ingestion
+- Handle openai flex service availability error - respond with "try again later"
+
+## Privacy & Compliance
+
+- Write Privacy policy
+- Write Terms of Service
+- Privacy controls and onboarding through WhatsApp custom messages
+- Privacy policy notice and TOS acceptance in first interaction
+- Data export functionality
+- Data deletion for GDPR compliance
+- Data redacting in logs and error messages
+
+## Human Takeover
+
+- Steps: detect_issue → notify_human_queue → claim → resolve → handback.
+- Policies during human_active: AI restricted to assist/suggest-only; limited tool set (e.g., read-only web_fetch; block side effects).
+- Notifications and SLAs: Events on entering pending_human; timers/escalation for response SLAs.
+- Audit trail: Record transitions with actor (system/AI/human) and reason to support compliance.
 
 ## Open Questions
 

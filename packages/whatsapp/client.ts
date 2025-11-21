@@ -11,7 +11,7 @@ import type {
 import { getExtFromMimeType } from './utils'
 import { WhatsAppApi } from './whatsappTypes'
 
-const WA_API_VERSION = import.meta.env.WA_API_VERSION || 'v23.0'
+const WA_API_VERSION = import.meta.env.WA_API_VERSION || 'v24.0'
 const MAX_OPTIONS_PER_SECTION = 10
 
 export interface WhatsappConfig {
@@ -101,7 +101,8 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
   async function sendMessageRequest<T extends WhatsAppApi.OutgoingMessageUnion>(
     requestBody: T
   ): Promise<string> {
-    console.debug('Sending message request:', JSON.stringify(requestBody, null, 2))
+    console.debug('Sending message request:')
+    console.dir(requestBody, { depth: null })
     const httpResponse = await fetch(
       `https://graph.facebook.com/${WA_API_VERSION}/${config.businessPhoneId}/messages`,
       {

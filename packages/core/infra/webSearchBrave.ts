@@ -1,3 +1,4 @@
+import { WebSearchError } from '../errors.js'
 import { spreadError } from '../utils/spreadError.js'
 import type { SearchParams, SearchResult, WebSearch } from './webSearch.js'
 
@@ -7,6 +8,18 @@ interface BraveSearchResult {
   description: string
   page_age: string
   extra_snippets: Array<string>
+}
+
+interface BraveSearchError {
+  error: {
+    code: string
+    detail: string
+    meta: {
+      component: string
+    }
+    status: number
+  }
+  type: string
 }
 
 interface BraveSearchResponse {
@@ -69,6 +82,11 @@ export namespace WebSearchBrave {
     function updateRateLimitState(response: Response): void {
       const remainingHeader = response.headers.get('x-ratelimit-remaining')
       const resetHeader = response.headers.get('x-ratelimit-reset')
+
+      console.debug('webSearchBrave: update rate limit state from response headers', {
+        remainingHeader,
+        resetHeader,
+      })
 
       if (remainingHeader !== null) {
         remainingRequests = parseInt(remainingHeader, 10)
@@ -137,22 +155,14 @@ export namespace WebSearchBrave {
 
         const requestUrl = `https://api.search.brave.com/res/v1/web/search?${searchParams}`
         console.debug('webSearchBrave: making fetch request', {
-          query: queuedRequest.params.query,
           url: requestUrl,
+          headers: Object.fromEntries(defaultHeaders.entries()),
           requestTimeoutMs: REQUEST_TIMEOUT_MS,
         })
 
         const response = await fetch(requestUrl, {
           signal: controller.signal,
           headers: defaultHeaders,
-        })
-
-        console.log('webSearchBrave: fetch response received', {
-          query: queuedRequest.params.query,
-          status: response.status,
-          statusText: response.statusText,
-          ok: response.ok,
-          headers: Object.fromEntries(response.headers.entries()),
         })
 
         updateRateLimitState(response)
@@ -167,31 +177,28 @@ export namespace WebSearchBrave {
             processNextRequest()
             return
           }
-
-          console.error('webSearchBrave: API error', {
-            query: queuedRequest.params.query,
-            status: response.status,
-            statusText: response.statusText,
-            responseHeaders: Object.fromEntries(response.headers.entries()),
-          })
-          throw new Error(`Search failed: ${response.status} ${response.statusText}`)
+          const errorResponse = (await response.json()) as BraveSearchError
+          throw new WebSearchError(
+            queuedRequest.params.query,
+            errorResponse.error.status,
+            errorResponse.error.code,
+            errorResponse.error.detail
+          )
         }
 
-        let jsonResponse: BraveSearchResponse
-        try {
-          jsonResponse = (await response.json()) as BraveSearchResponse
-          console.debug('webSearchBrave: JSON parsed successfully', {
-            query: queuedRequest.params.query,
-            hasWebResults: !!jsonResponse.web?.results,
-            resultsCount: jsonResponse.web?.results?.length || 0,
-          })
-        } catch (parseError) {
-          console.error('webSearchBrave: JSON parsing failed', {
-            query: queuedRequest.params.query,
-            parseError: spreadError(parseError),
-          })
-          throw new Error('Failed to parse search response JSON', { cause: parseError })
-        }
+        console.log('webSearchBrave: fetch response received', {
+          query: queuedRequest.params.query,
+          status: response.status,
+          statusText: response.statusText,
+          headers: Object.fromEntries(response.headers.entries()),
+        })
+
+        const jsonResponse = (await response.json()) as BraveSearchResponse
+        console.debug('webSearchBrave: JSON parsed successfully', {
+          query: queuedRequest.params.query,
+          hasWebResults: !!jsonResponse.web?.results,
+          resultsCount: jsonResponse.web?.results?.length || 0,
+        })
 
         const {
           web: { results },
@@ -216,13 +223,22 @@ export namespace WebSearchBrave {
           searchResults,
         })
       } catch (error) {
-        console.error('webSearchBrave: search request failed', {
-          query: queuedRequest.params.query,
-          errorType: (error as Error)?.name,
-          errorMessage: (error as Error)?.message,
-          isAbortError: (error as Error)?.name === 'AbortError',
-          ...spreadError(error),
-        })
+        if (error instanceof WebSearchError) {
+          console.error('webSearchBrave: API error', {
+            query: error.query,
+            status: error.status,
+            code: error.code,
+            detail: error.detail,
+          })
+        } else {
+          console.error('webSearchBrave: search request failed', {
+            query: queuedRequest.params.query,
+            errorType: (error as Error)?.name,
+            errorMessage: (error as Error)?.message,
+            isAbortError: (error as Error)?.name === 'AbortError',
+            ...spreadError(error),
+          })
+        }
         queuedRequest.reject(error as Error)
       } finally {
         queuedRequest.params.signal?.removeEventListener('abort', controller.abort)

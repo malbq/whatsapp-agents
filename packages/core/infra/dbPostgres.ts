@@ -71,7 +71,8 @@ export namespace Postgres {
           .returning({ id: Schema.message.id })
           .then((result) => result.map((r) => r.id))
 
-        console.debug('Stored messages', JSON.stringify(messageArray, null, 2))
+        console.debug('Stored messages')
+        console.dir(messageArray, { depth: null })
 
         return messageIds
       },

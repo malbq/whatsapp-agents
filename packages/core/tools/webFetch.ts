@@ -8,9 +8,9 @@ const DEFAULT_TIMEOUT_MS = 30_000
 const MAX_RESPONSE_SIZE = 5 * 1024 * 1024 // 5MB
 
 export const webFetchTool = tool({
-  name: 'web_fetch',
+  title: 'web_fetch',
   description: `Fetch a URL and return its content. Use this directly when the user's message includes a URL; do not call web_search first. Also use this to read sources discovered by web_search.
-- format: "text" (default) converts HTML to plain text via Bun HTMLRewriter; "html" returns raw HTML.
+- format: "text" (default) converts HTML to plain text via HTMLRewriter; "html" returns raw HTML.
 - On errors, returns a short message and continues.
 - Maximum response size is 5MB.
 - Request timeout is 30 seconds.
