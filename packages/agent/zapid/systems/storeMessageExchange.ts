@@ -1,5 +1,5 @@
-import { getContext } from '../context'
 import { ok } from 'node:assert'
+import { getContext } from '../context'
 
 export async function storeMessageExchange(): Promise<void> {
   const context = getContext()
@@ -67,11 +67,16 @@ export async function storeMessageExchange(): Promise<void> {
 
   console.log(`Stored ${messageIds.length} messages (1 user, ${context.outbound.length} assistant)`)
 
-  if (context.improvedProfile && context.improvedProfile.length > 0 && messageIds[0]) {
+  context.inbound.id = messageIds[0]!
+  for (let i = 0; i < context.outbound.length; i++) {
+    context.outbound[i]!.id = messageIds[i + 1]!
+  }
+
+  if (context.improvedProfile && context.improvedProfile.length > 0 && context.inbound.id) {
     await context.db.updateUserProfile({
       userId: context.user.id,
       profile: context.improvedProfile,
-      messageId: messageIds[0],
+      messageId: context.inbound.id,
     })
 
     console.log('updated user profile', {

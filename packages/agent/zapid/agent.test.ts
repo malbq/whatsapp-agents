@@ -408,4 +408,71 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
     },
     { timeout: 120000 }
   )
+
+  test(
+    'embeds text messages',
+    async () => {
+      const text = 'Hello.'
+      await runContext(
+        {
+          db,
+          storage,
+          chat,
+          webSearch,
+          notification: {
+            ...user,
+            timestamp: new Date(),
+            message: {
+              type: 'text',
+              messageWaId: 'wamid.1',
+              text,
+            },
+          },
+        },
+        async () => {
+          await agent()
+        }
+      )
+
+      const snippets = await db.$client.query.snippet.findMany()
+      expect(snippets.length).toBe(2)
+
+      expect(snippets[0]!.content).toBe(text)
+    },
+    { timeout: 120000 }
+  )
+
+  test(
+    'embeds image description containing "hello world"',
+    async () => {
+      const imgBuffer = Uint8Array.fromBase64(imgBase64).buffer
+      await runContext(
+        {
+          db,
+          storage,
+          chat,
+          webSearch,
+          notification: {
+            ...user,
+            timestamp: new Date(),
+            message: {
+              type: 'image',
+              messageWaId: 'wamid.1',
+              data: imgBuffer,
+              mimeType: 'image/png',
+            },
+          },
+        },
+        async () => {
+          await agent()
+        }
+      )
+
+      const snippets = await db.$client.query.snippet.findMany()
+      expect(snippets.length).toBe(2)
+
+      expect(snippets[0]!.content).toMatch(/hello.*world/i)
+    },
+    { timeout: 120000 }
+  )
 })

@@ -1,6 +1,6 @@
-import { embedMany } from 'ai'
-
 import { createOpenAI } from '@ai-sdk/openai'
+import { embedMany } from 'ai'
+import { inspect } from 'node:util'
 import { createCloudflareCompatibleFetch } from '../utils/cloudflareFetch'
 import { splitIntoChunks } from '../utils/splitIntoChunks'
 
@@ -21,6 +21,7 @@ export const cfProvider = createOpenAI({
 })
 
 const embeddingModel = cfProvider.textEmbeddingModel('@cf/google/embeddinggemma-300m')
+const CHUNK_SIZE = 4096
 
 export const generateEmbeddings: GenerateEmbeddings = async (texts) => {
   const groupedChunks = await Promise.all(
@@ -28,7 +29,7 @@ export const generateEmbeddings: GenerateEmbeddings = async (texts) => {
       if (!text.trim()) {
         return []
       }
-      return await splitIntoChunks(text)
+      return await splitIntoChunks(text, CHUNK_SIZE)
     })
   )
 
@@ -38,13 +39,18 @@ export const generateEmbeddings: GenerateEmbeddings = async (texts) => {
     values: allChunks,
   })
 
-  console.debug(`Batch embeddings generated with ${embeddingModel.modelId}`, {
-    textsCount: texts.length,
-    totalChunks: allChunks.length,
-    embeddings: result.embeddings.map((e) => e.length),
-    usage: result.usage,
-    providerMetadata: result.providerMetadata,
-  })
+  console.debug(
+    `Batch embeddings generated with ${embeddingModel.provider}/${embeddingModel.modelId}`,
+    inspect(
+      {
+        input: texts,
+        totalChunks: allChunks.length,
+        usage: result.usage,
+        responseHeaders: result.responses?.[0]?.headers,
+      },
+      { depth: null }
+    )
+  )
 
   let embeddingIndex = 0
   const embeddings = groupedChunks.map<Array<ChunkData>>((textChunks) => {

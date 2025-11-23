@@ -67,6 +67,7 @@ export async function responseGeneration() {
 
   const assistantMessageId = await sendWhatsappMessage(context.chat, user.waId, response.output)
 
+  context.responseOutput = response.output
   context.outbound = toDbMessage({
     userId: user.id,
     assistantWaMessageId: assistantMessageId,

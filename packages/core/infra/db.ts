@@ -33,11 +33,14 @@ export namespace DB {
   export type User = SelectModel<'user'>
   export type Resource = SelectModel<'resource'>
   export type Reminder = SelectModel<'reminder'>
+  export type Snippet = SelectModel<'snippet'>
+  export type SnippetInsert = InsertModel<'snippet'>
 
   export interface Repository {
     storeRawIncomingMessage: (payload: string) => Promise<boolean>
     persistUser: (user: InsertModel<'user'>) => Promise<User>
     storeMessage: (params: MessageInsert | Array<MessageInsert>) => Promise<Array<string>>
+    storeSnippets: (snippets: Array<SnippetInsert>) => Promise<void>
     findRecentMessages: (params: {
       userId: string
     }) => Promise<Array<Message & { storageKey: Resource['storageKey'] | undefined | null }>>

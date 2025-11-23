@@ -2,8 +2,7 @@
 
 ## Hybrid context retrieval using PostgreSQL (FTS/tsvector + embeddings + RRF).
 
-- Generate embeddings only for non-tool messages.
-- Add a plain TSVECTOR column message.fts (NOT GENERATED). Populate it at INSERT/UPDATE using SQL: fts = to_tsvector('simple', unaccent($normalizedText)), where $normalizedText is extracted in TypeScript from model_message. Do not store a separate message.text or any model_message.normalized_text. Create GIN index: CREATE INDEX idx_message_fts ON message USING gin (fts). Enable unaccent extension.
+- Add a plain TSVECTOR column snippet.fts (NOT GENERATED). Populate it at INSERT/UPDATE using SQL: fts = to_tsvector('simple', unaccent($content)). Create GIN index: CREATE INDEX idx_snippet_fts ON snippet USING gin (fts). Enable unaccent extension.
 - Vector search runs over embedding chunks filtered by user_id, ordered by vector distance, with a LIMIT K. Aggregate chunk similarities to message-level using max(similarity) by default (allow top-k mean as an option). Keep the best chunk per message for snippet.
 - Apply a configurable similarity/distance threshold to vector hits before fusion; discard messages whose aggregated semantic score falls below the threshold.
 - Hybrid ranking must combine vector and text results at message level using Reciprocal Rank Fusion with k = 10: score = 1/(vectorRank + k) + 1/(textRank + k). Missing ranks count as ∞ (i.e., contribute only from the present list).

@@ -13,12 +13,10 @@ export async function splitIntoSentences(text: string): Promise<string[]> {
   return nlp(readable.toString()).sentences().out('array')
 }
 
-const MAX_CHUNK_SIZE = 2000
-
-export async function splitIntoChunks(text: string): Promise<string[]> {
+export async function splitIntoChunks(text: string, maxChunkSize: number): Promise<string[]> {
   if (!text) return []
 
-  if (text.length <= MAX_CHUNK_SIZE) {
+  if (text.length <= maxChunkSize) {
     return [text]
   }
 
@@ -28,13 +26,13 @@ export async function splitIntoChunks(text: string): Promise<string[]> {
   let currentChunk = ''
 
   for (const sentence of sentences) {
-    if (currentChunk.length + sentence.length > MAX_CHUNK_SIZE) {
+    if (currentChunk.length + sentence.length > maxChunkSize) {
       if (currentChunk) chunks.push(currentChunk)
-      if (sentence.length > MAX_CHUNK_SIZE) {
+      if (sentence.length > maxChunkSize) {
         let remaining = sentence
-        while (remaining.length > MAX_CHUNK_SIZE) {
-          const lastSpaceIndex = remaining.lastIndexOf(' ', MAX_CHUNK_SIZE)
-          const splitIndex = lastSpaceIndex > 0 ? lastSpaceIndex : MAX_CHUNK_SIZE
+        while (remaining.length > maxChunkSize) {
+          const lastSpaceIndex = remaining.lastIndexOf(' ', maxChunkSize)
+          const splitIndex = lastSpaceIndex > 0 ? lastSpaceIndex : maxChunkSize
           chunks.push(remaining.substring(0, splitIndex))
           remaining = remaining.substring(splitIndex).trim()
         }

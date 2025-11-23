@@ -46,6 +46,7 @@ import { getContext } from './context'
 import { persistUser } from './systems/persistUser'
 import { responseGeneration } from './systems/responseGeneration'
 import { storeMessageExchange } from './systems/storeMessageExchange'
+import { embedMessages } from './systems/embedMessages'
 
 export async function agent(): Promise<void> {
   const context = getContext()
@@ -100,8 +101,8 @@ export async function agent(): Promise<void> {
   }
 
   try {
-    // await embedMessages(frame, deps)
     await storeMessageExchange()
+    await embedMessages()
   } catch (error) {
     console.error("Error after agent's response", error)
   }

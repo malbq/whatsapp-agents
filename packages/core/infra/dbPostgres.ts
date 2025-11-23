@@ -1,5 +1,6 @@
 import { and, asc, eq, inArray, lte, or } from 'drizzle-orm'
 import type { BunSQLDatabase } from 'drizzle-orm/bun-sql'
+import { inspect } from 'node:util'
 import { FailedToPersistUserError } from '../errors'
 import type { DB } from './db'
 import { PostgresSchema as Schema } from './dbPostgresSchema'
@@ -75,6 +76,26 @@ export namespace Postgres {
         console.dir(messageArray, { depth: null })
 
         return messageIds
+      },
+
+      async storeSnippets(snippets) {
+        if (snippets.length === 0) return
+
+        await client.insert(Schema.snippet).values(snippets)
+
+        console.debug(
+          `Stored snippets`,
+          inspect(
+            {
+              snippets: snippets.map((s) => ({
+                messageId: s.messageId,
+                sequence: s.sequence,
+                content: s.content,
+              })),
+            },
+            { depth: null }
+          )
+        )
       },
 
       async findRecentMessages({ userId }) {
