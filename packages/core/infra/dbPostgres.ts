@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, lte, or } from 'drizzle-orm'
+import { and, asc, eq, inArray, lte, notInArray, or, sql } from 'drizzle-orm'
 import type { BunSQLDatabase } from 'drizzle-orm/bun-sql'
 import { inspect } from 'node:util'
 import { FailedToPersistUserError } from '../errors'
@@ -8,6 +8,7 @@ import { PostgresSchema as Schema } from './dbPostgresSchema'
 const MAX_RECENT_MESSAGES = parseInt(import.meta.env.MAX_RECENT_MESSAGES ?? '30')
 const VECTOR_DISTANCE_THRESHOLD = parseFloat(import.meta.env.VECTOR_DISTANCE_THRESHOLD ?? '0.50')
 const MAX_SIMILAR_MESSAGES = parseInt(import.meta.env.MAX_SIMILAR_MESSAGES ?? '10')
+const RRF_K = parseInt(import.meta.env.RRF_K ?? '10')
 const MAX_FILES = parseInt(import.meta.env.FILE_SEARCH_LIMIT ?? '10')
 const SENDING_STALE_SECONDS = parseInt(import.meta.env.REMINDER_SENDING_STALE_SECONDS ?? '300')
 
@@ -122,49 +123,205 @@ export namespace Postgres {
           .limit(MAX_RECENT_MESSAGES)
       },
 
-      async findSimilarSnippets({ userId, queryEmbedding, excludeIds = [] }) {
-        // const distance = cosineDistance(Schema.snippet.vector, queryEmbedding)
+      async findSimilarSnippets({
+        userId,
+        query,
+        queryEmbedding,
+        excludeIds = [],
+        limit = MAX_SIMILAR_MESSAGES,
+        vectorThreshold = VECTOR_DISTANCE_THRESHOLD,
+        rrfK = RRF_K,
+      }) {
+        const vectorLimit = Math.max(limit * 5, limit)
+        const textLimit = Math.max(limit * 5, limit)
 
-        // const conditions = [
-        //   eq(Schema.message.userId, userId),
-        //   lt(distance, VECTOR_DISTANCE_THRESHOLD),
-        // ]
+        // 1) Vector search: retrieve top-K snippets by cosine distance
+        const vectorConditions = [eq(Schema.message.userId, userId)] as Array<any>
+        if (excludeIds.length > 0) {
+          vectorConditions.push(notInArray(Schema.message.id, excludeIds))
+        }
 
-        // if (excludeIds.length > 0) {
-        //   conditions.push(notInArray(Schema.message.id, excludeIds))
-        // }
+        // Format the embedding as a proper PostgreSQL vector literal
+        const vectorLiteral = `[${queryEmbedding.join(',')}]`
+        const distanceSql = sql<number>`(${Schema.snippet.vector} <-> ${vectorLiteral}::vector)`
 
-        // const results = await client
-        //   .select({
-        //     id: Schema.message.id,
-        //     content: Schema.snippet.content,
-        //     type: Schema.message.type,
-        //     timestamp: Schema.message.timestamp,
-        //     chunkSequence: Schema.snippet.sequence,
-        //     totalChunks: sql<number>`(SELECT COUNT(*) FROM ${Schema.snippet} e2 WHERE e2.message_id = ${Schema.message.id})`,
-        //     modelMessage: Schema.message.modelMessage,
-        //     resourceId: Schema.message.resourceId,
-        //   })
-        //   .from(Schema.message)
-        //   .innerJoin(
-        //     Schema.snippet,
-        //     eq(Schema.message.id, Schema.snippet.messageId)
-        //   )
-        //   .where(and(...conditions))
-        //   .orderBy(distance)
-        //   .limit(MAX_SIMILAR_MESSAGES)
+        const vectorRows = await client
+          .select({
+            snippetId: Schema.snippet.id,
+            messageId: Schema.message.id,
+            type: Schema.message.type,
+            timestamp: Schema.message.timestamp,
+            content: Schema.snippet.content,
+            sequence: Schema.snippet.sequence,
+            distance: distanceSql,
+          })
+          .from(Schema.snippet)
+          .innerJoin(Schema.message, eq(Schema.snippet.messageId, Schema.message.id))
+          .where(and(...vectorConditions))
+          .orderBy(distanceSql)
+          .limit(vectorLimit)
 
-        // return results.map((row) => ({
-        //   id: row.id,
-        //   content: row.content,
-        //   type: row.type as DB.MessageType,
-        //   timestamp: row.timestamp,
-        //   chunkSequence: row.chunkSequence,
-        //   totalChunks: row.totalChunks,
-        //   modelMessage: row.modelMessage ?? undefined,
-        //   resourceId: row.resourceId ?? undefined,
-        // })) as any
-        return []
+        // 2) Text search via FTS over snippet.fts
+        const trimmedQuery = query.trim()
+        let textRows: Array<{
+          snippetId: string
+          messageId: string
+          type: DB.MessageType
+          timestamp: Date
+          content: string
+          sequence: number
+        }> = []
+
+        if (trimmedQuery.length > 0) {
+          const textConditions = [eq(Schema.message.userId, userId)] as Array<any>
+          if (excludeIds.length > 0) {
+            textConditions.push(notInArray(Schema.message.id, excludeIds))
+          }
+
+          textConditions.push(sql`snippet.fts @@ plainto_tsquery('simple', ${trimmedQuery})`)
+
+          textRows = await client
+            .select({
+              snippetId: Schema.snippet.id,
+              messageId: Schema.message.id,
+              type: Schema.message.type,
+              timestamp: Schema.message.timestamp,
+              content: Schema.snippet.content,
+              sequence: Schema.snippet.sequence,
+            })
+            .from(Schema.snippet)
+            .innerJoin(Schema.message, eq(Schema.snippet.messageId, Schema.message.id))
+            .where(and(...textConditions))
+            .orderBy(sql`ts_rank_cd(snippet.fts, plainto_tsquery('simple', ${trimmedQuery})) DESC`)
+            .limit(textLimit)
+        }
+
+        // 3) Compute totalChunks for all unique messageIds in one batch query
+        const allMessageIds = Array.from(
+          new Set([...vectorRows.map((r) => r.messageId), ...textRows.map((r) => r.messageId)])
+        )
+
+        const totalChunksByMessage = new Map<string, number>()
+
+        if (allMessageIds.length > 0) {
+          const countRows = await client
+            .select({
+              messageId: Schema.snippet.messageId,
+              count: sql<number>`COUNT(*)`,
+            })
+            .from(Schema.snippet)
+            .where(inArray(Schema.snippet.messageId, allMessageIds))
+            .groupBy(Schema.snippet.messageId)
+
+          for (const row of countRows) {
+            totalChunksByMessage.set(row.messageId, row.count)
+          }
+        }
+
+        // Apply threshold and build vector candidates
+        const vectorCandidates = vectorRows
+          .map((row) => {
+            const similarity = 1 - (row.distance ?? 1)
+            return {
+              snippetId: row.snippetId,
+              messageId: row.messageId,
+              type: row.type as DB.MessageType,
+              timestamp: row.timestamp,
+              content: row.content,
+              sequence: row.sequence,
+              totalChunks: totalChunksByMessage.get(row.messageId) ?? 1,
+              similarity,
+            }
+          })
+          .filter((entry) => entry.similarity >= vectorThreshold)
+
+        const textCandidates = textRows.map((row) => ({
+          snippetId: row.snippetId,
+          messageId: row.messageId,
+          type: row.type as DB.MessageType,
+          timestamp: row.timestamp,
+          content: row.content,
+          sequence: row.sequence,
+          totalChunks: totalChunksByMessage.get(row.messageId) ?? 1,
+        }))
+
+        // 4) RRF fusion at snippet level
+        const fusedBySnippetId = new Map<
+          string,
+          {
+            snippetId: string
+            messageId: string
+            type: DB.MessageType
+            timestamp: Date
+            content: string
+            sequence: number
+            totalChunks: number
+            vectorRank?: number
+            textRank?: number
+          }
+        >()
+
+        vectorCandidates.forEach((entry, index) => {
+          fusedBySnippetId.set(entry.snippetId, {
+            snippetId: entry.snippetId,
+            messageId: entry.messageId,
+            type: entry.type,
+            timestamp: entry.timestamp,
+            content: entry.content,
+            sequence: entry.sequence,
+            totalChunks: entry.totalChunks,
+            vectorRank: index + 1,
+          })
+        })
+
+        textCandidates.forEach((entry, index) => {
+          const textRank = index + 1
+          const existing = fusedBySnippetId.get(entry.snippetId)
+
+          if (existing) {
+            existing.textRank = textRank
+            return
+          }
+
+          fusedBySnippetId.set(entry.snippetId, {
+            snippetId: entry.snippetId,
+            messageId: entry.messageId,
+            type: entry.type,
+            timestamp: entry.timestamp,
+            content: entry.content,
+            sequence: entry.sequence,
+            totalChunks: entry.totalChunks,
+            textRank,
+          })
+        })
+
+        // Compute RRF scores
+        const fused = Array.from(fusedBySnippetId.values()).map((entry) => {
+          let rrfScore = 0
+          if (entry.vectorRank !== undefined) {
+            rrfScore += 1 / (entry.vectorRank + rrfK)
+          }
+          if (entry.textRank !== undefined) {
+            rrfScore += 1 / (entry.textRank + rrfK)
+          }
+          return { ...entry, rrfScore }
+        })
+
+        fused.sort((a, b) => b.rrfScore - a.rrfScore)
+
+        const top = fused.slice(0, limit)
+
+        return top.map(
+          (entry) =>
+            ({
+              id: entry.snippetId,
+              content: entry.content,
+              type: entry.type,
+              timestamp: entry.timestamp,
+              sequence: entry.sequence,
+              total: entry.totalChunks,
+            } satisfies DB.SimilarSnippet)
+        )
       },
 
       async createResource(params) {

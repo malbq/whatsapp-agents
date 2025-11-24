@@ -15,6 +15,13 @@
       "when": 1763062398077,
       "tag": "0002_cultured_synch",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1763994262168,
+      "tag": "0004_wise_hemingway",
+      "breakpoints": true
     }
   ]
 }

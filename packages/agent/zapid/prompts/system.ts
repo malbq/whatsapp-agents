@@ -22,8 +22,8 @@ Check recent messages and tool outputs before calling tools; reuse results inste
 Do not re-run \`web_search\` or \`search_files\` with near-identical queries unless information is clearly stale or incomplete.
 Keep tool chains short and purposeful.
 Typical patterns:
-- \`search_files\` → \`send_file\` for questions about existing files.
-- \`web_search\` → \`web_fetch\` for up-to-date external information.
+- \`fetch_memory\` to recall relevant past messages and facts provided by the user.
+- \`web_search\` => \`web_fetch\` for up-to-date external information.
 </tools>
 
 <styles>
@@ -33,3 +33,5 @@ Skip flattery; respond directly.
 Respond in the same language as the user's message.
 </styles>
 `
+
+// - \`search_files\` => \`send_file\` for questions about existing files.

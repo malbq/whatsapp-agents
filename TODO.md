@@ -3,14 +3,12 @@
 ## Hybrid context retrieval using PostgreSQL (FTS/tsvector + embeddings + RRF).
 
 - Add a plain TSVECTOR column snippet.fts (NOT GENERATED). Populate it at INSERT/UPDATE using SQL: fts = to_tsvector('simple', unaccent($content)). Create GIN index: CREATE INDEX idx_snippet_fts ON snippet USING gin (fts). Enable unaccent extension.
-- Vector search runs over embedding chunks filtered by user_id, ordered by vector distance, with a LIMIT K. Aggregate chunk similarities to message-level using max(similarity) by default (allow top-k mean as an option). Keep the best chunk per message for snippet.
-- Apply a configurable similarity/distance threshold to vector hits before fusion; discard messages whose aggregated semantic score falls below the threshold.
-- Hybrid ranking must combine vector and text results at message level using Reciprocal Rank Fusion with k = 10: score = 1/(vectorRank + k) + 1/(textRank + k). Missing ranks count as ∞ (i.e., contribute only from the present list).
-- The fused candidate set must be the top N messages by RRF score (N = limit), after thresholding the vector list.
-- Include text-only matches (messages present only in the FTS list) up to the remaining budget without duplicating messages already selected via vector hits.
-- Deduplicate the final set strictly by message id.
-- Make these parameters configurable per query: limit (default 10), vector similarity/distance threshold (default 0.0 equivalent), RRF k (default 10), chunk aggregation mode (default max).
-- Out of scope for now: FTS over chunks; only message-level FTS via message.fts.
+- Vector search runs over embedding snippets filtered by user_id, ordered by vector distance, with a LIMIT K.
+- Apply a similarity/distance threshold to vector hits before fusion.
+- Hybrid ranking must combine vector and text results at snippet level using Reciprocal Rank Fusion with k = 10: score = 1/(vectorRank + k) + 1/(textRank + k). Missing ranks count as ∞ (i.e., contribute only from the present list).
+- The fused candidate set must be the top N snippets by RRF score (N = limit), after thresholding the vector list.
+- Include text-only matches (snippets present only in the FTS list) up to the remaining budget without duplicating snippets already selected via vector hits.
+- Deduplicate the final set strictly by snippet id.
 
 ## Next
 

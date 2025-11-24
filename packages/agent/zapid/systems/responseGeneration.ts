@@ -3,6 +3,7 @@ import { generateWhatsappMessage } from '@batman/core/ai/generateWhatsappMessage
 import { ResponseGenerationError } from '@batman/core/errors'
 import type { DB } from '@batman/core/infra/db'
 import {
+  createFetchMemoryTool,
   createSendReactionTool,
   createSendTextTool,
   createWebSearchTool,
@@ -39,8 +40,11 @@ export async function responseGeneration() {
     console.log('Context included: user profile')
   }
 
+  let recentMessageIds: Array<string> = []
+
   await context.db.findRecentMessages({ userId: user.id }).then(async (recentMessages) => {
     if (recentMessages.length === 0) return
+    recentMessageIds = recentMessages.map((message) => message.id)
     await fillMediaMessagesWithData(recentMessages)
     agentContext.push(
       toSystemModelMessage(recentMessagesPrompt),
@@ -54,7 +58,10 @@ export async function responseGeneration() {
     model,
     system,
     messages: agentContext,
-    tools: createToolSet(),
+    tools: createToolSet({
+      userId: user.id,
+      recentMessageIds,
+    }),
     stopWhen: stepCountIs(MAX_STEPS),
     providerOptions: {
       openai: {
@@ -120,7 +127,12 @@ async function fillMediaMessagesWithData(
   }
 }
 
-function createToolSet() {
+interface CreateToolSetParams {
+  userId: string
+  recentMessageIds: Array<string>
+}
+
+function createToolSet({ userId, recentMessageIds }: CreateToolSetParams) {
   const context = getContext()
 
   const webSearchTool = createWebSearchTool({ webSearch: context.webSearch })
@@ -136,6 +148,12 @@ function createToolSet() {
     sendText: (text) => context.chat.sendText(context.user!.waId, { text }),
   })
 
+  const fetchMemoryTool = createFetchMemoryTool({
+    userId,
+    recentMessageIds,
+    findSimilarSnippets: context.db.findSimilarSnippets,
+  })
+
   return {
     [webFetchTool.title!]: webFetchTool,
     [webSearchTool.title!]: webSearchTool,
@@ -143,8 +161,8 @@ function createToolSet() {
     [sendTextTool.title!]: sendTextTool,
     [googlePlacesTool.title!]: googlePlacesTool,
     [updateUserProfileTool.title!]: updateUserProfileTool,
+    [fetchMemoryTool.title!]: fetchMemoryTool,
     // TODO
-    // fetchMemory
     // searchFiles
     // sendFile - will turn into structured output
   } satisfies ToolSet

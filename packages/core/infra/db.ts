@@ -36,6 +36,15 @@ export namespace DB {
   export type Snippet = SelectModel<'snippet'>
   export type SnippetInsert = InsertModel<'snippet'>
 
+  export interface SimilarSnippet {
+    id: Snippet['id']
+    content: string
+    type: MessageType
+    timestamp: Message['timestamp']
+    sequence: number
+    total: number
+  }
+
   export interface Repository {
     storeRawIncomingMessage: (payload: string) => Promise<boolean>
     persistUser: (user: InsertModel<'user'>) => Promise<User>
@@ -46,9 +55,14 @@ export namespace DB {
     }) => Promise<Array<Message & { storageKey: Resource['storageKey'] | undefined | null }>>
     findSimilarSnippets: (params: {
       userId: string
+      query: string
       queryEmbedding: Array<number>
       excludeIds?: Array<string>
-    }) => Promise<Array<Message>>
+      limit?: number
+      vectorThreshold?: number
+      rrfK?: number
+    }) => Promise<Array<SimilarSnippet>>
+
     createResource: (params: InsertModel<'resource'>) => Promise<Resource>
     findResource: (params: { userId: string; resourceId: string }) => Promise<Resource | null>
     findResourceIdByHash: (params: {

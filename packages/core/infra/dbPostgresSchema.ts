@@ -1,6 +1,6 @@
 import type { AssistantModelMessage, ToolModelMessage, UserModelMessage } from 'ai'
-import { relations } from 'drizzle-orm'
-import { bigint, index, integer, json, pgTable, text, timestamp, vector } from 'drizzle-orm/pg-core'
+import { relations, sql, type SQL } from 'drizzle-orm'
+import { bigint, customType, index, integer, json, pgTable, text, timestamp, vector } from 'drizzle-orm/pg-core'
 import type { DB } from './db'
 
 export namespace PostgresSchema {
@@ -8,6 +8,12 @@ export namespace PostgresSchema {
     text()
       .notNull()
       .$defaultFn(() => Bun.randomUUIDv7())
+
+  const tsvector = customType<{ data: string }>({
+    dataType() {
+      return 'tsvector'
+    },
+  })
 
   export const user = pgTable('user', {
     id: uuidv7().primaryKey(),
@@ -49,8 +55,15 @@ export namespace PostgresSchema {
       sequence: integer().notNull(),
       content: text().notNull(),
       vector: vector({ dimensions: 768 }).notNull(),
+      fts: tsvector()
+        .notNull()
+        .generatedAlwaysAs((): SQL => sql`to_tsvector('simple', ${snippet.content})`),
     },
-    (table) => [index().on(table.messageId)]
+    (table) => [
+      index().on(table.messageId),
+      index('idx_snippet_fts').using('gin', table.fts),
+      index('idx_snippet_vector').using('hnsw', table.vector.op('vector_cosine_ops')),
+    ]
   )
 
   export const resource = pgTable(

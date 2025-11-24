@@ -1,13 +1,17 @@
+import type { DB } from '@batman/core/infra/db'
 import type { Storage } from '@batman/core/infra/storage'
 import { FilesystemStorage } from '@batman/core/infra/storageFilesystem'
 import type { WebSearch } from '@batman/core/infra/webSearch'
 import { WebSearchBrave } from '@batman/core/infra/webSearchBrave'
 import type { Chat, Notification } from '@batman/whatsapp'
+import type { UserModelMessage } from 'ai'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
+import { ok } from 'node:assert'
 import { styleText } from 'node:util'
 import { agent } from './agent'
 import { runContext } from './context'
 import { dbFactory, type ZapidRepository } from './db'
+import * as schema from './dbSchema'
 
 interface MockChat extends Chat {
   sentMessages: Array<
@@ -138,6 +142,8 @@ const user: Pick<Notification, 'userName' | 'userWaId' | 'userPhone'> = {
 }
 const imgBase64 =
   'iVBORw0KGgoAAAANSUhEUgAAAMgAAABkCAAAAADm7SDXAAAAAmJLR0QA/4ePzL8AAAQaSURBVHja7dfrb1N1HMfxd9vdwMyh4eKQGUhjAoG5LREv6GIckoVYb8TxQGV1RhdnDDEMLDGQo+ESWUhGskznQsLFaAhOCg4FEiioWdhAYIQELRtuDmFstJ+/wQfnbG3nfLYtYL6/R99zTj/99ZWe3+97DvqfDAxiEIMYxCAGMYhBDGIQgxjEIAYxiEEMYhCDGMQgBjGIQQxiEIMYxCAGMciEQzpisQGv/DkWG8y82BkO75b2hMMd4yQHYrErXnnn1x6vunU69vv4E/0dDn+aOqoJr59gSBDavTIfujIvRqFW+gAOjpPsCcD3brmSXDd5ZwEcGH+iXngidZRF8K6BaBm8KUn6IwD1kqQTcN/gPQfZCrOTktQA3u/6GF7WPQe5APwiSeUAHZJUBi13EeT09kjD+X9Dho9sjezsTMsugs2SrgVYChFJ1/xkXZekoeiWyM5zkqTjezp19bPI5RFIoi2ybl9iKiBXygH8awbHQI4GAVjZM5qth2WSGuHHAhZJ+grKJenwfABCvZJCLD5dAK0eJL4U4Fn/5EN6i/BV1j0DNZmQYzn4iivnwsIbI9lTkNUvPc/c5Go4J1XBdkk/ZOMvqSyEJTelEHmPAlEXMlwGs19ZlsVkQNJGl/QuNElai/+3dEhyIeyThqvcm0iSlCyEverNplb7YZMSM6FbSgThW2noVdgkhSAQOXFo0IU0Q1mfdNw36ZDh+90p4tCQDjkJT0nS5QBFo+F34C01QbtuTuMxnYRiSce8G+yCn6AUgnWpxV4BbZO22HfF3DEdutQFBaWlpaWlsDYd0gAfSZKKYHSVtEFh8gVm3ZFegosb3X9rG2yQJM2BfoXgbAoyCwamZtc6Bbkz3LErHfIJbJO3w54fCd/Oh2M5VEtqgS1Pwhm3meyQJBVDt0LeXuhCspk2RdvvRVg+Xh/5HNyno/kQH/3Aa7ACvpPUl0N5HvOSbqPcKEl6GP4cA8nHNzg1kORMZtwYB/ITVEhSPJuHUulW8FNwW5Iq8EGtJB2BSkm6GuARjYEs8XroFPSROqgekoaamjMgwwvwHZVUCx+m0n3ZwGrJ7SYQlaShIvwnpGQN1I+F1MHrCSXeY/IhPfMg+MaqOfhPZfSRg35ylleXQNH1tPhzwNeSpHgAZgxJkr7xkbtizRKY3zcWcj4XFq8KkjMFnf1CCQB5kWRmZ9/7IABll9LjO2D6Lbd8Gqq8s7sfAODxyxoLUXM2kNvw4oRDGh1n5PVom+P0SlLyUH34/aa4pG7HiUqHHeeiJP31ZV14fTSZEY87TqtXtjvOmZHT/V/UhTccTkrSfu9bbzlOiyR1bnh78yWddRrtVdcgBjGIQQxiEIMYxCAGMYhBDGIQgxjEIAYxiEEMYhCDGMQgBjGIQQxiEIP81/gHl+a1TDJF6GIAAAAASUVORK5CYII='
+
+const ZERO_VECTOR_768 = new Array(768).fill(0)
 
 describe.skipIf(process.env.AI !== '1')('Agent', () => {
   beforeAll(async () => {
@@ -472,6 +478,103 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
       expect(snippets.length).toBe(2)
 
       expect(snippets[0]!.content).toMatch(/hello.*world/i)
+    },
+    { timeout: 120000 }
+  )
+
+  test(
+    'uses fetch_memory tool to recall stored memory',
+    async () => {
+      const [seedUser] = await db.$client
+        .insert(schema.user)
+        .values({ waId: user.userWaId, name: user.userName })
+        .returning()
+      ok(seedUser, 'User not created')
+
+      const baseDate = new Date('2020-01-01T00:00:00.000Z')
+
+      const fillerModel: UserModelMessage = {
+        role: 'user',
+        content: [{ type: 'text', text: 'Filler message.' }],
+      }
+
+      await db.$client
+        .insert(schema.message)
+        .values(
+          Array.from(
+            { length: 30 },
+            (_, i) =>
+              ({
+                userId: seedUser.id,
+                type: 'text',
+                modelMessage: fillerModel,
+                timestamp: new Date(baseDate.getTime() + i * 60_000),
+              } satisfies DB.MessageInsert)
+          )
+        )
+        .returning()
+
+      const memoryMessageModel: UserModelMessage = {
+        role: 'user',
+        content: [{ type: 'text', text: 'The secret door code is 4242.' }],
+      }
+
+      const [memoryMessage] = await db.$client
+        .insert(schema.message)
+        .values({
+          userId: seedUser.id,
+          type: 'text',
+          modelMessage: memoryMessageModel,
+          timestamp: new Date(baseDate.getTime() + 31 * 60_000),
+        })
+        .returning()
+      ok(memoryMessage, 'Memory message not created')
+
+      await db.$client.insert(schema.snippet).values({
+        messageId: memoryMessage.id,
+        sequence: 0,
+        content: 'The secret door code is 4242.',
+        vector: ZERO_VECTOR_768,
+      })
+
+      await runContext(
+        {
+          db,
+          storage,
+          chat,
+          webSearch,
+          notification: {
+            ...user,
+            timestamp: new Date(),
+            message: {
+              type: 'text',
+              messageWaId: 'wamid.memory.1',
+              text: 'What is the secret door code I told you earlier? Answer only with the 4 digits.',
+            },
+          },
+        },
+        async () => {
+          await agent()
+        }
+      )
+
+      const messages = await db.$client.query.message.findMany()
+
+      const toolCallMessages = messages.filter((m) => m.type === 'tool-call')
+      const hasFetchMemoryCall = toolCallMessages.some(({ modelMessage }) => {
+        if (!Array.isArray(modelMessage.content)) return false
+        return modelMessage.content.some(
+          (c) => c.type === 'tool-call' && c.toolName === 'fetch_memory'
+        )
+      })
+
+      expect(hasFetchMemoryCall).toBe(true)
+
+      expect(chat.sentMessages).toHaveLength(1)
+      const responseMessage = chat.sentMessages[0]!
+      expect('text' in responseMessage).toBe(true)
+      const responseText = 'text' in responseMessage ? responseMessage.text : ''
+      expect(responseText.replace(/\D/g, '')).toContain('4242')
     },
     { timeout: 120000 }
   )
