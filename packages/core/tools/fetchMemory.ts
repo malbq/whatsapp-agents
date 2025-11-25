@@ -19,8 +19,12 @@ export function createFetchMemoryTool(ctx: FetchMemoryContext) {
     description: `Fetch relevant memories from conversation history to provide context-aware and personalized responses.
 Generate an optimized search query for finding relevant files and documents.
 Examples: 
-- User query: "What is the secret door code I told you earlier?"
-- Use \`fetch_memory\` tool with query "secret door code"`,
+- User query: "What is the secret door code I told you earlier?" => \`fetch_memory\` query: "secret door code"
+- User query: "What did we discuss about the auth flow?" => \`fetch_memory\` query: "auth flow discussion"
+- User query: "Do I have any preferences for code style?" => \`fetch_memory\` query: "code style preferences"
+- User query: "Remind me what I said about my mom's birthday gift ideas." => \`fetch_memory\` query: "mom birthday gift ideas and preferences"
+- User query: "What was the name of that Italian restaurant I liked?" => \`fetch_memory\` query: "favorite Italian restaurant name and location"
+- User query: "Did I mention when my flight to Tokyo is?" => \`fetch_memory\` query: "Tokyo flight details schedule and date"`,
     inputSchema: z.object({
       query: z.string().describe('The query to search for relevant memories'),
     }),
