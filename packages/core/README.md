@@ -26,7 +26,7 @@ This package is ESM-only and exposes module subpaths for clear boundaries:
   - `scheduler`, `schedulerSystemd` — scheduler interfaces and systemd adapter (optional)
   - `webSearch`, `webSearchBrave` — web search interfaces and Brave implementation
 - `@batman/core/tools/*` — First-class tools (for model tool-calling)
-  - `webSearch`, `webFetch`, `sendText`, `sendReaction`, `fetchMemory`
+  - `webSearch`, `webFetch`, `sendText`, `sendReaction`, `search_conversation_history`
 - `@batman/core/utils/*` — Utilities
   - `cloudflareFetch`, `sanitizeFilename`, `htmlToText`, `priorities`, etc.
 

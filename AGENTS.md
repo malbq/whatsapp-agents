@@ -27,7 +27,7 @@ Each package also exposes its own scripts (see the package's README and package.
 
 Use Bun's test runner from the root. You can scope to names or files:
 
-- Run one test file: `bun test test/xyz.test.ts`
+- Run one test file: `bun test ./test/xyz.test.ts`
 - Run by name: `bun test -t "name substring"`
 - Always use environment variable `AGENT=1` to run tests: `AGENT=1 bun test`
 

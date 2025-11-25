@@ -19,7 +19,7 @@ Agent Workflow
     - document
   Agent -[generate response]-> AI Provider
   - tools may be called:
-    - fetch_memory
+    - search_conversation_history
     - search_files
     - send_file: Server -[media message]-> User
     - web_search
@@ -42,11 +42,12 @@ import { toDbMessage } from '@batman/core/utils/toDbMessage'
 import { toAssistantModelMessage, toUserModelMessage } from '@batman/core/utils/toModelMessage'
 import type { TextMessage } from '@batman/whatsapp'
 import { ok } from 'node:assert'
+import { inspect } from 'node:util'
 import { getContext } from './context'
+import { embedMessages } from './systems/embedMessages'
 import { persistUser } from './systems/persistUser'
 import { responseGeneration } from './systems/responseGeneration'
 import { storeMessageExchange } from './systems/storeMessageExchange'
-import { embedMessages } from './systems/embedMessages'
 
 export async function agent(): Promise<void> {
   const context = getContext()
@@ -56,7 +57,16 @@ export async function agent(): Promise<void> {
     return
   }
 
-  console.log('Starting agent response flow', { message })
+  console.log(
+    'Starting agent response flow',
+    inspect(
+      {
+        ...message,
+        ...{ data: 'data' in message ? `ArrayBuffer(${message.data.byteLength})` : undefined },
+      },
+      { depth: null }
+    )
+  )
 
   context.chat.acknowledgeMessage(message.messageWaId)
 

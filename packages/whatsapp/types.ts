@@ -2,12 +2,14 @@ import type { z } from 'zod'
 import type {
   audioMessageSchema,
   contactMessageSchema,
-  documentMessageSchema,
-  imageMessageSchema,
+  incomingDocumentMessageSchema,
+  incomingImageMessageSchema,
   interactiveButtonMessageSchema,
   interactiveCtaUrlMessageSchema,
   interactiveListMessageSchema,
   locationMessageSchema,
+  outgoingDocumentMessageSchema,
+  outgoingImageMessageSchema,
   reactionMessageSchema,
   templateMessageSchema,
   templateParametersSchema,
@@ -34,8 +36,10 @@ export type MessageType =
 export type TextMessage = z.infer<typeof textMessageSchema>
 export type VoiceMessage = z.infer<typeof voiceMessageSchema>
 export type AudioMessage = z.infer<typeof audioMessageSchema>
-export type DocumentMessage = z.infer<typeof documentMessageSchema>
-export type ImageMessage = z.infer<typeof imageMessageSchema>
+export type IncomingDocumentMessage = z.infer<typeof incomingDocumentMessageSchema>
+export type OutgoingDocumentMessage = z.infer<typeof outgoingDocumentMessageSchema>
+export type IncomingImageMessage = z.infer<typeof incomingImageMessageSchema>
+export type OutgoingImageMessage = z.infer<typeof outgoingImageMessageSchema>
 export type LocationMessage = z.infer<typeof locationMessageSchema>
 export type ContactMessage = z.infer<typeof contactMessageSchema>
 export type ReactionMessage = z.infer<typeof reactionMessageSchema>
@@ -52,8 +56,8 @@ export type ReplyMessage = {
 
 export type OutgoingMessage =
   | TextMessage
-  | DocumentMessage
-  | ImageMessage
+  | OutgoingDocumentMessage
+  | OutgoingImageMessage
   | LocationMessage
   | ReactionMessage
   | ContactMessage
@@ -66,8 +70,8 @@ export type IncominMessage = (
   | TextMessage
   | VoiceMessage
   | AudioMessage
-  | DocumentMessage
-  | ImageMessage
+  | IncomingDocumentMessage
+  | IncomingImageMessage
   | LocationMessage
   | ReactionMessage
   | ContactMessage
@@ -97,10 +101,13 @@ export interface Chat {
   acknowledgeMessage: (messageId: string) => Promise<void>
   sendTypingIndicator: (messageId: string) => Promise<void>
   sendText: (userId: string, message: Omit<TextMessage, 'type'> & ReplyMessage) => Promise<string>
-  sendImage: (userId: string, message: Omit<ImageMessage, 'type'> & ReplyMessage) => Promise<string>
+  sendImage: (
+    userId: string,
+    message: Omit<IncomingImageMessage, 'type'> & ReplyMessage
+  ) => Promise<string>
   sendDocument: (
     userId: string,
-    message: Omit<DocumentMessage, 'type'> & ReplyMessage
+    message: Omit<IncomingDocumentMessage, 'type'> & ReplyMessage
   ) => Promise<string>
   sendLocation: (
     userId: string,

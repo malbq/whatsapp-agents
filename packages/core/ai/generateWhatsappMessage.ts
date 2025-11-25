@@ -3,6 +3,8 @@ import {
   interactiveButtonMessageSchema,
   interactiveListMessageSchema,
   locationMessageSchema,
+  outgoingDocumentMessageSchema,
+  outgoingImageMessageSchema,
   textMessageSchema,
 } from '@batman/whatsapp'
 import {
@@ -12,6 +14,7 @@ import {
   RetryError,
   type AssistantModelMessage,
   type FinishReason,
+  type LanguageModel,
   type LanguageModelUsage,
   type ToolModelMessage,
   type ToolSet,
@@ -23,6 +26,8 @@ const whatsappMessageSchema = z.discriminatedUnion('type', [
   textMessageSchema,
   locationMessageSchema,
   contactMessageSchema,
+  outgoingDocumentMessageSchema,
+  outgoingImageMessageSchema,
   interactiveButtonMessageSchema,
   interactiveListMessageSchema,
 ])
@@ -72,11 +77,7 @@ export async function generateWhatsappMessage<TOOLS extends ToolSet>({
   system,
   ...options
 }: GenerateWaOptions<TOOLS>): Promise<GeneratedResponse> {
-  const modelName =
-    typeof options.model === 'string'
-      ? options.model
-      : `${options.model.provider}/${options.model.modelId}`
-  console.debug(`Generating WhatsApp message with model ${modelName}`)
+  console.debug(`Generating WhatsApp message with model ${modelName(options.model)}`)
 
   const messages: MessageWithDetails[] = []
 
@@ -115,10 +116,14 @@ export async function generateWhatsappMessage<TOOLS extends ToolSet>({
     throw error
   })
 
-  console.debug(`Generated WhatsApp message with model ${modelName}: ${result.text}`)
+  console.debug(`Generated WhatsApp message with model ${modelName(options.model)}: ${result.text}`)
 
   return {
     output: result.output.message,
     messages: messages,
   }
+}
+
+function modelName(model: LanguageModel) {
+  return typeof model === 'string' ? model : `${model.provider}/${model.modelId}`
 }

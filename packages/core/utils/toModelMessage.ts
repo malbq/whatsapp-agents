@@ -3,8 +3,8 @@ import type { AssistantModelMessage, SystemModelMessage, TextPart, UserModelMess
 import type {
   AudioMessage,
   ContactMessage,
-  DocumentMessage,
   ImageMessage,
+  IncomingDocumentMessage,
   IncominMessage,
   InteractiveButtonMessage,
   InteractiveCtaUrlMessage,
@@ -23,7 +23,7 @@ export async function toUserModelMessage(
     | TextMessage
     | VoiceMessage
     | AudioMessage
-    | DocumentMessage
+    | IncomingDocumentMessage
     | ImageMessage
     | LocationMessage
     | ContactMessage
@@ -99,7 +99,7 @@ export async function toUserModelMessage(
 export function toAssistantModelMessage(
   message:
     | TextMessage
-    | DocumentMessage
+    | IncomingDocumentMessage
     | ImageMessage
     | LocationMessage
     | ContactMessage

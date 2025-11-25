@@ -11,17 +11,17 @@ export const textMessageSchema = z
 
 export const voiceMessageSchema = z.object({
   type: z.literal('voice'),
-  data: z.instanceof(ArrayBuffer),
+  data: z.instanceof(ArrayBuffer), // FIXME: LLM does not know about ArrayBuffer
   mimeType: z.string(),
 })
 
 export const audioMessageSchema = z.object({
   type: z.literal('audio'),
-  data: z.instanceof(ArrayBuffer),
+  data: z.instanceof(ArrayBuffer), // FIXME: LLM does not know about ArrayBuffer
   mimeType: z.string(),
 })
 
-export const documentMessageSchema = z.object({
+export const incomingDocumentMessageSchema = z.object({
   type: z.literal('document'),
   data: z.instanceof(ArrayBuffer),
   mimeType: z.string(),
@@ -29,12 +29,34 @@ export const documentMessageSchema = z.object({
   caption: z.string().optional(),
 })
 
-export const imageMessageSchema = z.object({
+export const incomingImageMessageSchema = z.object({
   type: z.literal('image'),
   data: z.instanceof(ArrayBuffer),
   mimeType: z.string(),
   caption: z.string().optional(),
 })
+
+export const outgoingDocumentMessageSchema = z
+  .object({
+    type: z.literal('document'),
+    resourceId: z.string(),
+    caption: z
+      .string()
+      .optional()
+      .describe('Max 1024 characters. Exceeding this limit will be truncated.'),
+  })
+  .describe('Deliver a document to the user. Only call this after using `search_files` tool.')
+
+export const outgoingImageMessageSchema = z
+  .object({
+    type: z.literal('image'),
+    resourceId: z.string(),
+    caption: z
+      .string()
+      .optional()
+      .describe('Max 1024 characters. Exceeding this limit will be truncated.'),
+  })
+  .describe('Deliver an image to the user. Only call this after using `search_files` tool.')
 
 export const locationMessageSchema = z
   .object({

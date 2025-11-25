@@ -378,7 +378,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
         type: 'image',
         image: {
           id: mediaId,
-          caption: caption || undefined,
+          caption: caption?.slice(0, 1024) || undefined,
         },
         ...(replyingTo && { context: { message_id: replyingTo } }),
       }
@@ -396,7 +396,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
         document: {
           id: mediaId,
           filename: filename ?? `file.${getExtFromMimeType(mimeType)}`,
-          caption: caption || undefined,
+          caption: caption?.slice(0, 1024) || undefined,
         },
         ...(replyingTo && { context: { message_id: replyingTo } }),
       }

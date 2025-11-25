@@ -1,6 +1,5 @@
-export * from './fetchMemory'
+export * from './searchConversationHistory'
 export * from './searchFiles'
-export * from './sendFile'
 export * from './sendReaction'
 export * from './sendText'
 export * from './webFetch'

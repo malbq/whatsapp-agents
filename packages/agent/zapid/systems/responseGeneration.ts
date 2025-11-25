@@ -3,7 +3,8 @@ import { generateWhatsappMessage } from '@batman/core/ai/generateWhatsappMessage
 import { ResponseGenerationError } from '@batman/core/errors'
 import type { DB } from '@batman/core/infra/db'
 import {
-  createFetchMemoryTool,
+  createSearchConversationHistoryTool,
+  createSearchFilesTool,
   createSendReactionTool,
   createSendTextTool,
   createWebSearchTool,
@@ -72,7 +73,14 @@ export async function responseGeneration() {
     },
   })
 
-  const assistantMessageId = await sendWhatsappMessage(context.chat, user.waId, response.output)
+  const assistantMessageId = await sendWhatsappMessage({
+    chat: context.chat,
+    db: context.db,
+    storage: context.storage,
+    userId: user.id,
+    userWaId: user.waId,
+    message: response.output,
+  })
 
   context.responseOutput = response.output
   context.outbound = toDbMessage({
@@ -133,25 +141,32 @@ interface CreateToolSetParams {
 }
 
 function createToolSet({ userId, recentMessageIds }: CreateToolSetParams) {
-  const context = getContext()
+  const { user, inbound, chat, db, webSearch } = getContext()
+  ok(user, 'User not found')
+  ok(inbound, 'Inbound message not found')
 
-  const webSearchTool = createWebSearchTool({ webSearch: context.webSearch })
+  const webSearchTool = createWebSearchTool({ webSearch })
   const sendReactionTool = createSendReactionTool({
     sendReaction: (emoji) =>
-      context.chat.sendReaction(context.user!.waId, {
+      chat.sendReaction(user.waId, {
         emoji,
-        targetMessageId: context.inbound!.waId!,
+        targetMessageId: inbound.waId!,
       }),
   })
   const sendTextTool = createSendTextTool({
-    userWhatsappId: context.user!.waId,
-    sendText: (text) => context.chat.sendText(context.user!.waId, { text }),
+    userWhatsappId: user.waId,
+    sendText: (text) => chat.sendText(user.waId, { text }),
   })
 
-  const fetchMemoryTool = createFetchMemoryTool({
+  const searchConversationHistoryTool = createSearchConversationHistoryTool({
     userId,
     recentMessageIds,
-    findSimilarSnippets: context.db.findSimilarSnippets,
+    searchSnippets: db.searchSnippets,
+  })
+
+  const searchFilesTool = createSearchFilesTool({
+    userId,
+    searchResources: db.searchResources,
   })
 
   return {
@@ -161,9 +176,7 @@ function createToolSet({ userId, recentMessageIds }: CreateToolSetParams) {
     [sendTextTool.title!]: sendTextTool,
     [googlePlacesTool.title!]: googlePlacesTool,
     [updateUserProfileTool.title!]: updateUserProfileTool,
-    [fetchMemoryTool.title!]: fetchMemoryTool,
-    // TODO
-    // searchFiles
-    // sendFile - will turn into structured output
+    [searchConversationHistoryTool.title!]: searchConversationHistoryTool,
+    [searchFilesTool.title!]: searchFilesTool,
   } satisfies ToolSet
 }

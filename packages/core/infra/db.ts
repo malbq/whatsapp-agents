@@ -53,7 +53,7 @@ export namespace DB {
     findRecentMessages: (params: {
       userId: string
     }) => Promise<Array<Message & { storageKey: Resource['storageKey'] | undefined | null }>>
-    findSimilarSnippets: (params: {
+    searchSnippets: (params: {
       userId: string
       query: string
       queryEmbedding: Array<number>
@@ -64,12 +64,24 @@ export namespace DB {
     }) => Promise<Array<SimilarSnippet>>
 
     createResource: (params: InsertModel<'resource'>) => Promise<Resource>
-    findResource: (params: { userId: string; resourceId: string }) => Promise<Resource | null>
+    findResource: (params: { userId: string; resourceId: string }) => Promise<Resource | undefined>
     findResourceIdByHash: (params: {
       userId: Resource['userId']
       hash: Resource['hash']
     }) => Promise<Resource['id'] | undefined>
-    searchFiles: (params: { userId: string; queryEmbedding: Array<number> }) => Promise<Array<any>>
+    searchResources: (params: {
+      userId: string
+      query: string
+      queryEmbedding: Array<number>
+    }) => Promise<
+      Array<{
+        resourceId: string
+        filename: string | null
+        timestamp: Date
+        score: number
+        snippet: string
+      }>
+    >
     createReminder: (params: InsertModel<'reminder'>) => Promise<Reminder>
     cancelReminder: (params: { id: string }) => Promise<boolean>
     listUpcomingReminders: (params: { userId: string; limit?: number }) => Promise<Array<Reminder>>

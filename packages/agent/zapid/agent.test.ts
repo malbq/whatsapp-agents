@@ -477,7 +477,7 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
   )
 
   test(
-    'uses fetch_memory tool to recall stored memory and writes base fixture',
+    'uses search_conversation_history tool to recall stored memory and writes base fixture',
     async () => {
       const originalMaxRecent = import.meta.env.MAX_RECENT_MESSAGES
       import.meta.env.MAX_RECENT_MESSAGES = '4'
@@ -485,7 +485,7 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
       try {
         const fs = await import('node:fs/promises')
         const fixtureDir = `./packages/agent/zapid/__fixtures__`
-        const fixturePath = `${fixtureDir}/fetch_memory_dump.sql`
+        const fixturePath = `${fixtureDir}/search_conversation_history_dump.sql`
 
         let hasFixture = false
         try {
@@ -596,28 +596,124 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
 
         const allMessages = await db.$client.query.message.findMany()
 
-        const hasFetchMemoryCall = allMessages.some((m) => {
+        const hasSearchConversationHistoryCall = allMessages.some((m) => {
           if (m.type !== 'tool-call') return false
           const modelMessage = m.modelMessage as any
-          if (modelMessage.toolName === 'fetch_memory') return true
+          if (modelMessage.toolName === 'search_conversation_history') return true
           if (Array.isArray(modelMessage.content)) {
             return modelMessage.content.some(
-              (c: any) => c.type === 'tool-call' && c.toolName === 'fetch_memory'
+              (c: any) => c.type === 'tool-call' && c.toolName === 'search_conversation_history'
             )
           }
           if (Array.isArray(modelMessage.toolCalls)) {
-            return modelMessage.toolCalls.some((tc: any) => tc.name === 'fetch_memory')
+            return modelMessage.toolCalls.some(
+              (tc: any) => tc.name === 'search_conversation_history'
+            )
           }
           return false
         })
 
-        expect(hasFetchMemoryCall).toBe(true)
+        expect(hasSearchConversationHistoryCall).toBe(true)
 
         expect(chat.sentMessages).not.toHaveLength(0)
         const responseMessage = chat.sentMessages.at(-1)!
         expect('text' in responseMessage).toBe(true)
         const responseText = 'text' in responseMessage ? responseMessage.text : ''
         expect(responseText.replace(/\D/g, '')).toContain('4242')
+      } finally {
+        import.meta.env.MAX_RECENT_MESSAGES = originalMaxRecent
+      }
+    },
+    { timeout: 120000 }
+  )
+
+  test(
+    'uses search_files tool to retrieve a previously sent image',
+    async () => {
+      const originalMaxRecent = import.meta.env.MAX_RECENT_MESSAGES
+      import.meta.env.MAX_RECENT_MESSAGES = '0'
+      try {
+        const imgBuffer = Uint8Array.fromBase64(imgBase64).buffer
+
+        // First: send the image
+        await runContext(
+          {
+            db,
+            storage,
+            chat,
+            webSearch,
+            notification: {
+              ...user,
+              timestamp: new Date(),
+              message: {
+                type: 'image',
+                messageWaId: 'wamid.file.1',
+                data: imgBuffer,
+                mimeType: 'image/png',
+              },
+            },
+          },
+          async () => {
+            await agent()
+          }
+        )
+
+        // Second: ask to retrieve the image
+        await runContext(
+          {
+            db,
+            storage,
+            chat,
+            webSearch,
+            notification: {
+              ...user,
+              timestamp: new Date(),
+              message: {
+                type: 'text',
+                messageWaId: 'wamid.file.2',
+                text: 'Send me the Hello World image I sent you. Send it directly without transformation.',
+              },
+            },
+          },
+          async () => {
+            await agent()
+          }
+        )
+
+        // Verify search_files tool was called
+        const allMessages = await db.$client.query.message.findMany()
+        const hasSearchFilesCall = allMessages.some((m) => {
+          if (m.type !== 'tool-call') return false
+          const modelMessage = m.modelMessage as {
+            toolName?: string
+            content?: Array<{ type: string; toolName?: string }>
+            toolCalls?: Array<{ name: string }>
+          }
+          if (modelMessage.toolName === 'search_files') return true
+          if (Array.isArray(modelMessage.content)) {
+            return modelMessage.content.some(
+              (c) => c.type === 'tool-call' && c.toolName === 'search_files'
+            )
+          }
+          if (Array.isArray(modelMessage.toolCalls)) {
+            return modelMessage.toolCalls.some((tc) => tc.name === 'search_files')
+          }
+          return false
+        })
+
+        expect(hasSearchFilesCall).toBe(true)
+
+        // Verify image was sent back
+        const imageMessages = chat.sentMessages.filter((msg) => 'data' in msg && msg.data)
+        expect(imageMessages.length).toBeGreaterThanOrEqual(1)
+
+        // Compare binaries
+        const sentImage = imageMessages.at(-1) as { data: ArrayBuffer }
+        const originalBytes = new Uint8Array(imgBuffer)
+        const returnedBytes = new Uint8Array(sentImage.data)
+
+        expect(returnedBytes.length).toBe(originalBytes.length)
+        expect(returnedBytes).toEqual(originalBytes)
       } finally {
         import.meta.env.MAX_RECENT_MESSAGES = originalMaxRecent
       }

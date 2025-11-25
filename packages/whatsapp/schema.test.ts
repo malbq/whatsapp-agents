@@ -2,8 +2,8 @@ import { describe, expect, test } from 'bun:test'
 import {
   audioMessageSchema,
   contactMessageSchema,
-  documentMessageSchema,
-  imageMessageSchema,
+  incomingDocumentMessageSchema,
+  incomingImageMessageSchema,
   interactiveButtonMessageSchema,
   interactiveCtaUrlMessageSchema,
   interactiveListMessageSchema,
@@ -92,7 +92,7 @@ describe('documentMessageSchema', () => {
       mimeType: 'application/pdf',
       filename: 'document.pdf',
     }
-    const result = documentMessageSchema.safeParse(data)
+    const result = incomingDocumentMessageSchema.safeParse(data)
     expect(result.success).toBe(true)
   })
 
@@ -104,7 +104,7 @@ describe('documentMessageSchema', () => {
       filename: 'document.pdf',
       caption: 'Check this out',
     }
-    const result = documentMessageSchema.safeParse(data)
+    const result = incomingDocumentMessageSchema.safeParse(data)
     expect(result.success).toBe(true)
   })
 
@@ -114,7 +114,7 @@ describe('documentMessageSchema', () => {
       data: new ArrayBuffer(10),
       mimeType: 'application/pdf',
     }
-    const result = documentMessageSchema.safeParse(data)
+    const result = incomingDocumentMessageSchema.safeParse(data)
     expect(result.success).toBe(false)
   })
 })
@@ -126,7 +126,7 @@ describe('imageMessageSchema', () => {
       data: new ArrayBuffer(10),
       mimeType: 'image/jpeg',
     }
-    const result = imageMessageSchema.safeParse(data)
+    const result = incomingImageMessageSchema.safeParse(data)
     expect(result.success).toBe(true)
   })
 
@@ -137,13 +137,13 @@ describe('imageMessageSchema', () => {
       mimeType: 'image/jpeg',
       caption: 'Beautiful sunset',
     }
-    const result = imageMessageSchema.safeParse(data)
+    const result = incomingImageMessageSchema.safeParse(data)
     expect(result.success).toBe(true)
   })
 
   test('rejects missing data field', () => {
     const data = { type: 'image', mimeType: 'image/jpeg' }
-    const result = imageMessageSchema.safeParse(data)
+    const result = incomingImageMessageSchema.safeParse(data)
     expect(result.success).toBe(false)
   })
 })

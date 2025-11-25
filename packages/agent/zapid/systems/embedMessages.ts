@@ -72,6 +72,7 @@ async function extractTextFromWhatsappMessage(
       message.type === 'interactive_cta_url') &&
     'body' in message
   ) {
+    // TODO include header, footer and options
     return message.body.trim() || undefined
   }
 

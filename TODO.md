@@ -3,6 +3,7 @@
 ## Next
 
 - Recreate search file
+- Add role to message table
 - Turn sendFile tool into structured output
 - Validate searchFile tool works
 - flag assistant messages with sent/delivered/read/failed status

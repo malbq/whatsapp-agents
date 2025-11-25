@@ -117,7 +117,7 @@ Zapid segue um pipeline baseado em Frame (estado efêmero por requisição), com
 
 Características:
 
-- Raciocínio orientado a ferramentas: `fetch_memory`, `search_files`, `send_file`, `web_search`, `web_fetch`, `google_places`, `send_reaction`, `update_user_profile`
+- Raciocínio orientado a ferramentas: `search_conversation_history`, `search_files`, `send_file`, `web_search`, `web_fetch`, `google_places`, `send_reaction`, `update_user_profile`
 - Efeitos colaterais acontecem dentro de sistemas/ferramentas, não no core do pipeline
 - Segmentação de erros: geração, entrega e pós-processamento são blocos isolados
 - Estratégia dupla de embeddings: entrada (contexto + memória futura) e saída (memória/personalização)
