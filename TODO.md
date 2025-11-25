@@ -2,10 +2,7 @@
 
 ## User Management
 
-- Onboarding
-- User tiers/plans
-- Available tools per tier
-- Usage tracking and limits
+`./spec/IdentityAuthPayment.md`
 
 ## Billing
 
