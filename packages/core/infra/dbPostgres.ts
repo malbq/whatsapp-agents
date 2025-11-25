@@ -3,7 +3,7 @@ import type { BunSQLDatabase } from 'drizzle-orm/bun-sql'
 import { inspect } from 'node:util'
 import { FailedToPersistUserError } from '../errors'
 import type { DB } from './db'
-import { PostgresSchema as Schema } from './dbPostgresSchema'
+import { PostgresSchema as Schema } from './dbSchema'
 
 type CoreSchema = Omit<typeof Schema, 'uuidv7'>
 

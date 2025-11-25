@@ -15,21 +15,22 @@ export function createSendReactionTool(ctx: SendReactionContext) {
     inputSchema: z.object({
       emoji: z.string().describe('The emoji to send as a reaction (e.g., 👍, ❤️, 😊)'),
     }),
-    execute: async ({ emoji }) => {
-      try {
-        ctx.sendReaction(emoji)
-        console.log('send_reaction: sent', { emoji })
-        return 'Reaction delivered to user'
-      } catch (error) {
-        console.error('Tool execution failed', {
-          emoji,
-          ...spreadError(error),
+    execute: ({ emoji }) =>
+      ctx
+        .sendReaction(emoji)
+        .then(() => {
+          console.debug('send_reaction: sent', { emoji })
+          return 'Reaction delivered to user'
         })
-        return {
-          error: 'Tool execution failed',
-          details: error instanceof Error ? error.message : 'unknown',
-        } satisfies ToolExecutionError
-      }
-    },
+        .catch((error) => {
+          console.error('send_reaction: failed', {
+            emoji,
+            ...spreadError(error),
+          })
+          return {
+            error: 'Tool execution failed',
+            details: error instanceof Error ? error.message : 'unknown',
+          } satisfies ToolExecutionError
+        }),
   })
 }

@@ -10,14 +10,17 @@ _No password storage required; WhatsApp itself authenticates the sender._
 
 ## Plans
 
-| Feature                           | Free                           | Basic                            | Pro                                                                              |
-| --------------------------------- | ------------------------------ | -------------------------------- | -------------------------------------------------------------------------------- |
-| **Model**                         | GPT-5-nano<br>Open source mdel | GPT-5-mini                       | Can choose model                                                                 |
-| **Messages**                      | x/day                          | 100x/day                         | ∞                                                                                |
-| **Memory**<br>Profile<br>Messages | ✗                              | ✓                                | ✓                                                                                |
-| **Media Ingestion**               | ✗                              | Audio, voice, image and document | Video                                                                            |
-| **Files**                         | ✗                              | Store and retrieve files         | Integrates with external drive (Google Drive, Microsoft OneDrive, Dropbox, etc.) |
-| **Tools**                         | ✗                              | Web search<br>Google Places      | Gmail integration                                                                |
+| Feature             | Free                                     | Basic                       | Pro                                                 |
+| ------------------- | ---------------------------------------- | --------------------------- | --------------------------------------------------- |
+| **Model**           | GPT-5-mini (flex service, low verbosity) | GPT-5-mini (normal service) | Can choose model                                    |
+| **Messages**        | x/day                                    | 100x/day                    | ∞                                                   |
+| **Media Ingestion** | Audio/Voice                              | + Image, Document           | + Video                                             |
+| **Profile**         | ✓                                        | ✓                           | ✓                                                   |
+| **Web Fetch**       | ✓                                        | ✓                           | ✓                                                   |
+| **Memory**          | ✗                                        | ✓                           | ✓                                                   |
+| **File Storage**    | ✗                                        | Store and retrieve files    | Integrates with external drive (Google Drive, etc.) |
+| **Web Search**      | ✗                                        | ✓                           | ✓                                                   |
+| **Google Places**   | ✗                                        | ✓                           | ✓                                                   |
 
 Limits enforced by a middleware that increments counters in KV store.
 

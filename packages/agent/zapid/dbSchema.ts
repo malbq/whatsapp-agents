@@ -1,4 +1,4 @@
-import { PostgresSchema } from '@batman/core/infra/dbPostgresSchema'
+import { PostgresSchema } from '@batman/core/infra/dbSchema'
 import { index, pgTable as table, text } from 'drizzle-orm/pg-core'
 
 // FIXME find a way to re-export automatically or to merge schema more efficiently

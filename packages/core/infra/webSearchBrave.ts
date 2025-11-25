@@ -177,13 +177,23 @@ export namespace WebSearchBrave {
             processNextRequest()
             return
           }
-          const errorResponse = (await response.json()) as BraveSearchError
-          throw new WebSearchError(
-            queuedRequest.params.query,
-            errorResponse.error.status,
-            errorResponse.error.code,
-            errorResponse.error.detail
-          )
+          let errorResponse: BraveSearchError | undefined
+          try {
+            errorResponse = (await response.json()) as BraveSearchError
+          } catch {
+            // ignore JSON parse error
+          }
+
+          if (errorResponse) {
+            throw new WebSearchError(
+              queuedRequest.params.query,
+              errorResponse.error.status,
+              errorResponse.error.code,
+              errorResponse.error.detail
+            )
+          }
+
+          throw new Error(`Search failed: ${response.status} ${response.statusText}`)
         }
 
         console.log('webSearchBrave: fetch response received', {

@@ -2,11 +2,16 @@
 
 ## User Management
 
-- Subscription plan management
-- Usage tracking and limits
 - Onboarding
+- User tiers/plans
+- Available tools per tier
+- Usage tracking and limits
+
+## Billing
+
+- Subscription management
 - Generate unique code or token link, bound to the phone number, for payment and configuration
-- https://getlago.com/docs/welcome
+- Stripe Billing
 
 ## Performance & Reliability
 
@@ -34,6 +39,7 @@
 - Data export functionality
 - Data deletion for GDPR compliance
 - Data redacting in logs and error messages
+- Encryption at rest
 
 ## Human Takeover
 
@@ -42,27 +48,17 @@
 - Notifications and SLAs: Events on entering pending_human; timers/escalation for response SLAs.
 - Audit trail: Record transitions with actor (system/AI/human) and reason to support compliance.
 
-## Open Questions
-
-- **Performance Optimization**:
-
-  - Token budget management:
-    - Batch requests close in time
-  - Embedding generation optimization
-  - Database query optimization for vector search
-
 ## Future (after MVP)
 
-- Encryption at rest
 - TTS: Answer with audio message
 - Video processing
 - Tools:
-  - gerar PDF
-  - Gerar planilha
-  - Integração com Drives (Google, Microsoft, Dropbox)
-  - Envio de Email
-  - Gerar imagem
-  - Editar imagem
+  - Create PDF
+  - Create spreadsheet
+  - Integrate with Drives (Google, Microsoft, Dropbox)
+  - Send Email
+  - Generate image
+  - Edit image
 - Automated DB backups
 - Media storage snapshots
 - Real-time TTS
@@ -70,9 +66,6 @@
   - [WhatsApp Cloud API Calling](https://developers.facebook.com/docs/whatsapp/cloud-api/calling)
 
 ## Learnings & Insights
-
-Pair type=file+role=user represent a file uploaded by user
-Pair type=file+role=tool represent a file sent by assistant with send_file tool
 
 ### WhatsApp
 

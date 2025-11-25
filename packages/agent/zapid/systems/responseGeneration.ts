@@ -148,13 +148,12 @@ function createToolSet({ userId, recentMessageIds }: CreateToolSetParams) {
   ok(inbound, 'Inbound message not found')
 
   const webSearchTool = createWebSearchTool({ webSearch })
+
   const sendReactionTool = createSendReactionTool({
     sendReaction: (emoji) =>
-      chat.sendReaction(user.waId, {
-        emoji,
-        targetMessageId: inbound.waId!,
-      }),
+      chat.sendReaction(user.waId, { emoji, targetMessageId: inbound.waId! }),
   })
+
   const sendTextTool = createSendTextTool({
     userWhatsappId: user.waId,
     sendText: (text) => chat.sendText(user.waId, { text }),
@@ -172,13 +171,13 @@ function createToolSet({ userId, recentMessageIds }: CreateToolSetParams) {
   })
 
   return {
-    [webFetchTool.title!]: webFetchTool,
-    [webSearchTool.title!]: webSearchTool,
+    [updateUserProfileTool.title!]: updateUserProfileTool,
     [sendReactionTool.title!]: sendReactionTool,
     [sendTextTool.title!]: sendTextTool,
-    [googlePlacesTool.title!]: googlePlacesTool,
-    [updateUserProfileTool.title!]: updateUserProfileTool,
     [searchConversationHistoryTool.title!]: searchConversationHistoryTool,
     [searchFilesTool.title!]: searchFilesTool,
+    [webSearchTool.title!]: webSearchTool,
+    [webFetchTool.title!]: webFetchTool,
+    [googlePlacesTool.title!]: googlePlacesTool,
   } satisfies ToolSet
 }

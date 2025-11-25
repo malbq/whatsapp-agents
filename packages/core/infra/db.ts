@@ -1,5 +1,5 @@
 import type { InferInsertModel, InferSelectModel, Table, TableConfig } from 'drizzle-orm'
-import type { PostgresSchema } from './dbPostgresSchema'
+import type { PostgresSchema } from './dbSchema'
 
 type ExtractTable<T> = T extends Table<TableConfig> ? T : never
 
