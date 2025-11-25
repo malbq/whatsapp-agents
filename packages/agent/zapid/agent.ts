@@ -1,13 +1,13 @@
 /*
 Key concepts
-  - Frame: per-request state holder.
-  - Systems: small functions that read/write the Frame and use injected deps.
-  - ResponseGeneration assembles system prompt, profile, recent messages, and current input.
-  - Delivery happens inside responseGeneration.
+  - Context: per-request state holder kept in AsyncLocalStorage.
+  - Systems: small functions that read/write the Context and use its injected deps (db, storage, chat, webSearch).
+  - ResponseGeneration assembles system prompt, user profile, recent messages, tools, and current input.
+  - Delivery (WhatsApp send + outbound DB message) happens inside responseGeneration; storage, logging, and embeddings run in separate systems.
 
 Agent Workflow
   User -[send message]-> Agent
-  Agent: create Frame
+    - if message is a reaction: Agent logs and skips response flow
   Agent: persistUser
     - if missing user: Agent -[Fallback]-> User (abort)
   Agent -[send "status read" and "typing indicator"]-> User
@@ -21,18 +21,18 @@ Agent Workflow
   - tools may be called:
     - search_conversation_history
     - search_files
-    - send_file: Server -[media message]-> User
+    - send_text: Server -[text message]-> User
     - web_search
     - web_fetch
     - google_places: Server -[location/contact message]-> User
     - send_reaction: Server -[reaction message]-> User
     - update_user_profile
-  AI Provider -[text answer]-> Agent
-  Agent -[send text message]-> User
+  AI Provider -[answer]-> Agent
+  Agent -[send message]-> User
   Post-response:
-    Agent: store media (document/image) + embed messages
-    Agent: store message exchange
+    Agent: store media (document/image) and message exchange
     Agent: add user's message id to updated profile version
+    Agent: embed messages
 
 Error segmentation
   - Response flow: on failure, log and send a polite fallback; continue.
@@ -62,7 +62,7 @@ export async function agent(): Promise<void> {
     inspect(
       {
         ...message,
-        ...{ data: 'data' in message ? `ArrayBuffer(${message.data.byteLength})` : undefined },
+        data: 'data' in message ? `ArrayBuffer(${message.data.byteLength})` : undefined,
       },
       { depth: null }
     )

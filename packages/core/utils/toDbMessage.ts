@@ -74,28 +74,33 @@ export function toDbMessage({
       userId,
       waId: notification.message.messageWaId,
       type: notification.message.type,
+      role: modelMessage.role,
       modelMessage,
       timestamp: notification.timestamp,
-    }
+    } satisfies DB.MessageInsert
   }
 
   if (response) {
-    return response.messages.map((msgWithDetails, i, arr) => ({
-      userId,
-      waId: i === arr.length - 1 ? assistantWaMessageId : undefined,
-      type:
-        i === arr.length - 1
-          ? response.output.type
-          : msgWithDetails.modelMessage.role === 'tool'
-          ? 'tool-result'
-          : 'tool-call',
-      modelMessage: msgWithDetails.modelMessage,
-      usageInputTokens: msgWithDetails.usage?.inputTokens,
-      usageOutputTokens: msgWithDetails.usage?.outputTokens,
-      usageTotalTokens: msgWithDetails.usage?.totalTokens,
-      usageCachedInputTokens: msgWithDetails.usage?.cachedInputTokens,
-      usageReasoningTokens: msgWithDetails.usage?.reasoningTokens,
-    })) as DB.MessageInsert[]
+    return response.messages.map(
+      (msgWithDetails, i, arr) =>
+        ({
+          userId,
+          waId: i === arr.length - 1 ? assistantWaMessageId : undefined,
+          type:
+            i === arr.length - 1
+              ? response.output.type
+              : msgWithDetails.modelMessage.role === 'tool'
+              ? 'tool-result'
+              : 'tool-call',
+          role: msgWithDetails.modelMessage.role,
+          modelMessage: msgWithDetails.modelMessage,
+          usageInputTokens: msgWithDetails.usage?.inputTokens,
+          usageOutputTokens: msgWithDetails.usage?.outputTokens,
+          usageTotalTokens: msgWithDetails.usage?.totalTokens,
+          usageCachedInputTokens: msgWithDetails.usage?.cachedInputTokens,
+          usageReasoningTokens: msgWithDetails.usage?.reasoningTokens,
+        } satisfies DB.MessageInsert)
+    )
   }
 
   if (!modelMessage) {
@@ -105,6 +110,7 @@ export function toDbMessage({
     userId,
     waId,
     type,
+    role: modelMessage.role,
     modelMessage,
     resourceId,
     usageInputTokens: usage?.inputTokens,
@@ -113,5 +119,5 @@ export function toDbMessage({
     usageCachedInputTokens: usage?.cachedInputTokens,
     usageReasoningTokens: usage?.reasoningTokens,
     timestamp,
-  }
+  } satisfies DB.MessageInsert
 }

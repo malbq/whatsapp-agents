@@ -55,6 +55,7 @@ export function createStartRoute(db: DB.Repository, frmDB: FrmDB, chat: Chat) {
           userId: user.id,
           waId: templateMessageId,
           type: 'text',
+          role: 'assistant',
           modelMessage: {
             role: 'assistant',
             content: `Olá ${candidate.name},

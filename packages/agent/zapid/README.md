@@ -26,11 +26,11 @@ Um assistente pessoal baseado em chat para WhatsApp. Armazena mensagens como mem
 ## Como Funciona
 
 1. Recebemos a mensagem (texto/mídia) via WhatsApp
-2. Extraímos e entendemos o conteúdo multimodal
-3. Carregamos perfil, histórico recente automaticamente para o contexto da conversa
+2. Extraímos e entendemos o conteúdo multimodal (transcrição de áudio/voz, análise de imagem, leitura de documentos)
+3. Carregamos perfil e histórico recente automaticamente para o contexto da conversa
 4. Decidimos ações: recuperar memórias/arquivos, pesquisar web, consultar lugares, atualizar perfil
 5. Geramos e entregamos a resposta com fallback seguro
-6. Pós-processamos em segundo plano: armazenamento de memória e enriquecimento de perfil
+6. Pós-processamos em best‑effort: armazenamento de memória (mensagens, mídia, embeddings) e enriquecimento de perfil
 
 ## Roadmap
 
@@ -55,6 +55,8 @@ Um assistente pessoal baseado em chat para WhatsApp. Armazena mensagens como mem
   - Geração/edição de imagens
 
 ## Planos
+
+> Os planos abaixo ainda não estão implementados; são um rascunho de produto/precificação para o futuro.
 
 ### Gratuito
 
@@ -89,11 +91,11 @@ Um assistente pessoal baseado em chat para WhatsApp. Armazena mensagens como mem
 ### Stack técnico
 
 - Framework web: HonoJS v4 (via pacote `@batman/server`)
-- Abstração de LLM: Vercel AI SDK (`ai`) com múltiplos provedores
+- Abstração de LLM: Vercel AI SDK (`ai`) com múltiplos provedores (OpenAI Responses + Google Gemini)
 - Serviços externos: Meta Business API (WhatsApp), OpenAI Responses API, Google AI Studio
-- Embeddings: Cloudflare Workers AI (geração) + vetores em PostgreSQL
-- Armazenamento de arquivos: Cloudflare R2 (produção), `unstorage` filesystem (dev)
-- Agendador: entrega de lembretes baseada em cron
+- Embeddings: Cloudflare Workers AI (geração) + vetores em PostgreSQL (extensão `vector` / pgvector)
+- Armazenamento de arquivos: `unstorage` filesystem (`FilesystemStorage`); integração com Cloudflare R2 planejada para produção
+- Agendador: suporte a lembretes baseado em cron via pacote `@batman/core` (integração específica do Zapid ainda em evolução)
 
 ### Convenções
 
@@ -106,45 +108,71 @@ Um assistente pessoal baseado em chat para WhatsApp. Armazena mensagens como mem
 
 ## Arquitetura e Fluxo
 
-Zapid segue um pipeline baseado em Frame (estado efêmero por requisição), com fases bem definidas:
+Zapid segue um pipeline baseado em **Context** (estado efêmero por requisição, mantido em `AsyncLocalStorage`), com fases bem definidas:
 
-1. PersistUser garante `frame.user`
-2. IngestMessage captura entrada e mídias
-3. Embedding de mensagens de entrada para enriquecimento/contexto
-4. ResponseGeneration produz a resposta
-5. ResponseDelivery envia a resposta (falha aqui interrompe o fluxo)
-6. Pós-resposta (best-effort): armazenamento de mídia + embedding de saída, depois StoreMessageExchange, ImproveUserProfile
+1. `persistUser` garante `context.user` (cria ou carrega o usuário, incluindo o último perfil salvo).
+2. Ingestão da mensagem: convertemos a notificação do WhatsApp em um `DB.MessageInsert` via `toUserModelMessage`:
+   - texto é usado diretamente
+   - voz/áudio são transcritos com Google Gemini
+   - imagens são enviadas para análise (descrição + texto na imagem)
+   - documentos são lidos (PDF → `parsePdf`, demais → `transcribeDocument`)
+   e preenchemos `context.inbound`.
+3. `responseGeneration` monta o contexto do agente (data/hora atual, perfil do usuário, mensagens recentes, instruções de sistema) e chama o modelo `gpt-5-mini-2025-08-07` via Vercel AI SDK para gerar um `GeneratedWhatsappMessage`.
+4. Entrega da resposta: `sendWhatsappMessage` envia o output pelo cliente WhatsApp (`chat`) e popula `context.outbound` com a mensagem da IA e metadados de uso.
+5. Pós-resposta (best‑effort): `storeMessageExchange` persiste mensagens e mídias:
+   - faz dedupe de arquivos por hash
+   - salva recursos em `resource` + storage filesystem
+   - grava mensagens em `message`
+   - se existir `context.improvedProfile`, grava nova versão em `user_profile_version`.
+6. Embeddings: `embedMessages` extrai texto da mensagem do usuário e da última resposta (incluindo descrição de imagem/documento quando aplicável), gera embeddings via Cloudflare Workers AI e grava `snippet` para busca semântica.
 
 Características:
 
-- Raciocínio orientado a ferramentas: `search_conversation_history`, `search_files`, `send_file`, `web_search`, `web_fetch`, `google_places`, `send_reaction`, `update_user_profile`
-- Efeitos colaterais acontecem dentro de sistemas/ferramentas, não no core do pipeline
-- Segmentação de erros: geração, entrega e pós-processamento são blocos isolados
-- Estratégia dupla de embeddings: entrada (contexto + memória futura) e saída (memória/personalização)
-- Logging contextual com `userId`
-- Extensível: insira novos sistemas no fluxo sem aumentar o Frame além do necessário
+- Raciocínio orientado a ferramentas (via Vercel AI SDK + `@batman/core/tools` e ferramentas locais):
+  - `search_conversation_history`
+  - `search_files`
+  - `send_text`
+  - `web_search`
+  - `web_fetch`
+  - `google_places`
+  - `send_reaction`
+  - `update_user_profile`
+- Efeitos colaterais acontecem dentro de sistemas/ferramentas (persistência, storage, web search), não no core do pipeline de decisão.
+- Segmentação de erros:
+  - fluxo de resposta: em falha, logamos e enviamos fallback educado ao usuário
+  - pós-tarefas: best‑effort; falhas são logadas e não afetam o usuário.
+- Estratégia dupla de embeddings: entrada (mensagem atual do usuário) + saída (última resposta), para memória futura, personalização e busca por similaridade.
+- Logging contextual com `userId`.
+- Extensível: novos sistemas/ferramentas podem ser inseridos sem inflar o `Context` além do necessário.
 
 ## Estrutura do Código
 
-- `prompts/` prompts curtos, focados em tokens (ex.: `system.ts`, `userProfile.ts`)
-- `systems/` funções assíncronas focadas, que recebem `(frame, deps, ...args)` e mutam apenas o Frame
-  - Exemplos: `ingestMessage.ts`, `responseGeneration.ts`, `storeMessageExchange.ts`
-- `tools/` ferramentas de primeira classe chamadas pelo modelo (ex.: `searchFiles.ts`, `googlePlaces.ts`)
-- `frame.ts` tipo de Frame; `types.ts` tipos auxiliares do agente
+- `prompts/`: prompts curtos, focados em tokens (ex.: `system.ts`, `userProfile.ts`, `recentMessages.ts`)
+- `systems/`: funções assíncronas focadas, que leem/escrevem o `Context` via `getContext()`
+  - Exemplos: `persistUser.ts`, `responseGeneration.ts`, `storeMessageExchange.ts`, `embedMessages.ts`
+- `tools/`: ferramentas de primeira classe chamadas pelo modelo
+  - Específicas do agente: `googlePlaces.ts`, `updateUserProfile.ts`
+  - Genéricas (busca, histórico, envio de texto/reação, web): expostas por `@batman/core/tools`
+- `context.ts`: define o tipo `Context` e o armazenamento por requisição (`runContext` / `getContext`)
+- `db.ts` / `dbSchema.ts`: reuso do schema base de `@batman/core` + tabelas específicas (`user_profile_version`)
+- `types.ts` / `zapid.d.ts`: tipos auxiliares do agente
 
 ## Banco de Dados
 
-- PostgreSQL com suporte nativo a vetores (pgvector)
-- Tabelas base: `user`, `message`, `snippet`, `raw_incoming_message`
-- Vetores: `vector(768)` com similaridade cosseno (indexados)
+- PostgreSQL com suporte nativo a vetores (extensão `vector` / pgvector)
+- Tabelas base herdadas de `@batman/core`:
+  - `user`, `message`, `snippet`, `resource`, `reminder`, `raw_incoming_message`
+- Tabelas específicas do Zapid:
+  - `user_profile_version` (histórico de versões de perfil por usuário/mensagem)
+- Vetores: `vector(768)` com similaridade cosseno (indexados em `snippet.vector`)
 
 ## Dicas de Testes
 
 - Use o runner do Bun; mantenha testes determinísticos e pequenos
-- Espelhe padrões de `test/*.test.ts` quando adicionar testes
+- Espelhe padrões de testes existentes em `packages/core` e em `packages/agent/zapid/agent.test.ts`
 - Mocks apenas para chat e dependências de IA
 - Prefira asserts exatos: formas de objetos/arrays, `toThrow(ErrorClass)`, `toThrow(/mensagem/)`
-- Limpe o banco em `afterEach` com helpers
+- Limpe o banco em `afterEach` com helpers (veja `agent.test.ts`)
 
 ## Build, lint, typecheck
 

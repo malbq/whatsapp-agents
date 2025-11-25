@@ -34,7 +34,9 @@ export async function responseGeneration() {
   ok(user, new ResponseGenerationError('User not found'))
   ok(inbound, new ResponseGenerationError('Inbound message not found'))
 
-  const agentContext: Array<ModelMessage> = []
+  const agentContext: Array<ModelMessage> = [
+    toSystemModelMessage(`Current date and time: ${new Date().toISOString()}.`),
+  ]
 
   if (user.profile.length > 0) {
     agentContext.push(userProfile(user.profile))

@@ -1,14 +1,5 @@
 # Progress
 
-## Next
-
-- Recreate search file
-- Add role to message table
-- Turn sendFile tool into structured output
-- Validate searchFile tool works
-- flag assistant messages with sent/delivered/read/failed status
-- Retry when model fails to respect output schema
-
 ## User Management
 
 - Subscription plan management
@@ -19,6 +10,7 @@
 
 ## Performance & Reliability
 
+- Retry when model fails to respect output schema
 - Resend typing indicator after whatsapp time out while assistant is generating response (indicator lasts 25s)
 - Support user sending contact/location messages
 - Cost Monitoring: Set up alerts for AI provider usage thresholds (e.g., via OpenAI dashboard hooks)
@@ -29,6 +21,7 @@
 
 ## UX Improvements
 
+- flag assistant messages with sent/delivered/read/failed status
 - Halt generation when user sends another message before assistant responds - do not halt audio or file ingestion
 - Handle openai flex service availability error - respond with "try again later"
 

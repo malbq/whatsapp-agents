@@ -66,7 +66,7 @@ export type OutgoingMessage =
   | InteractiveCtaUrlMessage
   | TemplateMessage
 
-export type IncominMessage = (
+export type IncomingMessage = (
   | TextMessage
   | VoiceMessage
   | AudioMessage
@@ -84,7 +84,7 @@ export interface Notification {
   userPhone: string
   timestamp: Date
 }
-export type MessageNotification = Notification & { message: IncominMessage }
+export type MessageNotification = Notification & { message: IncomingMessage }
 export type UnsupportedMessageNotification = Notification & { unsupportedType: string }
 export type StatusUpdateNotification = Notification & {
   statusUpdate: StatusUpdate

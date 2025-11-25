@@ -1,23 +1,3 @@
-/*
-File Retrieval Workflow
-
-Workflow:
-1) User sends a message.
-2) LLM receives the message plus recent chat context.
-3) LLM decides it needs a file and calls search_files.
-   - Generate embeddings for the query and calls db.searchResources.
-   - Returns file results with resourceId, filename, timestamp, snippet, and score.
-
-4) LLM reviews the list.
-   - If one file is clearly relevant, send file with resourceId.
-   - If several are close, ask a clarifying question or present the list for selection.
-   Confidence guidance:
-     - Discard scores lower than 0.50.
-     - If top.score within 0.50–0.85, ask for more detail instead of retrieving.
-     - If top.score ≥ 0.85 or (top.score − second.score) ≥ 0.10, retrieve_file(top).
-     - If top 2–3 are within 0.00–0.10, ask the user to choose (present sorted list with filename).
-
-*/
 import type { ToolExecutionError } from '@batman/core/errors'
 import { spreadError } from '@batman/core/utils/spreadError'
 import { tool } from 'ai'

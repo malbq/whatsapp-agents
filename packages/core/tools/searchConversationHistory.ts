@@ -47,6 +47,7 @@ Examples:
         )
 
         return similarMessages.map((message) => ({
+          role: message.role,
           type: message.type,
           content: message.content,
           chunk: message.total > 1 ? `${message.sequence} of ${message.total}` : undefined,

@@ -3,7 +3,7 @@ import { generateEmbeddings } from '@batman/core/ai/generateEmbeddings'
 import { transcribeDocument } from '@batman/core/ai/transcribeDocument'
 import type { DB } from '@batman/core/infra/db'
 import { parsePdf } from '@batman/core/utils/parsePdf'
-import type { IncominMessage, OutgoingMessage } from '@batman/whatsapp'
+import type { IncomingMessage, OutgoingMessage } from '@batman/whatsapp'
 import { ok } from 'node:assert'
 import { getContext } from '../context'
 
@@ -60,7 +60,7 @@ export async function embedMessages() {
 
 async function extractTextFromWhatsappMessage(
   role: 'user' | 'assistant',
-  message: IncominMessage | OutgoingMessage
+  message: IncomingMessage | OutgoingMessage
 ): Promise<string | undefined> {
   if (message.type === 'text' && 'text' in message) {
     return message.text.trim() || undefined

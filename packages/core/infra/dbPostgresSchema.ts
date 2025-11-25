@@ -31,6 +31,7 @@ export namespace PostgresSchema {
         .references(() => user.id),
       waId: text(),
       type: text().notNull().$type<DB.MessageType>(),
+      role: text().notNull().$type<DB.MessageRole>(),
       modelMessage: json()
         .notNull()
         .$type<AssistantModelMessage | ToolModelMessage | UserModelMessage>(),

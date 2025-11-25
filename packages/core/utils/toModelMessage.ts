@@ -3,13 +3,15 @@ import type { AssistantModelMessage, SystemModelMessage, TextPart, UserModelMess
 import type {
   AudioMessage,
   ContactMessage,
-  ImageMessage,
   IncomingDocumentMessage,
-  IncominMessage,
+  IncomingImageMessage,
+  IncomingMessage,
   InteractiveButtonMessage,
   InteractiveCtaUrlMessage,
   InteractiveListMessage,
   LocationMessage,
+  OutgoingDocumentMessage,
+  OutgoingImageMessage,
   TemplateMessage,
   TextMessage,
   VoiceMessage,
@@ -24,7 +26,7 @@ export async function toUserModelMessage(
     | VoiceMessage
     | AudioMessage
     | IncomingDocumentMessage
-    | ImageMessage
+    | IncomingImageMessage
     | LocationMessage
     | ContactMessage
 ): Promise<UserModelMessage> {
@@ -91,7 +93,7 @@ export async function toUserModelMessage(
     default: {
       // Prevent forgetting to handle a message type: Type '{ type: "video"; ... }' is not assignable to type 'never'
       const _exhaustive: never = message
-      throw new Error(`Unsupported message type: ${(message as IncominMessage).type}`)
+      throw new Error(`Unsupported message type: ${(message as IncomingMessage).type}`)
     }
   }
 }
@@ -99,8 +101,8 @@ export async function toUserModelMessage(
 export function toAssistantModelMessage(
   message:
     | TextMessage
-    | IncomingDocumentMessage
-    | ImageMessage
+    | OutgoingDocumentMessage
+    | OutgoingImageMessage
     | LocationMessage
     | ContactMessage
     | InteractiveListMessage

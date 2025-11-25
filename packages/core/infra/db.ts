@@ -28,6 +28,8 @@ export namespace DB {
     | 'tool-call'
     | 'tool-result'
 
+  export type MessageRole = 'user' | 'assistant' | 'tool'
+
   export type Message = SelectModel<'message'>
   export type MessageInsert = InsertModel<'message'>
   export type User = SelectModel<'user'>
@@ -39,6 +41,7 @@ export namespace DB {
   export interface SimilarSnippet {
     id: Snippet['id']
     content: string
+    role: MessageRole
     type: MessageType
     timestamp: Message['timestamp']
     sequence: number

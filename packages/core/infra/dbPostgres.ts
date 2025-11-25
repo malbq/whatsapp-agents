@@ -13,6 +13,7 @@ interface HybridSearchRow {
   resourceId: string | null
   filename: string | null
   type: string
+  role: string
   timestamp: Date
   content: string
   sequence: number
@@ -58,6 +59,7 @@ export namespace Postgres {
           resourceId: Schema.message.resourceId,
           filename: params.joinResource ? Schema.resource.originalFilename : sql<null>`NULL`,
           type: Schema.message.type,
+          role: Schema.message.role,
           timestamp: Schema.message.timestamp,
           content: Schema.snippet.content,
           sequence: Schema.snippet.sequence,
@@ -88,6 +90,7 @@ export namespace Postgres {
           resourceId: Schema.message.resourceId,
           filename: params.joinResource ? Schema.resource.originalFilename : sql<null>`NULL`,
           type: Schema.message.type,
+          role: Schema.message.role,
           timestamp: Schema.message.timestamp,
           content: Schema.snippet.content,
           sequence: Schema.snippet.sequence,
@@ -229,6 +232,7 @@ export namespace Postgres {
             userId: Schema.message.userId,
             waId: Schema.message.waId,
             type: Schema.message.type,
+            role: Schema.message.role,
             modelMessage: Schema.message.modelMessage,
             usageInputTokens: Schema.message.usageInputTokens,
             usageOutputTokens: Schema.message.usageOutputTokens,
@@ -288,6 +292,7 @@ export namespace Postgres {
             ({
               id: entry.snippetId,
               content: entry.content,
+              role: entry.role as DB.MessageRole,
               type: entry.type as DB.MessageType,
               timestamp: entry.timestamp,
               sequence: entry.sequence,
@@ -386,7 +391,7 @@ export namespace Postgres {
         // Calculate score from best snippet, build combined snippet from top 3
         return Array.from(groups.values())
           .map((group) => {
-            const sortedSnippets = group.snippets.sort((a, b) => b.rrfScore - a.rrfScore)
+            const sortedSnippets = group.snippets.toSorted((a, b) => b.rrfScore - a.rrfScore)
             const score = sortedSnippets[0]?.rrfScore ?? 0
             const snippet = sortedSnippets
               .slice(0, 3)
@@ -401,7 +406,7 @@ export namespace Postgres {
               snippet,
             }
           })
-          .sort((a, b) => b.score - a.score)
+          .toSorted((a, b) => b.score - a.score)
           .slice(0, MAX_FILES)
       },
 

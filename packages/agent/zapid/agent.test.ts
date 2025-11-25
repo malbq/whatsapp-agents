@@ -720,4 +720,61 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
     },
     { timeout: 120000 }
   )
+
+  test(
+    'uses update_user_profile tool to store user preferences',
+    async () => {
+      await runContext(
+        {
+          db,
+          storage,
+          chat,
+          webSearch,
+          notification: {
+            ...user,
+            timestamp: new Date(),
+            message: {
+              type: 'text',
+              messageWaId: 'wamid.profile.1',
+              text: 'Meu nome é João e prefiro respostas em português. Moro na cidade de Fortaleza.',
+            },
+          },
+        },
+        async () => {
+          await agent()
+        }
+      )
+
+      const allMessages = await db.$client.query.message.findMany()
+      const hasUpdateUserProfileCall = allMessages.some((m) => {
+        if (m.type !== 'tool-call') return false
+        const modelMessage = m.modelMessage as {
+          toolName?: string
+          content?: Array<{ type: string; toolName?: string }>
+          toolCalls?: Array<{ name: string }>
+        }
+        if (modelMessage.toolName === 'update_user_profile') return true
+        if (Array.isArray(modelMessage.content)) {
+          return modelMessage.content.some(
+            (c) => c.type === 'tool-call' && c.toolName === 'update_user_profile'
+          )
+        }
+        if (Array.isArray(modelMessage.toolCalls)) {
+          return modelMessage.toolCalls.some((tc) => tc.name === 'update_user_profile')
+        }
+        return false
+      })
+
+      expect(hasUpdateUserProfileCall).toBe(true)
+
+      const users = await db.$client.query.user.findMany()
+      expect(users.length).toBe(1)
+
+      const [userProfile] = await db.$client.query.userProfileVersion.findMany()
+      expect(userProfile?.profile).toMatch(/mauro/i)
+      expect(userProfile?.profile).toMatch(/portuguese/i)
+      expect(userProfile?.profile).toMatch(/fortaleza/i)
+    },
+    { timeout: 120000 }
+  )
 })
