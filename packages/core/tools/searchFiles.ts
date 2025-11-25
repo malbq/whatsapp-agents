@@ -4,8 +4,8 @@ File Retrieval Workflow
 Workflow:
 1) User sends a message.
 2) LLM receives the message plus recent chat context.
-3) LLM decides it needs a file and calls search_files({ query = user-message }).
-   - This tool generates embeddings and calls db.searchFiles for vector search.
+3) LLM decides it needs a file and calls search_files.
+   - Generate embeddings for the query and calls db.searchFiles.
    - Returns file results with messageId, filename, timestamp, snippet, and score.
 
 4) LLM reviews the list.
@@ -17,7 +17,7 @@ Workflow:
      - If top.score ≥ 0.85 or (top.score − second.score) ≥ 0.10, retrieve_file(top).
      - If top 2–3 are within 0.00–0.10, ask the user to choose (present sorted list with filename).
 
-5) Backend sends the object to the user as a document or image message.
+5) Sends the object to the user as a document or image message.
 
 Implementation details:
 - Vector search uses cosine distance threshold (default 0.50)
@@ -85,16 +85,15 @@ import { z } from 'zod'
 export interface SearchFilesDeps {
   userId: string
   generateEmbeddings: (texts: Array<string>) => Promise<Array<Array<{ embedding: Array<number> }>>>
-  searchFiles: (params: {
-    userId: string
-    queryEmbedding: Array<number>
-  }) => Promise<Array<{
-    messageId: string
-    resourceId: string
-    timestamp: Date
-    score: number
-    snippet: string
-  }>>
+  searchFiles: (params: { userId: string; queryEmbedding: Array<number> }) => Promise<
+    Array<{
+      messageId: string
+      resourceId: string
+      timestamp: Date
+      score: number
+      snippet: string
+    }>
+  >
   findResourceById: (params: {
     userId: string
     resourceId: string

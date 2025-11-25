@@ -1,16 +1,11 @@
-import { and, asc, eq, inArray, lte, notInArray, or, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, lte, notInArray, or, sql } from 'drizzle-orm'
 import type { BunSQLDatabase } from 'drizzle-orm/bun-sql'
 import { inspect } from 'node:util'
 import { FailedToPersistUserError } from '../errors'
 import type { DB } from './db'
 import { PostgresSchema as Schema } from './dbPostgresSchema'
 
-const MAX_RECENT_MESSAGES = parseInt(import.meta.env.MAX_RECENT_MESSAGES ?? '30')
-const VECTOR_DISTANCE_THRESHOLD = parseFloat(import.meta.env.VECTOR_DISTANCE_THRESHOLD ?? '0.50')
-const MAX_SIMILAR_MESSAGES = parseInt(import.meta.env.MAX_SIMILAR_MESSAGES ?? '10')
-const RRF_K = parseInt(import.meta.env.RRF_K ?? '10')
 const MAX_FILES = parseInt(import.meta.env.FILE_SEARCH_LIMIT ?? '10')
-const SENDING_STALE_SECONDS = parseInt(import.meta.env.REMINDER_SENDING_STALE_SECONDS ?? '300')
 
 type CoreSchema = Omit<typeof Schema, 'uuidv7'>
 
@@ -100,6 +95,7 @@ export namespace Postgres {
       },
 
       async findRecentMessages({ userId }) {
+        const MAX_RECENT_MESSAGES = parseInt(import.meta.env.MAX_RECENT_MESSAGES ?? '10')
         return await client
           .select({
             id: Schema.message.id,
@@ -119,21 +115,23 @@ export namespace Postgres {
           .from(Schema.message)
           .leftJoin(Schema.resource, eq(Schema.message.resourceId, Schema.resource.id))
           .where(eq(Schema.message.userId, userId))
-          .orderBy(asc(Schema.message.timestamp))
+          .orderBy(desc(Schema.message.timestamp))
           .limit(MAX_RECENT_MESSAGES)
+          .then((result) => {
+            console.debug('Recent messages', inspect(result, { depth: null }))
+            return result.toReversed()
+          })
       },
 
-      async findSimilarSnippets({
-        userId,
-        query,
-        queryEmbedding,
-        excludeIds = [],
-        limit = MAX_SIMILAR_MESSAGES,
-        vectorThreshold = VECTOR_DISTANCE_THRESHOLD,
-        rrfK = RRF_K,
-      }) {
-        const vectorLimit = Math.max(limit * 5, limit)
-        const textLimit = Math.max(limit * 5, limit)
+      async findSimilarSnippets({ userId, query, queryEmbedding, excludeIds = [] }) {
+        const VECTOR_DISTANCE_THRESHOLD = parseFloat(
+          import.meta.env.VECTOR_DISTANCE_THRESHOLD ?? '0.50'
+        )
+        const MAX_SIMILAR_MESSAGES = parseInt(import.meta.env.MAX_SIMILAR_MESSAGES ?? '10')
+        const RRF_K = parseInt(import.meta.env.RRF_K ?? '10')
+
+        const vectorLimit = MAX_SIMILAR_MESSAGES
+        const textLimit = MAX_SIMILAR_MESSAGES
 
         // 1) Vector search: retrieve top-K snippets by cosine distance
         const vectorConditions = [eq(Schema.message.userId, userId)] as Array<any>
@@ -233,7 +231,7 @@ export namespace Postgres {
               similarity,
             }
           })
-          .filter((entry) => entry.similarity >= vectorThreshold)
+          .filter((entry) => entry.similarity >= VECTOR_DISTANCE_THRESHOLD)
 
         const textCandidates = textRows.map((row) => ({
           snippetId: row.snippetId,
@@ -299,17 +297,17 @@ export namespace Postgres {
         const fused = Array.from(fusedBySnippetId.values()).map((entry) => {
           let rrfScore = 0
           if (entry.vectorRank !== undefined) {
-            rrfScore += 1 / (entry.vectorRank + rrfK)
+            rrfScore += 1 / (entry.vectorRank + RRF_K)
           }
           if (entry.textRank !== undefined) {
-            rrfScore += 1 / (entry.textRank + rrfK)
+            rrfScore += 1 / (entry.textRank + RRF_K)
           }
           return { ...entry, rrfScore }
         })
 
         fused.sort((a, b) => b.rrfScore - a.rrfScore)
 
-        const top = fused.slice(0, limit)
+        const top = fused.slice(0, MAX_SIMILAR_MESSAGES)
 
         return top.map(
           (entry) =>
@@ -433,6 +431,9 @@ export namespace Postgres {
       },
 
       async takeDueReminders({ now, limit = 100 }) {
+        const SENDING_STALE_SECONDS = parseInt(
+          import.meta.env.REMINDER_SENDING_STALE_SECONDS ?? '300'
+        )
         const staleBefore = new Date(now.getTime() - SENDING_STALE_SECONDS * 1000)
 
         return await client.transaction(async (tx) => {

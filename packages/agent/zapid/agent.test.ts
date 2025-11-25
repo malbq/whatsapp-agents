@@ -1,17 +1,13 @@
-import type { DB } from '@batman/core/infra/db'
 import type { Storage } from '@batman/core/infra/storage'
 import { FilesystemStorage } from '@batman/core/infra/storageFilesystem'
 import type { WebSearch } from '@batman/core/infra/webSearch'
 import { WebSearchBrave } from '@batman/core/infra/webSearchBrave'
 import type { Chat, Notification } from '@batman/whatsapp'
-import type { UserModelMessage } from 'ai'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
-import { ok } from 'node:assert'
 import { styleText } from 'node:util'
 import { agent } from './agent'
 import { runContext } from './context'
 import { dbFactory, type ZapidRepository } from './db'
-import * as schema from './dbSchema'
 
 interface MockChat extends Chat {
   sentMessages: Array<
@@ -142,8 +138,6 @@ const user: Pick<Notification, 'userName' | 'userWaId' | 'userPhone'> = {
 }
 const imgBase64 =
   'iVBORw0KGgoAAAANSUhEUgAAAMgAAABkCAAAAADm7SDXAAAAAmJLR0QA/4ePzL8AAAQaSURBVHja7dfrb1N1HMfxd9vdwMyh4eKQGUhjAoG5LREv6GIckoVYb8TxQGV1RhdnDDEMLDGQo+ESWUhGskznQsLFaAhOCg4FEiioWdhAYIQELRtuDmFstJ+/wQfnbG3nfLYtYL6/R99zTj/99ZWe3+97DvqfDAxiEIMYxCAGMYhBDGIQgxjEIAYxiEEMYhCDGMQgBjGIQQxiEIMYxCAGMciEQzpisQGv/DkWG8y82BkO75b2hMMd4yQHYrErXnnn1x6vunU69vv4E/0dDn+aOqoJr59gSBDavTIfujIvRqFW+gAOjpPsCcD3brmSXDd5ZwEcGH+iXngidZRF8K6BaBm8KUn6IwD1kqQTcN/gPQfZCrOTktQA3u/6GF7WPQe5APwiSeUAHZJUBi13EeT09kjD+X9Dho9sjezsTMsugs2SrgVYChFJ1/xkXZekoeiWyM5zkqTjezp19bPI5RFIoi2ybl9iKiBXygH8awbHQI4GAVjZM5qth2WSGuHHAhZJ+grKJenwfABCvZJCLD5dAK0eJL4U4Fn/5EN6i/BV1j0DNZmQYzn4iivnwsIbI9lTkNUvPc/c5Go4J1XBdkk/ZOMvqSyEJTelEHmPAlEXMlwGs19ZlsVkQNJGl/QuNElai/+3dEhyIeyThqvcm0iSlCyEverNplb7YZMSM6FbSgThW2noVdgkhSAQOXFo0IU0Q1mfdNw36ZDh+90p4tCQDjkJT0nS5QBFo+F34C01QbtuTuMxnYRiSce8G+yCn6AUgnWpxV4BbZO22HfF3DEdutQFBaWlpaWlsDYd0gAfSZKKYHSVtEFh8gVm3ZFegosb3X9rG2yQJM2BfoXgbAoyCwamZtc6Bbkz3LErHfIJbJO3w54fCd/Oh2M5VEtqgS1Pwhm3meyQJBVDt0LeXuhCspk2RdvvRVg+Xh/5HNyno/kQH/3Aa7ACvpPUl0N5HvOSbqPcKEl6GP4cA8nHNzg1kORMZtwYB/ITVEhSPJuHUulW8FNwW5Iq8EGtJB2BSkm6GuARjYEs8XroFPSROqgekoaamjMgwwvwHZVUCx+m0n3ZwGrJ7SYQlaShIvwnpGQN1I+F1MHrCSXeY/IhPfMg+MaqOfhPZfSRg35ylleXQNH1tPhzwNeSpHgAZgxJkr7xkbtizRKY3zcWcj4XFq8KkjMFnf1CCQB5kWRmZ9/7IABll9LjO2D6Lbd8Gqq8s7sfAODxyxoLUXM2kNvw4oRDGh1n5PVom+P0SlLyUH34/aa4pG7HiUqHHeeiJP31ZV14fTSZEY87TqtXtjvOmZHT/V/UhTccTkrSfu9bbzlOiyR1bnh78yWddRrtVdcgBjGIQQxiEIMYxCAGMYhBDGIQgxjEIAYxiEEMYhCDGMQgBjGIQQxiEIP81/gHl+a1TDJF6GIAAAAASUVORK5CYII='
-
-const ZERO_VECTOR_768 = new Array(768).fill(0)
 
 describe.skipIf(process.env.AI !== '1')('Agent', () => {
   beforeAll(async () => {
@@ -483,98 +477,150 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
   )
 
   test(
-    'uses fetch_memory tool to recall stored memory',
+    'uses fetch_memory tool to recall stored memory and writes base fixture',
     async () => {
-      const [seedUser] = await db.$client
-        .insert(schema.user)
-        .values({ waId: user.userWaId, name: user.userName })
-        .returning()
-      ok(seedUser, 'User not created')
+      const originalMaxRecent = import.meta.env.MAX_RECENT_MESSAGES
+      import.meta.env.MAX_RECENT_MESSAGES = '4'
 
-      const baseDate = new Date('2020-01-01T00:00:00.000Z')
+      try {
+        const fs = await import('node:fs/promises')
+        const fixtureDir = `./packages/agent/zapid/__fixtures__`
+        const fixturePath = `${fixtureDir}/fetch_memory_dump.sql`
 
-      const fillerModel: UserModelMessage = {
-        role: 'user',
-        content: [{ type: 'text', text: 'Filler message.' }],
-      }
-
-      await db.$client
-        .insert(schema.message)
-        .values(
-          Array.from(
-            { length: 30 },
-            (_, i) =>
-              ({
-                userId: seedUser.id,
-                type: 'text',
-                modelMessage: fillerModel,
-                timestamp: new Date(baseDate.getTime() + i * 60_000),
-              } satisfies DB.MessageInsert)
-          )
-        )
-        .returning()
-
-      const memoryMessageModel: UserModelMessage = {
-        role: 'user',
-        content: [{ type: 'text', text: 'The secret door code is 4242.' }],
-      }
-
-      const [memoryMessage] = await db.$client
-        .insert(schema.message)
-        .values({
-          userId: seedUser.id,
-          type: 'text',
-          modelMessage: memoryMessageModel,
-          timestamp: new Date(baseDate.getTime() + 31 * 60_000),
-        })
-        .returning()
-      ok(memoryMessage, 'Memory message not created')
-
-      await db.$client.insert(schema.snippet).values({
-        messageId: memoryMessage.id,
-        sequence: 0,
-        content: 'The secret door code is 4242.',
-        vector: ZERO_VECTOR_768,
-      })
-
-      await runContext(
-        {
-          db,
-          storage,
-          chat,
-          webSearch,
-          notification: {
-            ...user,
-            timestamp: new Date(),
-            message: {
-              type: 'text',
-              messageWaId: 'wamid.memory.1',
-              text: 'What is the secret door code I told you earlier? Answer only with the 4 digits.',
-            },
-          },
-        },
-        async () => {
-          await agent()
+        let hasFixture = false
+        try {
+          await fs.access(fixturePath)
+          hasFixture = true
+        } catch {
+          hasFixture = false
         }
-      )
 
-      const messages = await db.$client.query.message.findMany()
+        if (hasFixture) {
+          const sql = await fs.readFile(fixturePath, 'utf8')
+          // Seed database with existing fixture for deterministic state
+          await db.$client.execute(sql)
+        }
 
-      const toolCallMessages = messages.filter((m) => m.type === 'tool-call')
-      const hasFetchMemoryCall = toolCallMessages.some(({ modelMessage }) => {
-        if (!Array.isArray(modelMessage.content)) return false
-        return modelMessage.content.some(
-          (c) => c.type === 'tool-call' && c.toolName === 'fetch_memory'
+        const run = async (text: string) => {
+          await runContext(
+            {
+              db,
+              storage,
+              chat,
+              webSearch,
+              notification: {
+                ...user,
+                timestamp: new Date(),
+                message: {
+                  type: 'text',
+                  messageWaId: `wamid.memory.${Date.now()}`,
+                  text,
+                },
+              },
+            },
+            async () => {
+              await agent()
+            }
+          )
+        }
+
+        if (!hasFixture) {
+          // 1–3: seed memory and general context only when fixture does not exist
+          await run('The secret door code is 4242.')
+          await run('How are you?')
+          await run('Thanks!')
+
+          // Dump base SQL fixture after the first three messages
+          const messagesAfterThree = await db.$client.query.message.findMany()
+          const snippetsAfterThree = await db.$client.query.snippet.findMany()
+          const usersAfterThree = await db.$client.query.user.findMany()
+
+          await fs.mkdir(fixtureDir, { recursive: true })
+
+          const sqlLines: string[] = []
+
+          const esc = (value: string) => `'${value.replace(/'/g, "''")}'`
+
+          // Users first (FK target for message.user_id)
+          for (const u of usersAfterThree) {
+            sqlLines.push(
+              `INSERT INTO "user" ("id", "waId", "name", "joinedAt") VALUES (` +
+                `${esc(u.id)}, ` +
+                `${esc(u.waId)}, ` +
+                `${esc(u.name)}, ` +
+                `${u.joinedAt ? esc(u.joinedAt.toISOString()) : 'NOW()'}::timestamptz` +
+                `);`
+            )
+          }
+
+          // Messages next
+          for (const m of messagesAfterThree) {
+            sqlLines.push(
+              `INSERT INTO "message" ("id", "userId", "waId", "type", "modelMessage", "usageInputTokens", "usageOutputTokens", "usageTotalTokens", "usageCachedInputTokens", "usageReasoningTokens", "resourceId", "timestamp") VALUES (` +
+                `${esc(m.id)}, ` +
+                `${esc(m.userId)}, ` +
+                `${m.waId ? esc(m.waId) : 'NULL'}, ` +
+                `${esc(m.type)}, ` +
+                `${esc(JSON.stringify(m.modelMessage))}, ` +
+                `${m.usageInputTokens ?? 'NULL'}, ` +
+                `${m.usageOutputTokens ?? 'NULL'}, ` +
+                `${m.usageTotalTokens ?? 'NULL'}, ` +
+                `${m.usageCachedInputTokens ?? 'NULL'}, ` +
+                `${m.usageReasoningTokens ?? 'NULL'}, ` +
+                `${m.resourceId ? esc(m.resourceId) : 'NULL'}, ` +
+                `${m.timestamp ? esc(m.timestamp.toISOString()) : 'NOW()'}::timestamptz` +
+                `);`
+            )
+          }
+
+          // Snippets last (FK target for snippet.message_id)
+          for (const s of snippetsAfterThree) {
+            sqlLines.push(
+              `INSERT INTO "snippet" ("id", "messageId", "sequence", "content", "vector") VALUES (` +
+                `${esc(s.id)}, ` +
+                `${esc(s.messageId)}, ` +
+                `${s.sequence}, ` +
+                `${esc(s.content)}, ` +
+                `'[${s.vector.join(',')}]'::vector` +
+                `);`
+            )
+          }
+
+          await fs.writeFile(fixturePath, sqlLines.join('\n') + '\n', 'utf8')
+        }
+
+        // 4: ask to recall the secret code
+        await run(
+          'I forgot the secret door code I told you earlier. Please answer only with the 4 digits.'
         )
-      })
 
-      expect(hasFetchMemoryCall).toBe(true)
+        const allMessages = await db.$client.query.message.findMany()
 
-      expect(chat.sentMessages).toHaveLength(1)
-      const responseMessage = chat.sentMessages[0]!
-      expect('text' in responseMessage).toBe(true)
-      const responseText = 'text' in responseMessage ? responseMessage.text : ''
-      expect(responseText.replace(/\D/g, '')).toContain('4242')
+        const hasFetchMemoryCall = allMessages.some((m) => {
+          if (m.type !== 'tool-call') return false
+          const modelMessage = m.modelMessage as any
+          if (modelMessage.toolName === 'fetch_memory') return true
+          if (Array.isArray(modelMessage.content)) {
+            return modelMessage.content.some(
+              (c: any) => c.type === 'tool-call' && c.toolName === 'fetch_memory'
+            )
+          }
+          if (Array.isArray(modelMessage.toolCalls)) {
+            return modelMessage.toolCalls.some((tc: any) => tc.name === 'fetch_memory')
+          }
+          return false
+        })
+
+        expect(hasFetchMemoryCall).toBe(true)
+
+        expect(chat.sentMessages).not.toHaveLength(0)
+        const responseMessage = chat.sentMessages.at(-1)!
+        expect('text' in responseMessage).toBe(true)
+        const responseText = 'text' in responseMessage ? responseMessage.text : ''
+        expect(responseText.replace(/\D/g, '')).toContain('4242')
+      } finally {
+        import.meta.env.MAX_RECENT_MESSAGES = originalMaxRecent
+      }
     },
     { timeout: 120000 }
   )

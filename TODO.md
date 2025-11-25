@@ -1,17 +1,8 @@
 # Progress
 
-## Hybrid context retrieval using PostgreSQL (FTS/tsvector + embeddings + RRF).
-
-- Add a plain TSVECTOR column snippet.fts (NOT GENERATED). Populate it at INSERT/UPDATE using SQL: fts = to_tsvector('simple', unaccent($content)). Create GIN index: CREATE INDEX idx_snippet_fts ON snippet USING gin (fts). Enable unaccent extension.
-- Vector search runs over embedding snippets filtered by user_id, ordered by vector distance, with a LIMIT K.
-- Apply a similarity/distance threshold to vector hits before fusion.
-- Hybrid ranking must combine vector and text results at snippet level using Reciprocal Rank Fusion with k = 10: score = 1/(vectorRank + k) + 1/(textRank + k). Missing ranks count as ∞ (i.e., contribute only from the present list).
-- The fused candidate set must be the top N snippets by RRF score (N = limit), after thresholding the vector list.
-- Include text-only matches (snippets present only in the FTS list) up to the remaining budget without duplicating snippets already selected via vector hits.
-- Deduplicate the final set strictly by snippet id.
-
 ## Next
 
+- Recreate search file
 - Turn sendFile tool into structured output
 - Validate searchFile tool works
 - flag assistant messages with sent/delivered/read/failed status
