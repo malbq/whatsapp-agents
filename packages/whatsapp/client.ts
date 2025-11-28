@@ -1,3 +1,4 @@
+import { ok } from 'node:assert'
 import { createHash } from 'node:crypto'
 import { FailedToDownloadMediaError, MediaHashMismatchError, ResponseDeliveryError } from './errors'
 import type {
@@ -11,7 +12,8 @@ import type {
 import { getExtFromMimeType } from './utils'
 import { WhatsAppApi } from './whatsappTypes'
 
-const WA_API_VERSION = import.meta.env.WA_API_VERSION || 'v24.0'
+ok(import.meta.env.WA_API_VERSION, 'WA_API_VERSION is required')
+
 const MAX_OPTIONS_PER_SECTION = 10
 
 export interface WhatsappConfig {
@@ -20,6 +22,7 @@ export interface WhatsappConfig {
 }
 
 export function createWhatsappClient(config: WhatsappConfig): Chat {
+  const WA_API_VERSION = import.meta.env.WA_API_VERSION
   const authorizationHeader = `Bearer ${config.apiToken}`
 
   async function fetchReceivedMedia(mediaId: string, sha256: string): Promise<ArrayBuffer> {

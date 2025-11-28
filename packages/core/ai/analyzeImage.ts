@@ -1,6 +1,9 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { generateText, type TextPart } from 'ai'
+import { ok } from 'node:assert'
 import { inspect } from 'node:util'
+
+ok(import.meta.env.GOOGLE_GENERATIVE_AI_API_KEY, 'GOOGLE_GENERATIVE_AI_API_KEY is required')
 
 const googleProvider = createGoogleGenerativeAI()
 const imageAnalysisModel = googleProvider('gemini-2.5-flash')

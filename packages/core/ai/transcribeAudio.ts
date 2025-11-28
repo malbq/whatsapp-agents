@@ -1,5 +1,8 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { generateText } from 'ai'
+import { ok } from 'node:assert'
+
+ok(import.meta.env.GOOGLE_GENERATIVE_AI_API_KEY, 'GOOGLE_GENERATIVE_AI_API_KEY is required')
 
 const googleProvider = createGoogleGenerativeAI()
 const transcriptionModel = googleProvider('gemini-2.5-flash')

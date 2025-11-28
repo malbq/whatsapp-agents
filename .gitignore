@@ -6,3 +6,6 @@ node_modules/
 storage/
 eval/
 poc/
+
+# Compiled executables
+packages/agent/zapid/bin/zapid

@@ -1,6 +1,6 @@
 declare global {
   interface ImportMetaEnv {
-    WA_API_VERSION?: string
+    WA_API_VERSION: string
   }
 }
 

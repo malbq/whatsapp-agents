@@ -2,35 +2,39 @@ import type { DB } from '@batman/core/infra/db'
 import { Postgres } from '@batman/core/infra/dbPostgres'
 import { and, desc, eq, inArray, sql } from 'drizzle-orm'
 import { BunSQLDatabase, drizzle } from 'drizzle-orm/bun-sql'
+import { ok } from 'node:assert'
 import * as schema from './dbSchema'
 import {
   BOOLEAN_ENTITLEMENTS,
   NUMERIC_ENTITLEMENTS,
+  STARTER_PLAN_ID,
   type BooleanEntitlementKey,
   type DailyLedgerEntitlementKey,
   type NumericEntitlementKey,
 } from './systems/entitlements'
 
+ok(import.meta.env.DATABASE_URL, 'DATABASE_URL is required')
+
 export interface UserWithProfile extends DB.User {
   profile: string
 }
 
-export interface RemainingUsage {
+interface RemainingUsage {
   limit: number | null
   used: number
   remaining: number | null
 }
 
-export interface EntitlementOverride {
+interface EntitlementOverride {
   value: string | null
 }
 
-export interface PlanEntitlementWithPlanId {
+interface PlanEntitlementWithPlanId {
   value: string | null
   planId: string
 }
 
-export interface UserPlanInfo {
+interface UserPlanInfo {
   planId: string
 }
 
@@ -158,7 +162,7 @@ export const dbFactory = (): ZapidRepository => {
         sql`select 1 from ${schema.userSubscription} where ${schema.userSubscription.userId} = ${userId} limit 1`
       )
       if (existing.length === 0) {
-        await client.insert(schema.userSubscription).values({ userId, planId: 'free' })
+        await client.insert(schema.userSubscription).values({ userId, planId: STARTER_PLAN_ID })
       }
     },
 
@@ -179,10 +183,7 @@ export const dbFactory = (): ZapidRepository => {
         ) as Record<BooleanEntitlementKey, boolean>
 
         const quotas = Object.fromEntries(
-          NUMERIC_ENTITLEMENTS.map((key) => [
-            key,
-            { limit: 0, used: 0, remaining: 0 },
-          ])
+          NUMERIC_ENTITLEMENTS.map((key) => [key, { limit: 0, used: 0, remaining: 0 }])
         ) as Record<NumericEntitlementKey, RemainingUsage>
 
         return { features, quotas }

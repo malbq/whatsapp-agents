@@ -101,6 +101,7 @@ The `createWebhookApp` function:
 
 ### WhatsApp Client (required, injected by caller)
 
+- `WA_API_VERSION`: WhatsApp API version
 - `apiToken`: Meta API access token
 - `businessPhoneId`: WhatsApp Business Phone Number ID
 
@@ -108,10 +109,6 @@ The `createWebhookApp` function:
 
 - `appSecret`: Meta app secret for signature validation
 - `verifyToken`: Token for webhook verification
-
-### Optional (package env var)
-
-- `WA_API_VERSION`: WhatsApp API version (defaults to `v23.0`)
 
 ## Message Types
 

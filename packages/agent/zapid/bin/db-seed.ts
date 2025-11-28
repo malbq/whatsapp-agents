@@ -1,12 +1,8 @@
--- Plan Catalogue Seed Script
--- Run this script to seed the plan catalogue in dev or prod databases.
--- Idempotent: does nothing if plans already exist.
--- Usage: psql $DATABASE_URL -f scripts/seedPlans.sql
+import { SQL } from 'bun'
 
-DO $$
+const seedSQL = `DO $$
 BEGIN
-  IF EXISTS (SELECT 1 FROM plan WHERE key IN ('free', 'basic', 'pro')) THEN
-    RAISE NOTICE 'Plans already exist, skipping seed.';
+  IF EXISTS (SELECT 1 FROM plan WHERE id IN ('free', 'basic', 'pro')) THEN
     RETURN;
   END IF;
 
@@ -17,7 +13,7 @@ BEGIN
     ('pro', true, '{"displayName": "Pro", "description": "Professional plan with all features"}', NOW());
 
   INSERT INTO plan_entitlement ("planId", key, value)
-  SELECT 'free', entitlements.key, entitlements.value FROM plan, (VALUES
+  SELECT 'free', entitlements.key, entitlements.value FROM (VALUES
     ('b_enable_profile_tool', 'true'),
     ('b_enable_file_retrieval', 'false'),
     ('b_enable_web_fetch_tool', 'true'),
@@ -25,27 +21,27 @@ BEGIN
     ('b_enable_web_search_tool', 'false'),
     ('b_enable_google_places_tool', 'false'),
     ('n_messages_per_day', '20'),
-    ('n_storage_size', '104857600'), -- 10MB
-    ('n_web_search_calls_per_day', '0'),
-    ('n_google_places_calls_per_day', '0')
+    ('n_storage_size', '10485760'),
+    ('n_web_search_calls_per_day', '20'),
+    ('n_google_places_calls_per_day', '20')
   ) AS entitlements(key, value);
 
   INSERT INTO plan_entitlement ("planId", key, value)
-  SELECT 'basic', entitlements.key, entitlements.value FROM plan, (VALUES
+  SELECT 'basic', entitlements.key, entitlements.value FROM (VALUES
     ('b_enable_profile_tool', 'true'),
     ('b_enable_file_retrieval', 'true'),
     ('b_enable_web_fetch_tool', 'true'),
     ('b_enable_memory_tool', 'true'),
     ('b_enable_web_search_tool', 'true'),
     ('b_enable_google_places_tool', 'true'),
-    ('n_messages_per_day', '2000'),
-    ('n_storage_size', '104857600'), -- 100MB
-    ('n_web_search_calls_per_day', '50'),
-    ('n_google_places_calls_per_day', '50')
+    ('n_messages_per_day', '1000'),
+    ('n_storage_size', '104857600'),
+    ('n_web_search_calls_per_day', '100'),
+    ('n_google_places_calls_per_day', '100')
   ) AS entitlements(key, value);
 
   INSERT INTO plan_entitlement ("planId", key, value)
-  SELECT 'pro', entitlements.key, entitlements.value FROM plan, (VALUES
+  SELECT 'pro', entitlements.key, entitlements.value FROM (VALUES
     ('b_enable_profile_tool', 'true'),
     ('b_enable_file_retrieval', 'true'),
     ('b_enable_web_fetch_tool', 'true'),
@@ -53,10 +49,16 @@ BEGIN
     ('b_enable_web_search_tool', 'true'),
     ('b_enable_google_places_tool', 'true'),
     ('n_messages_per_day', NULL),
-    ('n_storage_size', '1073741824'), -- 1GB
+    ('n_storage_size', NULL),
     ('n_web_search_calls_per_day', NULL),
     ('n_google_places_calls_per_day', NULL)
   ) AS entitlements(key, value);
+END $$;`
 
-  RAISE NOTICE 'Plan catalogue seeded successfully.';
-END $$;
+const client = new SQL(process.env.DATABASE_URL!)
+
+await client.unsafe(seedSQL)
+
+console.log('Seed script executed successfully.')
+
+await client.close()

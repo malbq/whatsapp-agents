@@ -1,7 +1,11 @@
 import { createOpenAI } from '@ai-sdk/openai'
 import { embedMany } from 'ai'
+import { ok } from 'node:assert'
 import { inspect } from 'node:util'
 import { splitIntoChunks } from '../utils/splitIntoChunks'
+
+ok(import.meta.env.CF_ACCOUNT_ID, 'CF_ACCOUNT_ID is required')
+ok(import.meta.env.CF_API_TOKEN, 'CF_API_TOKEN is required')
 
 export interface ChunkData {
   content: string

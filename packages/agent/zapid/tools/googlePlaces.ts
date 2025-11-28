@@ -1,8 +1,11 @@
 import type { ToolExecutionError } from '@batman/core/errors'
 import { spreadError } from '@batman/core/utils/spreadError'
 import { tool } from 'ai'
+import { ok } from 'node:assert'
 import { z } from 'zod'
 import { recordUsage } from '../systems/entitlements'
+
+ok(import.meta.env.GOOGLE_PLACES_API_KEY, 'GOOGLE_PLACES_API_KEY is required')
 
 interface PlacesSearchResponse {
   places?: GooglePlace[]

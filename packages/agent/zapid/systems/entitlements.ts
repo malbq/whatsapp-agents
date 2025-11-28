@@ -1,5 +1,7 @@
 import { getContext } from '../context'
 
+export const STARTER_PLAN_ID = 'free'
+
 export const BOOLEAN_ENTITLEMENTS = [
   'b_enable_profile_tool',
   'b_enable_file_retrieval',
@@ -20,7 +22,7 @@ export const NUMERIC_ENTITLEMENTS = [
 
 export type NumericEntitlementKey = (typeof NUMERIC_ENTITLEMENTS)[number]
 
-export const DAILY_LEDGER_ENTITLEMENTS = [
+const DAILY_LEDGER_ENTITLEMENTS = [
   'n_messages_per_day',
   'n_web_search_calls_per_day',
   'n_google_places_calls_per_day',
@@ -52,6 +54,7 @@ export function isFeatureEnabled(key: BooleanEntitlementKey): boolean {
 export function hasQuotaRemaining(key: DailyLedgerEntitlementKey): boolean {
   const { entitlements } = getContext()
   const quota = entitlements.quotas[key]
+  console.debug(`[hasQuotaRemaining] Quota for ${key}:`, quota)
   return quota.remaining === null || quota.remaining > 0
 }
 

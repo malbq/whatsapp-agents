@@ -1,6 +1,9 @@
+import { ok } from 'node:assert'
 import { WebSearchError } from '../errors.js'
 import { spreadError } from '../utils/spreadError.js'
 import type { SearchParams, SearchResult, WebSearch } from './webSearch.js'
+
+ok(import.meta.env.BRAVE_SEARCH_API_KEY, 'BRAVE_SEARCH_API_KEY is required')
 
 interface BraveSearchResult {
   title: string

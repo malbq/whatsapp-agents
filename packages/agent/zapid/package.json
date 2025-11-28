@@ -6,10 +6,15 @@
   "private": true,
   "scripts": {
     "dev": "bun run --hot --no-clear-screen index.ts",
+    "build": "bun run ./bin/build.ts",
+    "start": "bun run ./bin/start.ts",
+    "stop": "bun run ./bin/stop.ts",
     "typecheck": "tsc",
     "lint": "oxlint --fix",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:clean": "bun run ./bin/db-clean.ts",
+    "db:seed": "bun run ./bin/db-seed.ts",
     "knip": "bunx knip"
   },
   "dependencies": {

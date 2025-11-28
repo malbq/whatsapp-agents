@@ -1,5 +1,8 @@
 import type { IncomingMessage } from '@batman/whatsapp'
+import { ok } from 'node:assert'
 import { getContext } from '../context'
+
+ok(import.meta.env.WA_ONBOARDING_TEMPLATE, 'WA_ONBOARDING_TEMPLATE is required')
 
 /**
  * Checks if user has consented to use the service and can use the service
@@ -17,6 +20,10 @@ export async function checkUserConsent(): Promise<boolean> {
   if (isConsentFlowReply(ctx.notification.message)) {
     await ctx.db.completeOnboarding({ userId: ctx.user.id })
     console.log('[checkUserConsent] Onboarding completed', { userId: ctx.user.id })
+
+    // Refresh entitlements after onboarding since plan was just activated
+    const freshEntitlements = await ctx.db.getUserEntitlements({ userId: ctx.user.id })
+    ctx.entitlements = freshEntitlements
 
     return true
   }

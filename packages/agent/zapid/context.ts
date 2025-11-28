@@ -6,7 +6,7 @@ import { ok } from 'node:assert'
 import { AsyncLocalStorage } from 'node:async_hooks'
 import type { UserEntitlements, UserWithProfile, ZapidRepository } from './db'
 
-export type Context = {
+type Context = {
   notification: MessageNotification
   db: ZapidRepository
   storage: Storage

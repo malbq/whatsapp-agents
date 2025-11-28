@@ -22,6 +22,7 @@ import { googlePlacesTool } from '../tools/googlePlaces'
 import { updateUserProfileTool } from '../tools/updateUserProfile'
 import { hasQuotaRemaining, isFeatureEnabled, recordUsage } from './entitlements'
 
+ok(import.meta.env.OPENAI_API_KEY, 'OPENAI_API_KEY is required')
 const model = openai.responses('gpt-5-mini-2025-08-07')
 const MAX_STEPS = 10
 

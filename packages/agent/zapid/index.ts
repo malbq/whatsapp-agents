@@ -13,18 +13,10 @@ import { checkUserConsent } from './systems/checkUserConsent'
 import { hasQuotaRemaining } from './systems/entitlements'
 import { validatePlanCatalogue } from './systems/planCatalogue'
 
-ok(import.meta.env.DATABASE_URL, 'DATABASE_URL is required')
 ok(import.meta.env.META_API_TOKEN, 'META_API_TOKEN is required')
 ok(import.meta.env.META_WEBHOOK_VERIFY_TOKEN, 'META_WEBHOOK_VERIFY_TOKEN is required')
 ok(import.meta.env.META_APP_SECRET, 'META_APP_SECRET is required')
 ok(import.meta.env.WA_BUSINESS_PHONE_ID, 'WA_BUSINESS_PHONE_ID is required')
-ok(import.meta.env.CF_ACCOUNT_ID, 'CF_ACCOUNT_ID is required')
-ok(import.meta.env.CF_API_TOKEN, 'CF_API_TOKEN is required')
-ok(import.meta.env.OPENAI_API_KEY, 'OPENAI_API_KEY is required')
-ok(import.meta.env.BRAVE_SEARCH_API_KEY, 'BRAVE_SEARCH_API_KEY is required')
-ok(import.meta.env.GOOGLE_GENERATIVE_AI_API_KEY, 'GOOGLE_GENERATIVE_AI_API_KEY is required')
-ok(import.meta.env.GOOGLE_PLACES_API_KEY, 'GOOGLE_PLACES_API_KEY is required')
-ok(import.meta.env.WA_ONBOARDING_TEMPLATE, 'WA_ONBOARDING_TEMPLATE is required')
 
 const apiToken = import.meta.env.META_API_TOKEN
 const businessPhoneId = import.meta.env.WA_BUSINESS_PHONE_ID
@@ -36,7 +28,10 @@ const chat = createWhatsappClient({ apiToken, businessPhoneId })
 const storage = FilesystemStorage.storage('./storage')
 const webSearch = WebSearchBrave.createWebSearch()
 
-await validatePlanCatalogue(db)
+await validatePlanCatalogue(db).catch((e: Error) => {
+  console.error(e.message)
+  process.exit(1)
+})
 
 const webhookApp = createWebhookApp(
   chat,
@@ -57,6 +52,7 @@ const webhookApp = createWebhookApp(
       const user = await db.persistUser({ waId: userWaId, name: userName })
       const entitlements = await db.getUserEntitlements({ userId: user.id })
       console.debug('[onMessage] User persisted', inspect(user, { depth: null }))
+      console.debug('[onMessage] User entitlements', inspect(entitlements, { depth: null }))
 
       await runContext(
         { notification, db, storage, chat, webSearch, user, entitlements },

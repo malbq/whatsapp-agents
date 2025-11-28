@@ -1,5 +1,5 @@
 {
-  "id": "c0ae709c-8325-4474-b62c-aca43b88d81e",
+  "id": "d0c4c3a0-541c-4616-94e9-9e03d815ee72",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -794,46 +794,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.user_consent": {
-      "name": "user_consent",
-      "schema": "",
-      "columns": {
-        "userId": {
-          "name": "userId",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "consentedAt": {
-          "name": "consentedAt",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "user_consent_userId_user_id_fk": {
-          "name": "user_consent_userId_user_id_fk",
-          "tableFrom": "user_consent",
-          "tableTo": "user",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.user_entitlement_override": {
       "name": "user_entitlement_override",
       "schema": "",
@@ -900,58 +860,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.user_plan": {
-      "name": "user_plan",
-      "schema": "",
-      "columns": {
-        "userId": {
-          "name": "userId",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "planId": {
-          "name": "planId",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "user_plan_userId_user_id_fk": {
-          "name": "user_plan_userId_user_id_fk",
-          "tableFrom": "user_plan",
-          "tableTo": "user",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "user_plan_planId_plan_id_fk": {
-          "name": "user_plan_planId_plan_id_fk",
-          "tableFrom": "user_plan",
-          "tableTo": "plan",
-          "columnsFrom": [
-            "planId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.user_profile_version": {
       "name": "user_profile_version",
       "schema": "",
@@ -1004,6 +912,87 @@
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
+    },
+    "public.user_subscription": {
+      "name": "user_subscription",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "planId": {
+          "name": "planId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "startedAt": {
+          "name": "startedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_user_subscription_user_id": {
+          "name": "idx_user_subscription_user_id",
+          "columns": [
+            {
+              "expression": "userId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "user_subscription_userId_user_id_fk": {
+          "name": "user_subscription_userId_user_id_fk",
+          "tableFrom": "user_subscription",
+          "tableTo": "user",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "user_subscription_planId_plan_id_fk": {
+          "name": "user_subscription_planId_plan_id_fk",
+          "tableFrom": "user_subscription",
+          "tableTo": "plan",
+          "columnsFrom": [
+            "planId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     }
   },
   "enums": {},
@@ -1045,7 +1034,7 @@
           "notNull": false
         }
       },
-      "definition": "\n  WITH daily_usage AS (\n    SELECT\n      \"userId\",\n      key,\n      COALESCE(SUM(value), 0) AS used_24h\n    FROM usage_ledger\n    WHERE \"timestamp\" >= (NOW() - INTERVAL '24 hours')\n    GROUP BY \"userId\", key\n  ),\n  storage_usage AS (\n    SELECT\n      \"userId\",\n      COALESCE(SUM(size), 0) AS used_bytes\n    FROM resource\n    GROUP BY \"userId\"\n  ),\n  resolved_entitlements AS (\n    SELECT\n      u.id AS \"userId\",\n      pe.key,\n      CAST(COALESCE(ueo.value, pe.value) AS INTEGER) AS limit_value\n    FROM \"user\" u\n    JOIN user_plan up ON up.\"userId\" = u.id\n    JOIN plan_entitlement pe ON pe.\"planId\" = up.\"planId\"\n    LEFT JOIN user_entitlement_override ueo ON ueo.\"userId\" = u.id AND ueo.key = pe.key\n    WHERE pe.key IN (\n      'n_messages_per_day',\n      'n_web_search_calls_per_day',\n      'n_google_places_calls_per_day',\n      'n_storage_size'\n    )\n  )\n  SELECT\n    re.\"userId\",\n    re.key,\n    re.limit_value AS \"limit\",\n    CASE\n      WHEN re.key = 'n_storage_size' THEN COALESCE(su.used_bytes, 0)\n      ELSE COALESCE(du.used_24h, 0)\n    END AS used,\n    CASE\n      WHEN re.limit_value IS NULL THEN NULL\n      WHEN re.key = 'n_storage_size' THEN\n        GREATEST(re.limit_value - COALESCE(su.used_bytes, 0), 0)\n      ELSE\n        GREATEST(re.limit_value - COALESCE(du.used_24h, 0), 0)\n    END AS remaining\n  FROM resolved_entitlements re\n  LEFT JOIN daily_usage du ON du.\"userId\" = re.\"userId\" AND du.key = re.key\n  LEFT JOIN storage_usage su ON su.\"userId\" = re.\"userId\"\n",
+      "definition": "\n  WITH daily_usage AS (\n    SELECT\n      \"userId\",\n      key,\n      COALESCE(SUM(value), 0) AS used_24h\n    FROM usage_ledger\n    WHERE \"timestamp\" >= (NOW() - INTERVAL '24 hours')\n    GROUP BY \"userId\", key\n  ),\n  storage_usage AS (\n    SELECT\n      \"userId\",\n      COALESCE(SUM(size), 0) AS used_bytes\n    FROM resource\n    GROUP BY \"userId\"\n  ),\n  latest_subscription AS (\n    SELECT DISTINCT ON (\"userId\") \"userId\", \"planId\"\n    FROM user_subscription\n    ORDER BY \"userId\", \"startedAt\" DESC\n  ),\n  resolved_entitlements AS (\n    SELECT\n      u.id AS \"userId\",\n      pe.key,\n      CAST(COALESCE(ueo.value, pe.value) AS INTEGER) AS limit_value\n    FROM \"user\" u\n    JOIN latest_subscription us ON us.\"userId\" = u.id\n    JOIN plan_entitlement pe ON pe.\"planId\" = us.\"planId\"\n    LEFT JOIN user_entitlement_override ueo ON ueo.\"userId\" = u.id AND ueo.key = pe.key\n    WHERE pe.key IN (\n      'n_messages_per_day',\n      'n_web_search_calls_per_day',\n      'n_google_places_calls_per_day',\n      'n_storage_size'\n    )\n  )\n  SELECT\n    re.\"userId\",\n    re.key,\n    re.limit_value AS \"limit\",\n    CASE\n      WHEN re.key = 'n_storage_size' THEN COALESCE(su.used_bytes, 0)\n      ELSE COALESCE(du.used_24h, 0)\n    END AS used,\n    CASE\n      WHEN re.limit_value IS NULL THEN NULL\n      WHEN re.key = 'n_storage_size' THEN\n        GREATEST(re.limit_value - COALESCE(su.used_bytes, 0), 0)\n      ELSE\n        GREATEST(re.limit_value - COALESCE(du.used_24h, 0), 0)\n    END AS remaining\n  FROM resolved_entitlements re\n  LEFT JOIN daily_usage du ON du.\"userId\" = re.\"userId\" AND du.key = re.key\n  LEFT JOIN storage_usage su ON su.\"userId\" = re.\"userId\"\n",
       "name": "v_user_quota",
       "schema": "public",
       "isExisting": false,
