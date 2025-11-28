@@ -2,13 +2,26 @@
 
 ## User Management
 
-`./spec/IdentityAuthPayment.md`
+- user subscription table, composed by plan and consent
+- user_plan should be a ledger as well, to store plan history
+- find better way to manage stored files
+  - users can't see their files and decide what to keep if quota is exceeded
+  - we could delete old files
+  - we could track file refs, and delete least referenced files
 
 ## Billing
 
 - Subscription management
 - Generate unique code or token link, bound to the phone number, for payment and configuration
 - Stripe Billing
+
+## Next
+
+- integrate recentMessages prompt into system prompt
+- refactor whatsapp schemas/types
+  - the difference between incoming and outgoing is not clear
+  - outgoind document and image refer to resourceId, which is not known by whatsapp module
+- embedding usage response is returning `NaN`
 
 ## Performance & Reliability
 

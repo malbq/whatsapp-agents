@@ -9,7 +9,8 @@
     "typecheck": "tsc",
     "lint": "oxlint --fix",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "drizzle-kit migrate",
+    "knip": "bunx knip"
   },
   "dependencies": {
     "@batman/core": "workspace:*",

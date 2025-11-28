@@ -1,1 +1,0 @@
-ALTER TABLE "raw_incoming_message" RENAME COLUMN "waId" TO "id";

@@ -29,33 +29,40 @@ const MAX_STEPS = 10
 export async function responseGeneration() {
   const context = getContext()
   const user = context.user
-  const inbound = context.inbound
 
   ok(user, new ResponseGenerationError('User not found'))
-  ok(inbound, new ResponseGenerationError('Inbound message not found'))
 
+  const recentMessages = await context.db.findRecentMessages({ userId: user.id })
+
+  if (recentMessages.length === 0) {
+    throw new ResponseGenerationError('No messages found for user')
+  }
+
+  // Get last user message for typing indicator, reaction tool
+  const lastUserMessage = recentMessages.findLast((m) => m.role === 'user')
+  ok(lastUserMessage, new ResponseGenerationError('No user message found in recent messages'))
+
+  if (lastUserMessage.waId) {
+    context.chat.sendTypingIndicator(lastUserMessage.waId)
+  }
+
+  // Build agent context
   const agentContext: Array<ModelMessage> = [
     toSystemModelMessage(`Current date and time: ${new Date().toISOString()}.`),
   ]
 
   if (user.profile.length > 0) {
     agentContext.push(userProfile(user.profile))
-    console.log('Context included: user profile')
+    console.debug('Context included: user profile')
   }
 
-  let recentMessageIds: Array<string> = []
+  const recentMessageIds = recentMessages.map((m) => m.id)
 
-  await context.db.findRecentMessages({ userId: user.id }).then(async (recentMessages) => {
-    if (recentMessages.length === 0) return
-    recentMessageIds = recentMessages.map((message) => message.id)
-    await fillMediaMessagesWithData(recentMessages)
-    agentContext.push(
-      toSystemModelMessage(recentMessagesPrompt),
-      ...recentMessages.map((message) => message.modelMessage)
-    )
-  })
-
-  agentContext.push(inbound.modelMessage)
+  await fillMediaMessagesWithData(recentMessages)
+  agentContext.push(
+    toSystemModelMessage(recentMessagesPrompt),
+    ...recentMessages.map((message) => message.modelMessage)
+  )
 
   const response = await generateWhatsappMessage({
     model,
@@ -64,6 +71,7 @@ export async function responseGeneration() {
     tools: createToolSet({
       userId: user.id,
       recentMessageIds,
+      lastUserMessageWaId: lastUserMessage.waId,
     }),
     stopWhen: stepCountIs(MAX_STEPS),
     providerOptions: {
@@ -140,18 +148,20 @@ async function fillMediaMessagesWithData(
 interface CreateToolSetParams {
   userId: string
   recentMessageIds: Array<string>
+  lastUserMessageWaId: string | null
 }
 
-function createToolSet({ userId, recentMessageIds }: CreateToolSetParams) {
-  const { user, inbound, chat, db, webSearch } = getContext()
+function createToolSet({ userId, recentMessageIds, lastUserMessageWaId }: CreateToolSetParams) {
+  const { user, chat, db, webSearch } = getContext()
   ok(user, 'User not found')
-  ok(inbound, 'Inbound message not found')
 
   const webSearchTool = createWebSearchTool({ webSearch })
 
   const sendReactionTool = createSendReactionTool({
-    sendReaction: (emoji) =>
-      chat.sendReaction(user.waId, { emoji, targetMessageId: inbound.waId! }),
+    sendReaction: async (emoji) => {
+      if (!lastUserMessageWaId) return
+      return chat.sendReaction(user.waId, { emoji, targetMessageId: lastUserMessageWaId })
+    },
   })
 
   const sendTextTool = createSendTextTool({

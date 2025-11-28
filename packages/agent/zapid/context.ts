@@ -4,7 +4,7 @@ import type { WebSearch } from '@batman/core/infra/webSearch'
 import type { Chat, MessageNotification, OutgoingMessage } from '@batman/whatsapp'
 import { ok } from 'node:assert'
 import { AsyncLocalStorage } from 'node:async_hooks'
-import type { UserWithProfile, ZapidRepository } from './db'
+import type { UserEntitlements, UserWithProfile, ZapidRepository } from './db'
 
 export type Context = {
   notification: MessageNotification
@@ -12,8 +12,8 @@ export type Context = {
   storage: Storage
   chat: Chat
   webSearch: WebSearch
-  user?: UserWithProfile
-  inbound?: DB.MessageInsert
+  user: UserWithProfile
+  entitlements: UserEntitlements
   outbound: DB.MessageInsert[]
   responseOutput?: OutgoingMessage
   improvedProfile?: string

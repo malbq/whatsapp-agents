@@ -132,6 +132,21 @@ export namespace WhatsAppApi {
     }),
   })
 
+  export const flowReplyMessageSchema = z.object({
+    type: z.literal('interactive'),
+    id: z.string(),
+    from: z.string(),
+    timestamp: z.string(),
+    interactive: z.object({
+      type: z.literal('nfm_reply'),
+      nfm_reply: z.object({
+        response_json: z.string(),
+        body: z.string(),
+        name: z.string(),
+      }),
+    }),
+  })
+
   export const incomingMessageSchema = z.union([
     textMessageSchema,
     audioMessageSchema,
@@ -139,12 +154,7 @@ export namespace WhatsAppApi {
     imageMessageSchema,
     templateButtonReplySchema,
     interactiveReplyMessageSchema,
-    z.object({
-      type: z.string(),
-      id: z.string(),
-      from: z.string(),
-      timestamp: z.string(),
-    }),
+    flowReplyMessageSchema,
   ])
 
   export const messagesChangeMetadataSchema = z.object({
@@ -401,6 +411,7 @@ export namespace WhatsAppApi {
     | TemplateBodyComponent
     | TemplateHeaderComponent
     | TemplateFooterComponent
+    | TemplateButtonFlowComponent
 
   export interface TemplateBodyComponent {
     type: 'body'
@@ -415,6 +426,21 @@ export namespace WhatsAppApi {
   export interface TemplateFooterComponent {
     type: 'footer'
     parameters: Array<TemplateParameter>
+  }
+
+  export interface TemplateButtonFlowComponent {
+    type: 'button'
+    sub_type: 'flow'
+    index: string
+    parameters: [
+      {
+        type: 'action'
+        action: {
+          flow_token?: string
+          flow_action_data?: Record<string, unknown>
+        }
+      }
+    ]
   }
 
   export type TemplateParameter =

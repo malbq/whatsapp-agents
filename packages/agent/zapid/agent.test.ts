@@ -2,12 +2,13 @@ import type { Storage } from '@batman/core/infra/storage'
 import { FilesystemStorage } from '@batman/core/infra/storageFilesystem'
 import type { WebSearch } from '@batman/core/infra/webSearch'
 import { WebSearchBrave } from '@batman/core/infra/webSearchBrave'
-import type { Chat, Notification } from '@batman/whatsapp'
+import type { Chat } from '@batman/whatsapp'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
 import { styleText } from 'node:util'
 import { agent } from './agent'
 import { runContext } from './context'
-import { dbFactory, type ZapidRepository } from './db'
+import { dbFactory, type UserEntitlements, type UserWithProfile, type ZapidRepository } from './db'
+import { ingest } from './ingest'
 
 interface MockChat extends Chat {
   sentMessages: Array<
@@ -131,11 +132,8 @@ let db: ZapidRepository
 let storage: Storage
 let chat: MockChat
 let webSearch: WebSearch
-const user: Pick<Notification, 'userName' | 'userWaId' | 'userPhone'> = {
-  userName: 'Test User',
-  userWaId: '1234567890',
-  userPhone: '1234567890',
-}
+let seededUser: UserWithProfile
+let seededEntitlements: UserEntitlements
 const imgBase64 =
   'iVBORw0KGgoAAAANSUhEUgAAAMgAAABkCAAAAADm7SDXAAAAAmJLR0QA/4ePzL8AAAQaSURBVHja7dfrb1N1HMfxd9vdwMyh4eKQGUhjAoG5LREv6GIckoVYb8TxQGV1RhdnDDEMLDGQo+ESWUhGskznQsLFaAhOCg4FEiioWdhAYIQELRtuDmFstJ+/wQfnbG3nfLYtYL6/R99zTj/99ZWe3+97DvqfDAxiEIMYxCAGMYhBDGIQgxjEIAYxiEEMYhCDGMQgBjGIQQxiEIMYxCAGMciEQzpisQGv/DkWG8y82BkO75b2hMMd4yQHYrErXnnn1x6vunU69vv4E/0dDn+aOqoJr59gSBDavTIfujIvRqFW+gAOjpPsCcD3brmSXDd5ZwEcGH+iXngidZRF8K6BaBm8KUn6IwD1kqQTcN/gPQfZCrOTktQA3u/6GF7WPQe5APwiSeUAHZJUBi13EeT09kjD+X9Dho9sjezsTMsugs2SrgVYChFJ1/xkXZekoeiWyM5zkqTjezp19bPI5RFIoi2ybl9iKiBXygH8awbHQI4GAVjZM5qth2WSGuHHAhZJ+grKJenwfABCvZJCLD5dAK0eJL4U4Fn/5EN6i/BV1j0DNZmQYzn4iivnwsIbI9lTkNUvPc/c5Go4J1XBdkk/ZOMvqSyEJTelEHmPAlEXMlwGs19ZlsVkQNJGl/QuNElai/+3dEhyIeyThqvcm0iSlCyEverNplb7YZMSM6FbSgThW2noVdgkhSAQOXFo0IU0Q1mfdNw36ZDh+90p4tCQDjkJT0nS5QBFo+F34C01QbtuTuMxnYRiSce8G+yCn6AUgnWpxV4BbZO22HfF3DEdutQFBaWlpaWlsDYd0gAfSZKKYHSVtEFh8gVm3ZFegosb3X9rG2yQJM2BfoXgbAoyCwamZtc6Bbkz3LErHfIJbJO3w54fCd/Oh2M5VEtqgS1Pwhm3meyQJBVDt0LeXuhCspk2RdvvRVg+Xh/5HNyno/kQH/3Aa7ACvpPUl0N5HvOSbqPcKEl6GP4cA8nHNzg1kORMZtwYB/ITVEhSPJuHUulW8FNwW5Iq8EGtJB2BSkm6GuARjYEs8XroFPSROqgekoaamjMgwwvwHZVUCx+m0n3ZwGrJ7SYQlaShIvwnpGQN1I+F1MHrCSXeY/IhPfMg+MaqOfhPZfSRg35ylleXQNH1tPhzwNeSpHgAZgxJkr7xkbtizRKY3zcWcj4XFq8KkjMFnf1CCQB5kWRmZ9/7IABll9LjO2D6Lbd8Gqq8s7sfAODxyxoLUXM2kNvw4oRDGh1n5PVom+P0SlLyUH34/aa4pG7HiUqHHeeiJP31ZV14fTSZEY87TqtXtjvOmZHT/V/UhTccTkrSfu9bbzlOiyR1bnh78yWddRrtVdcgBjGIQQxiEIMYxCAGMYhBDGIQgxjEIAYxiEEMYhCDGMQgBjGIQQxiEIP81/gHl+a1TDJF6GIAAAAASUVORK5CYII='
 
@@ -159,6 +157,12 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
     storage = FilesystemStorage.storage(testStorageDir)
     chat = createMockChat()
     webSearch = WebSearchBrave.createWebSearch()
+
+    const seedSql = await Bun.file(`${import.meta.dir}/__fixtures__/base_user_seed.sql`).text()
+    await db.$client.execute(seedSql)
+
+    seededUser = (await db.findUserById({ id: 'user_test_1' }))!
+    seededEntitlements = await db.getUserEntitlements({ userId: seededUser.id })
   })
 
   afterEach(async () => {
@@ -176,8 +180,12 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
           storage,
           chat,
           webSearch,
+          user: seededUser,
+          entitlements: seededEntitlements,
           notification: {
-            ...user,
+            userName: seededUser.name,
+            userWaId: seededUser.waId,
+            userPhone: seededUser.waId,
             timestamp: new Date(),
             message: {
               type: 'text',
@@ -187,6 +195,7 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
           },
         },
         async () => {
+          await ingest()
           await agent()
         }
       )
@@ -209,8 +218,12 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
           storage,
           chat,
           webSearch,
+          user: seededUser,
+          entitlements: seededEntitlements,
           notification: {
-            ...user,
+            userName: seededUser.name,
+            userWaId: seededUser.waId,
+            userPhone: seededUser.waId,
             timestamp: new Date(),
             message: {
               type: 'image',
@@ -221,6 +234,7 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
           },
         },
         async () => {
+          await ingest()
           await agent()
         }
       )
@@ -230,17 +244,22 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
           storage,
           chat,
           webSearch,
+          user: seededUser,
+          entitlements: seededEntitlements,
           notification: {
-            ...user,
+            userName: seededUser.name,
+            userWaId: seededUser.waId,
+            userPhone: seededUser.waId,
             timestamp: new Date(),
             message: {
               type: 'text',
-              messageWaId: 'wamid.1',
+              messageWaId: 'wamid.2',
               text: 'What is written on the image?',
             },
           },
         },
         async () => {
+          await ingest()
           await agent()
         }
       )
@@ -262,8 +281,12 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
           storage,
           chat,
           webSearch,
+          user: seededUser,
+          entitlements: seededEntitlements,
           notification: {
-            ...user,
+            userName: seededUser.name,
+            userWaId: seededUser.waId,
+            userPhone: seededUser.waId,
             timestamp: new Date(),
             message: {
               type: 'text',
@@ -273,6 +296,7 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
           },
         },
         async () => {
+          await ingest()
           await agent()
         }
       )
@@ -310,8 +334,12 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
           storage,
           chat,
           webSearch,
+          user: seededUser,
+          entitlements: seededEntitlements,
           notification: {
-            ...user,
+            userName: seededUser.name,
+            userWaId: seededUser.waId,
+            userPhone: seededUser.waId,
             timestamp: new Date(),
             message: {
               type: 'text',
@@ -321,6 +349,7 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
           },
         },
         async () => {
+          await ingest()
           await agent()
         }
       )
@@ -333,7 +362,7 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
       expect('address' in locationMessage).toBe(true)
       const address =
         'address' in locationMessage && locationMessage.address ? locationMessage.address : ''
-      expect(address).toMatch(/gustave.*eiffel.*75007.*paris/i)
+      expect(address).toMatch(/champ.*Mars.*75007.*paris/i)
     },
     { timeout: 120000 }
   )
@@ -347,8 +376,12 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
           storage,
           chat,
           webSearch,
+          user: seededUser,
+          entitlements: seededEntitlements,
           notification: {
-            ...user,
+            userName: seededUser.name,
+            userWaId: seededUser.waId,
+            userPhone: seededUser.waId,
             timestamp: new Date(),
             message: {
               type: 'text',
@@ -358,6 +391,7 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
           },
         },
         async () => {
+          await ingest()
           await agent()
         }
       )
@@ -382,8 +416,12 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
           storage,
           chat,
           webSearch,
+          user: seededUser,
+          entitlements: seededEntitlements,
           notification: {
-            ...user,
+            userName: seededUser.name,
+            userWaId: seededUser.waId,
+            userPhone: seededUser.waId,
             timestamp: new Date(),
             message: {
               type: 'text',
@@ -393,6 +431,7 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
           },
         },
         async () => {
+          await ingest()
           await agent()
         }
       )
@@ -419,8 +458,12 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
           storage,
           chat,
           webSearch,
+          user: seededUser,
+          entitlements: seededEntitlements,
           notification: {
-            ...user,
+            userName: seededUser.name,
+            userWaId: seededUser.waId,
+            userPhone: seededUser.waId,
             timestamp: new Date(),
             message: {
               type: 'text',
@@ -430,6 +473,7 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
           },
         },
         async () => {
+          await ingest()
           await agent()
         }
       )
@@ -452,8 +496,12 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
           storage,
           chat,
           webSearch,
+          user: seededUser,
+          entitlements: seededEntitlements,
           notification: {
-            ...user,
+            userName: seededUser.name,
+            userWaId: seededUser.waId,
+            userPhone: seededUser.waId,
             timestamp: new Date(),
             message: {
               type: 'image',
@@ -464,6 +512,7 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
           },
         },
         async () => {
+          await ingest()
           await agent()
         }
       )
@@ -508,8 +557,12 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
               storage,
               chat,
               webSearch,
+              user: seededUser,
+          entitlements: seededEntitlements,
               notification: {
-                ...user,
+                userName: seededUser.name,
+                userWaId: seededUser.waId,
+                userPhone: seededUser.waId,
                 timestamp: new Date(),
                 message: {
                   type: 'text',
@@ -519,6 +572,7 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
               },
             },
             async () => {
+              await ingest()
               await agent()
             }
           )
@@ -538,8 +592,6 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
           await fs.mkdir(fixtureDir, { recursive: true })
 
           const sqlLines: string[] = []
-
-          const esc = (value: string) => `'${value.replace(/'/g, "''")}'`
 
           // Users first (FK target for message.user_id)
           for (const u of usersAfterThree) {
@@ -631,7 +683,7 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
     'uses search_files tool to retrieve a previously sent image',
     async () => {
       const originalMaxRecent = import.meta.env.MAX_RECENT_MESSAGES
-      import.meta.env.MAX_RECENT_MESSAGES = '0'
+      import.meta.env.MAX_RECENT_MESSAGES = '1'
       try {
         const imgBuffer = Uint8Array.fromBase64(imgBase64).buffer
 
@@ -642,8 +694,12 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
             storage,
             chat,
             webSearch,
+            user: seededUser,
+          entitlements: seededEntitlements,
             notification: {
-              ...user,
+              userName: seededUser.name,
+              userWaId: seededUser.waId,
+              userPhone: seededUser.waId,
               timestamp: new Date(),
               message: {
                 type: 'image',
@@ -654,6 +710,7 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
             },
           },
           async () => {
+            await ingest()
             await agent()
           }
         )
@@ -665,8 +722,12 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
             storage,
             chat,
             webSearch,
+            user: seededUser,
+          entitlements: seededEntitlements,
             notification: {
-              ...user,
+              userName: seededUser.name,
+              userWaId: seededUser.waId,
+              userPhone: seededUser.waId,
               timestamp: new Date(),
               message: {
                 type: 'text',
@@ -676,6 +737,7 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
             },
           },
           async () => {
+            await ingest()
             await agent()
           }
         )
@@ -730,8 +792,12 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
           storage,
           chat,
           webSearch,
+          user: seededUser,
+          entitlements: seededEntitlements,
           notification: {
-            ...user,
+            userName: seededUser.name,
+            userWaId: seededUser.waId,
+            userPhone: seededUser.waId,
             timestamp: new Date(),
             message: {
               type: 'text',
@@ -741,6 +807,7 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
           },
         },
         async () => {
+          await ingest()
           await agent()
         }
       )
@@ -778,3 +845,5 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
     { timeout: 120000 }
   )
 })
+
+const esc = (value: string) => `'${value.replace(/'/g, "''")}'`

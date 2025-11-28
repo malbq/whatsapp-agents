@@ -1,6 +1,16 @@
 import type { AssistantModelMessage, ToolModelMessage, UserModelMessage } from 'ai'
 import { relations, sql, type SQL } from 'drizzle-orm'
-import { bigint, customType, index, integer, json, pgTable, text, timestamp, vector } from 'drizzle-orm/pg-core'
+import {
+  bigint,
+  customType,
+  index,
+  integer,
+  json,
+  pgTable,
+  text,
+  timestamp,
+  vector,
+} from 'drizzle-orm/pg-core'
 import type { DB } from './db'
 
 export namespace PostgresSchema {

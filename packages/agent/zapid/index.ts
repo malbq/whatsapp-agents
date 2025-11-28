@@ -3,10 +3,15 @@ import { WebSearchBrave } from '@batman/core/infra/webSearchBrave'
 import { createServer } from '@batman/server'
 import { createWebhookApp, createWhatsappClient } from '@batman/whatsapp'
 import { ok } from 'node:assert'
+import { inspect } from 'node:util'
 import { agent } from './agent'
 import { runContext } from './context'
 import { dbFactory } from './db'
+import { ingest, isContentMessage } from './ingest'
 import pkg from './package.json'
+import { checkUserConsent } from './systems/checkUserConsent'
+import { checkMessageQuota, recordMessageUsage } from './systems/enforcement'
+import { validatePlanCatalogue } from './systems/planCatalogue'
 
 ok(import.meta.env.DATABASE_URL, 'DATABASE_URL is required')
 ok(import.meta.env.META_API_TOKEN, 'META_API_TOKEN is required')
@@ -19,6 +24,7 @@ ok(import.meta.env.OPENAI_API_KEY, 'OPENAI_API_KEY is required')
 ok(import.meta.env.BRAVE_SEARCH_API_KEY, 'BRAVE_SEARCH_API_KEY is required')
 ok(import.meta.env.GOOGLE_GENERATIVE_AI_API_KEY, 'GOOGLE_GENERATIVE_AI_API_KEY is required')
 ok(import.meta.env.GOOGLE_PLACES_API_KEY, 'GOOGLE_PLACES_API_KEY is required')
+ok(import.meta.env.WA_ONBOARDING_TEMPLATE, 'WA_ONBOARDING_TEMPLATE is required')
 
 const apiToken = import.meta.env.META_API_TOKEN
 const businessPhoneId = import.meta.env.WA_BUSINESS_PHONE_ID
@@ -30,15 +36,53 @@ const chat = createWhatsappClient({ apiToken, businessPhoneId })
 const storage = FilesystemStorage.storage('./storage')
 const webSearch = WebSearchBrave.createWebSearch()
 
+await validatePlanCatalogue(db)
+
 const webhookApp = createWebhookApp(
   chat,
   { appSecret, verifyToken },
   {
     onMessage: async (notification, raw) => {
       db.storeRawIncomingMessage(raw)
-      await runContext({ notification, db, storage, chat, webSearch }, async () => {
-        await agent()
-      })
+      const { message, userWaId, userName } = notification
+      console.debug('[onMessage] Notification received', inspect(notification, { depth: null }))
+
+      if (message.type === 'reaction') {
+        console.debug('Skip reaction message', { userWaId })
+        return
+      }
+
+      chat.acknowledgeMessage(message.messageWaId)
+
+      const user = await db.persistUser({ waId: userWaId, name: userName })
+      const entitlements = await db.getUserEntitlements({ userId: user.id })
+      console.debug('[onMessage] User persisted', inspect(user, { depth: null }))
+
+      await runContext(
+        { notification, db, storage, chat, webSearch, user, entitlements },
+        async () => {
+          if (isContentMessage(message)) {
+            await ingest()
+          }
+
+          const canRespond = await checkUserConsent()
+          console.debug('[onMessage] Consent check result', { userWaId, canRespond })
+          if (!canRespond) return
+
+          const quotaResult = checkMessageQuota()
+          if (!quotaResult.allowed) {
+            console.log('Message quota exceeded', { userWaId, reason: quotaResult.reason })
+            chat.sendText(userWaId, { text: quotaResult.message })
+            return
+          }
+
+          await agent()
+
+          await recordMessageUsage().catch((error) => {
+            console.error('Error recording message usage', error)
+          })
+        }
+      )
     },
   }
 )

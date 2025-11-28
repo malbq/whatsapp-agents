@@ -6,17 +6,13 @@ Key concepts
   - Delivery (WhatsApp send + outbound DB message) happens inside responseGeneration; storage, logging, and embeddings run in separate systems.
 
 Agent Workflow
-  User -[send message]-> Agent
-    - if message is a reaction: Agent logs and skips response flow
-  Agent: persistUser
-    - if missing user: Agent -[Fallback]-> User (abort)
-  Agent -[send "status read" and "typing indicator"]-> User
-  Agent: ingestMessage
-    - text
-    - voice
-    - audio
-    - image
-    - document
+  User -[send message]-> Ingest (persists + embeds)
+    - if message is a reaction: skip ingest and agent
+    - if message is flow_reply: skip ingest, check consent
+  Ingest: persist message to DB with correct timestamp
+  Ingest: embed message for semantic search
+  ConsentCheck: if not consented, send onboarding template and stop
+  Agent: retrieve recent messages from DB (inbound is at tail)
   Agent -[generate response]-> AI Provider
   - tools may be called:
     - search_conversation_history
@@ -30,71 +26,35 @@ Agent Workflow
   AI Provider -[answer]-> Agent
   Agent -[send message]-> User
   Post-response:
-    Agent: store media (document/image) and message exchange
-    Agent: add user's message id to updated profile version
-    Agent: embed messages
+    Agent: store outbound messages
+    Agent: update user profile if improved
+    Agent: embed outbound messages
 
 Error segmentation
   - Response flow: on failure, log and send a polite fallback; continue.
   - Post-tasks: best-effort; failures are logged and do not affect the user.
 */
 import { toDbMessage } from '@batman/core/utils/toDbMessage'
-import { toAssistantModelMessage, toUserModelMessage } from '@batman/core/utils/toModelMessage'
+import { toAssistantModelMessage } from '@batman/core/utils/toModelMessage'
 import type { TextMessage } from '@batman/whatsapp'
 import { ok } from 'node:assert'
-import { inspect } from 'node:util'
 import { getContext } from './context'
-import { embedMessages } from './systems/embedMessages'
-import { persistUser } from './systems/persistUser'
+import { embedOutboundMessages } from './systems/embedOutboundMessages'
 import { responseGeneration } from './systems/responseGeneration'
-import { storeMessageExchange } from './systems/storeMessageExchange'
+import { storeAgentResponse } from './systems/storeAgentResponse'
 
 export async function agent(): Promise<void> {
   const context = getContext()
-  const { message, userWaId, userName } = context.notification
-  if (message.type === 'reaction') {
-    console.log('Reaction message, skipping agent response flow', { message })
-    return
-  }
-
-  console.log(
-    'Starting agent response flow',
-    inspect(
-      {
-        ...message,
-        data: 'data' in message ? `ArrayBuffer(${message.data.byteLength})` : undefined,
-      },
-      { depth: null }
-    )
-  )
-
-  context.chat.acknowledgeMessage(message.messageWaId)
-
-  try {
-    await persistUser({ userName, userWaId })
-  } catch (error) {
-    // Não podemos fazer nada sem um usuário, nem salvar a resposta no banco
-    console.error(`Error persisting user: ${userName} (${userWaId})`, error)
-    context.chat.sendText(userWaId, {
-      // FIXME: what language should we use here? infer with llm?
-      text: 'Desculpe, tive um problema e não consigo te responder agora.',
-    })
-    return
-  }
+  const { userWaId } = context.notification
 
   ok(context.user, 'User not found')
 
+  console.log('Starting agent response flow', { userId: context.user.id })
+
   try {
-    const userModelMessage = await toUserModelMessage(message)
-    context.inbound = toDbMessage({
-      userId: context.user.id,
-      notification: context.notification,
-      modelMessage: userModelMessage,
-    })
-    context.chat.sendTypingIndicator(message.messageWaId)
     await responseGeneration()
-  } catch {
-    console.error('Agent response flow error')
+  } catch (error) {
+    console.error('Agent response flow error', error)
 
     const errorMessage: TextMessage = {
       type: 'text',
@@ -111,8 +71,8 @@ export async function agent(): Promise<void> {
   }
 
   try {
-    await storeMessageExchange()
-    await embedMessages()
+    await storeAgentResponse()
+    await embedOutboundMessages()
   } catch (error) {
     console.error("Error after agent's response", error)
   }

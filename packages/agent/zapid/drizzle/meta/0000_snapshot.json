@@ -1,5 +1,5 @@
 {
-  "id": "2d8d5c67-99e0-4869-8973-cedca24703c3",
+  "id": "8e7c8b85-9022-4a32-953e-69800bf786c9",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -28,6 +28,12 @@
         },
         "type": {
           "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -133,12 +139,112 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.plan": {
+      "name": "plan",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "active": {
+          "name": "active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "plan_id_unique": {
+          "name": "plan_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.plan_entitlement": {
+      "name": "plan_entitlement",
+      "schema": "",
+      "columns": {
+        "planId": {
+          "name": "planId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "plan_entitlement_planId_plan_id_fk": {
+          "name": "plan_entitlement_planId_plan_id_fk",
+          "tableFrom": "plan_entitlement",
+          "tableTo": "plan",
+          "columnsFrom": [
+            "planId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "plan_entitlement_planId_key_pk": {
+          "name": "plan_entitlement_planId_key_pk",
+          "columns": [
+            "planId",
+            "key"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.raw_incoming_message": {
       "name": "raw_incoming_message",
       "schema": "",
       "columns": {
-        "waId": {
-          "name": "waId",
+        "id": {
+          "name": "id",
           "type": "text",
           "primaryKey": true,
           "notNull": true
@@ -347,7 +453,7 @@
           "name": "hash",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "originalFilename": {
           "name": "originalFilename",
@@ -378,21 +484,6 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
-        },
-        "resource_hash_index": {
-          "name": "resource_hash_index",
-          "columns": [
-            {
-              "expression": "hash",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
         }
       },
       "foreignKeys": {
@@ -411,7 +502,15 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "resource_hash_unique": {
+          "name": "resource_hash_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "hash"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -449,6 +548,16 @@
           "type": "vector(768)",
           "primaryKey": false,
           "notNull": true
+        },
+        "fts": {
+          "name": "fts",
+          "type": "tsvector",
+          "primaryKey": false,
+          "notNull": true,
+          "generated": {
+            "as": "to_tsvector('simple', \"snippet\".\"content\")",
+            "type": "stored"
+          }
         }
       },
       "indexes": {
@@ -466,6 +575,37 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "idx_snippet_fts": {
+          "name": "idx_snippet_fts",
+          "columns": [
+            {
+              "expression": "fts",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "gin",
+          "with": {}
+        },
+        "idx_snippet_vector": {
+          "name": "idx_snippet_vector",
+          "columns": [
+            {
+              "expression": "vector",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "vector_cosine_ops"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "hnsw",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -480,6 +620,119 @@
             "id"
           ],
           "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.usage_ledger": {
+      "name": "usage_ledger",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "timestamp": {
+          "name": "timestamp",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "idx_usage_ledger_user_key_ts": {
+          "name": "idx_usage_ledger_user_key_ts",
+          "columns": [
+            {
+              "expression": "userId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "timestamp",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_usage_ledger_key_ts": {
+          "name": "idx_usage_ledger_key_ts",
+          "columns": [
+            {
+              "expression": "key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "timestamp",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "usage_ledger_userId_user_id_fk": {
+          "name": "usage_ledger_userId_user_id_fk",
+          "tableFrom": "usage_ledger",
+          "tableTo": "user",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
           "onUpdate": "no action"
         }
       },
@@ -535,6 +788,164 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.user_consent": {
+      "name": "user_consent",
+      "schema": "",
+      "columns": {
+        "userId": {
+          "name": "userId",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "consentedAt": {
+          "name": "consentedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "user_consent_userId_user_id_fk": {
+          "name": "user_consent_userId_user_id_fk",
+          "tableFrom": "user_consent",
+          "tableTo": "user",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.user_entitlement_override": {
+      "name": "user_entitlement_override",
+      "schema": "",
+      "columns": {
+        "userId": {
+          "name": "userId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "user_entitlement_override_userId_user_id_fk": {
+          "name": "user_entitlement_override_userId_user_id_fk",
+          "tableFrom": "user_entitlement_override",
+          "tableTo": "user",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "user_entitlement_override_userId_key_pk": {
+          "name": "user_entitlement_override_userId_key_pk",
+          "columns": [
+            "userId",
+            "key"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.user_plan": {
+      "name": "user_plan",
+      "schema": "",
+      "columns": {
+        "userId": {
+          "name": "userId",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "planId": {
+          "name": "planId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "user_plan_userId_user_id_fk": {
+          "name": "user_plan_userId_user_id_fk",
+          "tableFrom": "user_plan",
+          "tableTo": "user",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "user_plan_planId_plan_id_fk": {
+          "name": "user_plan_planId_plan_id_fk",
+          "tableFrom": "user_plan",
+          "tableTo": "plan",
+          "columnsFrom": [
+            "planId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.user_profile_version": {
       "name": "user_profile_version",
       "schema": "",
@@ -545,8 +956,8 @@
           "primaryKey": true,
           "notNull": true
         },
-        "user_id": {
-          "name": "user_id",
+        "userId": {
+          "name": "userId",
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -557,11 +968,11 @@
           "primaryKey": false,
           "notNull": true
         },
-        "message_id": {
-          "name": "message_id",
+        "messageId": {
+          "name": "messageId",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         }
       },
       "indexes": {
@@ -569,7 +980,7 @@
           "name": "idx_user_profile_version_user_id",
           "columns": [
             {
-              "expression": "user_id",
+              "expression": "userId",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -594,7 +1005,47 @@
   "sequences": {},
   "roles": {},
   "policies": {},
-  "views": {},
+  "views": {
+    "public.v_user_quota": {
+      "columns": {
+        "userId": {
+          "name": "userId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "limit": {
+          "name": "limit",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "used": {
+          "name": "used",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "remaining": {
+          "name": "remaining",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "definition": "\n  WITH daily_usage AS (\n    SELECT\n      \"userId\",\n      key,\n      COALESCE(SUM(value), 0) AS used_24h\n    FROM usage_ledger\n    WHERE \"timestamp\" >= (NOW() - INTERVAL '24 hours')\n    GROUP BY \"userId\", key\n  ),\n  storage_usage AS (\n    SELECT\n      \"userId\",\n      COALESCE(SUM(size), 0) AS used_bytes\n    FROM resource\n    GROUP BY \"userId\"\n  ),\n  resolved_entitlements AS (\n    SELECT\n      u.id AS \"userId\",\n      pe.key,\n      CAST(COALESCE(ueo.value, pe.value) AS INTEGER) AS limit_value\n    FROM \"user\" u\n    JOIN user_plan up ON up.\"userId\" = u.id\n    JOIN plan_entitlement pe ON pe.\"planId\" = up.\"planId\"\n    LEFT JOIN user_entitlement_override ueo ON ueo.\"userId\" = u.id AND ueo.key = pe.key\n    WHERE pe.key IN (\n      'n_messages_per_day',\n      'n_web_search_calls_per_day',\n      'n_google_places_calls_per_day',\n      'n_storage_size'\n    )\n  )\n  SELECT\n    re.\"userId\",\n    re.key,\n    re.limit_value AS \"limit\",\n    CASE\n      WHEN re.key = 'n_storage_size' THEN COALESCE(su.used_bytes, 0)\n      ELSE COALESCE(du.used_24h, 0)\n    END AS used,\n    CASE\n      WHEN re.limit_value IS NULL THEN NULL\n      WHEN re.key = 'n_storage_size' THEN\n        GREATEST(re.limit_value - COALESCE(su.used_bytes, 0), 0)\n      ELSE\n        GREATEST(re.limit_value - COALESCE(du.used_24h, 0), 0)\n    END AS remaining\n  FROM resolved_entitlements re\n  LEFT JOIN daily_usage du ON du.\"userId\" = re.\"userId\" AND du.key = re.key\n  LEFT JOIN storage_usage su ON su.\"userId\" = re.\"userId\"\n",
+      "name": "v_user_quota",
+      "schema": "public",
+      "isExisting": false,
+      "materialized": false
+    }
+  },
   "_meta": {
     "columns": {},
     "schemas": {},

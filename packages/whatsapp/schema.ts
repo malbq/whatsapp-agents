@@ -198,8 +198,9 @@ export const templateMessageSchema = z.object({
   name: z.string(),
   language: z.string(),
   headerParameters: templateParametersSchema.optional(),
-  bodyParameters: templateParametersSchema,
+  bodyParameters: templateParametersSchema.optional(),
   footerParameters: templateParametersSchema.optional(),
+  flowToken: z.string().optional(),
 })
 
 export const unsupportedMessageSchema = z.object({

@@ -11,6 +11,7 @@ declare global {
     BRAVE_SEARCH_API_KEY: string
     GOOGLE_GENERATIVE_AI_API_KEY: string
     GOOGLE_PLACES_API_KEY: string
+    WA_ONBOARDING_TEMPLATE: string
   }
 }
 

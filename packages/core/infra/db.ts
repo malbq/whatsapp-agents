@@ -24,6 +24,7 @@ export namespace DB {
     | 'interactive_button'
     | 'interactive_cta_url'
     | 'reaction'
+    | 'flow_reply'
     | 'unsupported'
     | 'tool-call'
     | 'tool-result'

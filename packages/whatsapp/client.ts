@@ -272,6 +272,25 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
         }
       }
 
+      const flowReply = WhatsAppApi.flowReplyMessageSchema.safeParse(waMessage)
+      if (flowReply.success) {
+        const { flow_token, ...responseData } = JSON.parse(
+          flowReply.data.interactive.nfm_reply.response_json
+        ) as {
+          flow_token: string
+          [key: string]: unknown
+        }
+        return {
+          ...notification,
+          message: {
+            messageWaId: flowReply.data.id,
+            type: 'flow_reply',
+            flowToken: flow_token,
+            responseData,
+          },
+        }
+      }
+
       return {
         ...notification,
         unsupportedType: waMessage.type,
@@ -550,7 +569,8 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
     },
 
     sendTemplate: async (userId, message) => {
-      const { name, language, headerParameters, bodyParameters, footerParameters } = message
+      const { name, language, headerParameters, bodyParameters, footerParameters, flowToken } =
+        message
       const components: Array<WhatsAppApi.TemplateComponent> = []
       if (headerParameters) {
         components.push({
@@ -568,6 +588,14 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
         components.push({
           type: 'footer',
           parameters: convertParameters(footerParameters),
+        })
+      }
+      if (flowToken) {
+        components.push({
+          type: 'button',
+          sub_type: 'flow',
+          index: '0',
+          parameters: [{ type: 'action', action: { flow_token: flowToken } }],
         })
       }
       const requestBody: WhatsAppApi.OutgoingTemplate = {

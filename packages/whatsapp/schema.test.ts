@@ -484,7 +484,6 @@ describe('templateMessageSchema', () => {
       type: 'template',
       name: 'welcome_template',
       language: 'en',
-      bodyParameters: ['John', 'Doe'],
     }
     const result = templateMessageSchema.safeParse(data)
     expect(result.success).toBe(true)
@@ -529,16 +528,6 @@ describe('templateMessageSchema', () => {
       type: 'template',
       name: 'welcome_template',
       bodyParameters: [],
-    }
-    const result = templateMessageSchema.safeParse(data)
-    expect(result.success).toBe(false)
-  })
-
-  test('rejects missing bodyParameters', () => {
-    const data = {
-      type: 'template',
-      name: 'welcome_template',
-      language: 'en',
     }
     const result = templateMessageSchema.safeParse(data)
     expect(result.success).toBe(false)

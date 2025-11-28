@@ -54,6 +54,12 @@ export type ReplyMessage = {
   replyingTo?: string
 }
 
+export type FlowReply = {
+  type: 'flow_reply'
+  flowToken: string
+  responseData: Record<string, unknown>
+}
+
 export type OutgoingMessage =
   | TextMessage
   | OutgoingDocumentMessage
@@ -75,6 +81,7 @@ export type IncomingMessage = (
   | LocationMessage
   | ReactionMessage
   | ContactMessage
+  | FlowReply
 ) &
   ReplyMessage & { messageWaId: string }
 
