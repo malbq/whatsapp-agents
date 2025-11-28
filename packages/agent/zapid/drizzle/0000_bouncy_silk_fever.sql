@@ -59,6 +59,7 @@ CREATE TABLE "resource" (
 	"hash" text NOT NULL,
 	"originalFilename" text,
 	"uploadedAt" timestamp DEFAULT now() NOT NULL,
+	"deletedAt" timestamp,
 	CONSTRAINT "resource_hash_unique" UNIQUE("hash")
 );
 --> statement-breakpoint

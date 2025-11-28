@@ -19,8 +19,7 @@ BEGIN
   INSERT INTO plan_entitlement ("planId", key, value)
   SELECT 'free', entitlements.key, entitlements.value FROM plan, (VALUES
     ('b_enable_profile_tool', 'true'),
-    ('b_enable_file_ingestion', 'true'),
-    ('b_enable_file_storage_retrieval', 'false'),
+    ('b_enable_file_retrieval', 'false'),
     ('b_enable_web_fetch_tool', 'true'),
     ('b_enable_memory_tool', 'false'),
     ('b_enable_web_search_tool', 'false'),
@@ -34,8 +33,7 @@ BEGIN
   INSERT INTO plan_entitlement ("planId", key, value)
   SELECT 'basic', entitlements.key, entitlements.value FROM plan, (VALUES
     ('b_enable_profile_tool', 'true'),
-    ('b_enable_file_ingestion', 'true'),
-    ('b_enable_file_storage_retrieval', 'true'),
+    ('b_enable_file_retrieval', 'true'),
     ('b_enable_web_fetch_tool', 'true'),
     ('b_enable_memory_tool', 'true'),
     ('b_enable_web_search_tool', 'true'),
@@ -49,8 +47,7 @@ BEGIN
   INSERT INTO plan_entitlement ("planId", key, value)
   SELECT 'pro', entitlements.key, entitlements.value FROM plan, (VALUES
     ('b_enable_profile_tool', 'true'),
-    ('b_enable_file_ingestion', 'true'),
-    ('b_enable_file_storage_retrieval', 'true'),
+    ('b_enable_file_retrieval', 'true'),
     ('b_enable_web_fetch_tool', 'true'),
     ('b_enable_memory_tool', 'true'),
     ('b_enable_web_search_tool', 'true'),

@@ -25,7 +25,7 @@ Keep tool chains short and purposeful.
 Typical patterns:
 - \`search_conversation_history\` to recall relevant past messages and facts provided by the user.
 - \`web_search\` => \`web_fetch\` for up-to-date external information.
-- \`search_files\` whenever user requests you to retrieve a file they previously sent.
+- \`search_files\` whenever user requests you to retrieve a file they previously sent. You can deliver documents and images to the user after using \`search_files\` tool.
 </tools>
 
 <styles>

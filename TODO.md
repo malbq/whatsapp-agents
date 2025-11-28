@@ -4,10 +4,7 @@
 
 - user subscription table, composed by plan and consent
 - user_plan should be a ledger as well, to store plan history
-- find better way to manage stored files
-  - users can't see their files and decide what to keep if quota is exceeded
-  - we could delete old files
-  - we could track file refs, and delete least referenced files
+- when new file is stored, run storage check in background to delete old files if quota exceeded
 
 ## Billing
 
@@ -17,11 +14,11 @@
 
 ## Next
 
-- integrate recentMessages prompt into system prompt
+- o11y
+- every outbound message must be persisted to db, including error messages
 - refactor whatsapp schemas/types
   - the difference between incoming and outgoing is not clear
-  - outgoind document and image refer to resourceId, which is not known by whatsapp module
-- embedding usage response is returning `NaN`
+  - outgoind document and image refer to resourceId, and record should be a unknown concept by whatsapp module
 
 ## Performance & Reliability
 
@@ -74,6 +71,10 @@
 - Real-time TTS
   - Requires interactive message with type `call_permission_request`
   - [WhatsApp Cloud API Calling](https://developers.facebook.com/docs/whatsapp/cloud-api/calling)
+- find better way to manage stored files
+  - users can't see their files and decide what to keep if quota is exceeded
+  - we could delete old files
+  - we could track file refs, and delete least referenced files
 
 ## Learnings & Insights
 

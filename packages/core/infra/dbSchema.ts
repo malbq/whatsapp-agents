@@ -90,6 +90,7 @@ export namespace PostgresSchema {
       hash: text().notNull().unique(),
       originalFilename: text(),
       uploadedAt: timestamp({ mode: 'date' }).notNull().defaultNow(),
+      deletedAt: timestamp({ mode: 'date' }),
     },
     (table) => [index().on(table.userId)]
   )

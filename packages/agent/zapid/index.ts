@@ -10,7 +10,7 @@ import { dbFactory } from './db'
 import { ingest, isContentMessage } from './ingest'
 import pkg from './package.json'
 import { checkUserConsent } from './systems/checkUserConsent'
-import { checkMessageQuota, recordMessageUsage } from './systems/enforcement'
+import { hasQuotaRemaining } from './systems/entitlements'
 import { validatePlanCatalogue } from './systems/planCatalogue'
 
 ok(import.meta.env.DATABASE_URL, 'DATABASE_URL is required')
@@ -69,18 +69,16 @@ const webhookApp = createWebhookApp(
           console.debug('[onMessage] Consent check result', { userWaId, canRespond })
           if (!canRespond) return
 
-          const quotaResult = checkMessageQuota()
-          if (!quotaResult.allowed) {
-            console.log('Message quota exceeded', { userWaId, reason: quotaResult.reason })
-            chat.sendText(userWaId, { text: quotaResult.message })
+          if (!hasQuotaRemaining('n_messages_per_day')) {
+            console.log('Message quota exceeded', { userWaId })
+            // TODO send template message
+            chat.sendText(userWaId, {
+              text: '_Você atingiu o limite de mensagens de hoje._',
+            })
             return
           }
 
           await agent()
-
-          await recordMessageUsage().catch((error) => {
-            console.error('Error recording message usage', error)
-          })
         }
       )
     },

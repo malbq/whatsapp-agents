@@ -7,6 +7,8 @@ import { spreadError } from '../utils/spreadError'
 
 export interface WebSearchContext {
   webSearch: WebSearch
+  beforeExecution?: () => void
+  afterExecution?: () => void
 }
 
 export function createWebSearchTool(ctx: WebSearchContext) {
@@ -20,6 +22,7 @@ After discovering relevant URLs, use \`web_fetch\` to retrieve full content when
       query: z.string().describe('The search query to find relevant information on the web.'),
     }),
     execute: async (params, { abortSignal }) => {
+      ctx.beforeExecution?.()
       console.log('web_search tool execution', params)
 
       try {
@@ -65,6 +68,8 @@ After discovering relevant URLs, use \`web_fetch\` to retrieve full content when
           error: 'Tool execution failed',
           details: error instanceof Error ? error.message : 'unknown',
         } satisfies ToolExecutionError
+      } finally {
+        ctx.afterExecution?.()
       }
     },
   })

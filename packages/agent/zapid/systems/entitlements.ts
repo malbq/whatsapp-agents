@@ -2,8 +2,7 @@ import { getContext } from '../context'
 
 export const BOOLEAN_ENTITLEMENTS = [
   'b_enable_profile_tool',
-  'b_enable_file_ingestion',
-  'b_enable_file_storage_retrieval',
+  'b_enable_file_retrieval',
   'b_enable_web_fetch_tool',
   'b_enable_memory_tool',
   'b_enable_web_search_tool',
@@ -32,18 +31,17 @@ export type DailyLedgerEntitlementKey = (typeof DAILY_LEDGER_ENTITLEMENTS)[numbe
 export const ALL_ENTITLEMENTS = [...BOOLEAN_ENTITLEMENTS, ...NUMERIC_ENTITLEMENTS] as const
 
 export async function recordUsage(
-  userId: string,
   key: DailyLedgerEntitlementKey,
   value: number,
   metadata?: Record<string, unknown>
 ): Promise<void> {
-  const { db } = getContext()
+  const { user, db } = getContext()
   if (!DAILY_LEDGER_ENTITLEMENTS.includes(key)) {
     console.warn(`Cannot record usage for non-daily entitlement: ${key}`)
     return
   }
 
-  await db.insertUsageLedger({ userId, key, value, metadata })
+  await db.insertUsageLedger({ userId: user.id, key, value, metadata })
 }
 
 export function isFeatureEnabled(key: BooleanEntitlementKey): boolean {

@@ -45,7 +45,7 @@ export const outgoingDocumentMessageSchema = z
       .optional()
       .describe('Max 1024 characters. Exceeding this limit will be truncated.'),
   })
-  .describe('Deliver a document to the user. Only call this after using `search_files` tool.')
+  .describe('Deliver a document to the user.')
 
 export const outgoingImageMessageSchema = z
   .object({
@@ -56,7 +56,7 @@ export const outgoingImageMessageSchema = z
       .optional()
       .describe('Max 1024 characters. Exceeding this limit will be truncated.'),
   })
-  .describe('Deliver an image to the user. Only call this after using `search_files` tool.')
+  .describe('Deliver an image to the user.')
 
 export const locationMessageSchema = z
   .object({

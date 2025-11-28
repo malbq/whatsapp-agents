@@ -6,7 +6,6 @@ import {
   createSearchConversationHistoryTool,
   createSearchFilesTool,
   createSendReactionTool,
-  createSendTextTool,
   createWebSearchTool,
   webFetchTool,
 } from '@batman/core/tools'
@@ -17,11 +16,11 @@ import { stepCountIs, type ModelMessage, type ToolSet } from 'ai'
 import { ok } from 'node:assert'
 import { getContext } from '../context'
 import type { ZapidRepository } from '../db'
-import { recentMessages as recentMessagesPrompt } from '../prompts/recentMessages'
 import { system } from '../prompts/system'
 import { userProfile } from '../prompts/userProfile'
 import { googlePlacesTool } from '../tools/googlePlaces'
 import { updateUserProfileTool } from '../tools/updateUserProfile'
+import { hasQuotaRemaining, isFeatureEnabled, recordUsage } from './entitlements'
 
 const model = openai.responses('gpt-5-mini-2025-08-07')
 const MAX_STEPS = 10
@@ -60,7 +59,7 @@ export async function responseGeneration() {
 
   await fillMediaMessagesWithData(recentMessages)
   agentContext.push(
-    toSystemModelMessage(recentMessagesPrompt),
+    //toSystemModelMessage(recentMessagesPrompt),
     ...recentMessages.map((message) => message.modelMessage)
   )
 
@@ -155,18 +154,18 @@ function createToolSet({ userId, recentMessageIds, lastUserMessageWaId }: Create
   const { user, chat, db, webSearch } = getContext()
   ok(user, 'User not found')
 
-  const webSearchTool = createWebSearchTool({ webSearch })
+  const webSearchTool = createWebSearchTool({
+    webSearch,
+    afterExecution() {
+      recordUsage('n_web_search_calls_per_day', 1)
+    },
+  })
 
   const sendReactionTool = createSendReactionTool({
     sendReaction: async (emoji) => {
       if (!lastUserMessageWaId) return
       return chat.sendReaction(user.waId, { emoji, targetMessageId: lastUserMessageWaId })
     },
-  })
-
-  const sendTextTool = createSendTextTool({
-    userWhatsappId: user.waId,
-    sendText: (text) => chat.sendText(user.waId, { text }),
   })
 
   const searchConversationHistoryTool = createSearchConversationHistoryTool({
@@ -180,14 +179,33 @@ function createToolSet({ userId, recentMessageIds, lastUserMessageWaId }: Create
     searchResources: db.searchResources,
   })
 
-  return {
-    [updateUserProfileTool.title!]: updateUserProfileTool,
+  const toolset: ToolSet = {
     [sendReactionTool.title!]: sendReactionTool,
-    [sendTextTool.title!]: sendTextTool,
-    [searchConversationHistoryTool.title!]: searchConversationHistoryTool,
-    [searchFilesTool.title!]: searchFilesTool,
-    [webSearchTool.title!]: webSearchTool,
-    [webFetchTool.title!]: webFetchTool,
-    [googlePlacesTool.title!]: googlePlacesTool,
-  } satisfies ToolSet
+  }
+  if (isFeatureEnabled('b_enable_memory_tool')) {
+    toolset[searchConversationHistoryTool.title!] = searchConversationHistoryTool
+  }
+  if (isFeatureEnabled('b_enable_file_retrieval')) {
+    toolset[searchFilesTool.title!] = searchFilesTool
+  }
+  if (isFeatureEnabled('b_enable_profile_tool')) {
+    toolset[updateUserProfileTool.title!] = updateUserProfileTool
+  }
+  if (
+    isFeatureEnabled('b_enable_web_search_tool') &&
+    hasQuotaRemaining('n_web_search_calls_per_day')
+  ) {
+    toolset[webSearchTool.title!] = webSearchTool
+  }
+  if (isFeatureEnabled('b_enable_web_fetch_tool')) {
+    toolset[webFetchTool.title!] = webFetchTool
+  }
+  if (
+    isFeatureEnabled('b_enable_google_places_tool') &&
+    hasQuotaRemaining('n_google_places_calls_per_day')
+  ) {
+    toolset[googlePlacesTool.title!] = googlePlacesTool
+  }
+
+  return toolset
 }

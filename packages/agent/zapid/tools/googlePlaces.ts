@@ -2,6 +2,7 @@ import type { ToolExecutionError } from '@batman/core/errors'
 import { spreadError } from '@batman/core/utils/spreadError'
 import { tool } from 'ai'
 import { z } from 'zod'
+import { recordUsage } from '../systems/entitlements'
 
 interface PlacesSearchResponse {
   places?: GooglePlace[]
@@ -126,6 +127,8 @@ Examples of queries that this tool can handle:
         error: 'Tool execution failed',
         details: error instanceof Error ? error.message : 'unknown',
       } satisfies ToolExecutionError
+    } finally {
+      recordUsage('n_google_places_calls_per_day', 1)
     }
   },
 })

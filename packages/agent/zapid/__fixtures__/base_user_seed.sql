@@ -8,8 +8,7 @@ VALUES ('basic', true, '{"displayName": "Basic"}', NOW());
 -- Create plan entitlements for basic plan
 INSERT INTO "plan_entitlement" ("planId", "key", "value") VALUES
   ('basic', 'b_enable_profile_tool', 'true'),
-  ('basic', 'b_enable_file_ingestion', 'true'),
-  ('basic', 'b_enable_file_storage_retrieval', 'true'),
+  ('basic', 'b_enable_file_retrieval', 'true'),
   ('basic', 'b_enable_web_fetch_tool', 'true'),
   ('basic', 'b_enable_memory_tool', 'true'),
   ('basic', 'b_enable_web_search_tool', 'true'),

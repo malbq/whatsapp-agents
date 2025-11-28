@@ -4,11 +4,25 @@ import type { WebSearch } from '@batman/core/infra/webSearch'
 import { WebSearchBrave } from '@batman/core/infra/webSearchBrave'
 import type { Chat } from '@batman/whatsapp'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
+import { and, eq } from 'drizzle-orm'
 import { styleText } from 'node:util'
 import { agent } from './agent'
 import { runContext } from './context'
 import { dbFactory, type UserEntitlements, type UserWithProfile, type ZapidRepository } from './db'
+import { userQuota } from './dbSchema'
 import { ingest } from './ingest'
+
+async function queryUserQuota(
+  db: ZapidRepository,
+  userId: string,
+  key: string
+): Promise<{ used: number } | undefined> {
+  const rows = await db.$client
+    .select({ used: userQuota.used })
+    .from(userQuota)
+    .where(and(eq(userQuota.userId, userId), eq(userQuota.key, key)))
+  return rows[0]
+}
 
 interface MockChat extends Chat {
   sentMessages: Array<
@@ -206,6 +220,103 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
       })
     },
     { timeout: 60000 }
+  )
+
+  test(
+    'tracks message usage in usage_ledger and v_user_quota',
+    async () => {
+      // Verify initial state - no usage recorded
+      const initialLedger = await db.$client.query.usageLedger.findMany({
+        where: (ledger, { eq }) => eq(ledger.userId, seededUser.id),
+      })
+      expect(initialLedger).toHaveLength(0)
+
+      const initialQuota = await queryUserQuota(db, seededUser.id, 'n_messages_per_day')
+      expect(initialQuota).toBeDefined()
+      expect(initialQuota!.used).toBe(0)
+
+      // Send first message
+      await runContext(
+        {
+          db,
+          storage,
+          chat,
+          webSearch,
+          user: seededUser,
+          entitlements: seededEntitlements,
+          notification: {
+            userName: seededUser.name,
+            userWaId: seededUser.waId,
+            userPhone: seededUser.waId,
+            timestamp: new Date(),
+            message: {
+              type: 'text',
+              messageWaId: 'wamid.usage.1',
+              text: 'Hello',
+            },
+          },
+        },
+        async () => {
+          await ingest()
+          await agent()
+        }
+      )
+
+      // Verify usage_ledger has an entry
+      const ledgerAfterFirst = await db.$client.query.usageLedger.findMany({
+        where: (ledger, { eq }) => eq(ledger.userId, seededUser.id),
+      })
+      expect(ledgerAfterFirst).toHaveLength(1)
+      expect(ledgerAfterFirst[0]).toMatchObject({
+        userId: seededUser.id,
+        key: 'n_messages_per_day',
+        value: 1,
+      })
+
+      // Verify v_user_quota shows used = 1
+      const quotaAfterFirst = await queryUserQuota(db, seededUser.id, 'n_messages_per_day')
+      expect(quotaAfterFirst).toBeDefined()
+      expect(quotaAfterFirst!.used).toBe(1)
+
+      // Send second message
+      await runContext(
+        {
+          db,
+          storage,
+          chat,
+          webSearch,
+          user: seededUser,
+          entitlements: seededEntitlements,
+          notification: {
+            userName: seededUser.name,
+            userWaId: seededUser.waId,
+            userPhone: seededUser.waId,
+            timestamp: new Date(),
+            message: {
+              type: 'text',
+              messageWaId: 'wamid.usage.2',
+              text: 'How are you?',
+            },
+          },
+        },
+        async () => {
+          await ingest()
+          await agent()
+        }
+      )
+
+      // Verify usage_ledger has two entries
+      const ledgerAfterSecond = await db.$client.query.usageLedger.findMany({
+        where: (ledger, { eq }) => eq(ledger.userId, seededUser.id),
+      })
+      expect(ledgerAfterSecond).toHaveLength(2)
+
+      // Verify v_user_quota shows used = 2
+      const quotaAfterSecond = await queryUserQuota(db, seededUser.id, 'n_messages_per_day')
+      expect(quotaAfterSecond).toBeDefined()
+      expect(quotaAfterSecond!.used).toBe(2)
+    },
+    { timeout: 120000 }
   )
 
   test(
@@ -449,6 +560,232 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
   )
 
   test(
+    'tracks web_search tool usage in usage_ledger and v_user_quota',
+    async () => {
+      // Verify initial state - no web_search usage recorded
+      const initialLedger = await db.$client.query.usageLedger.findMany({
+        where: (ledger, { and, eq }) =>
+          and(eq(ledger.userId, seededUser.id), eq(ledger.key, 'n_web_search_calls_per_day')),
+      })
+      expect(initialLedger).toHaveLength(0)
+
+      const initialQuota = await queryUserQuota(db, seededUser.id, 'n_web_search_calls_per_day')
+      expect(initialQuota).toBeDefined()
+      expect(initialQuota!.used).toBe(0)
+
+      // Send a message that triggers web_search
+      await runContext(
+        {
+          db,
+          storage,
+          chat,
+          webSearch,
+          user: seededUser,
+          entitlements: seededEntitlements,
+          notification: {
+            userName: seededUser.name,
+            userWaId: seededUser.waId,
+            userPhone: seededUser.waId,
+            timestamp: new Date(),
+            message: {
+              type: 'text',
+              messageWaId: 'wamid.websearch.usage.1',
+              text: 'What is the current price of Bitcoin in USD as of today in 2025?',
+            },
+          },
+        },
+        async () => {
+          await ingest()
+          await agent()
+        }
+      )
+
+      // Verify usage_ledger has an entry for web_search
+      const ledgerAfter = await db.$client.query.usageLedger.findMany({
+        where: (ledger, { and, eq }) =>
+          and(eq(ledger.userId, seededUser.id), eq(ledger.key, 'n_web_search_calls_per_day')),
+      })
+      expect(ledgerAfter.length).toBeGreaterThanOrEqual(1)
+      expect(ledgerAfter[0]).toMatchObject({
+        userId: seededUser.id,
+        key: 'n_web_search_calls_per_day',
+        value: 1,
+      })
+
+      // Verify v_user_quota shows used >= 1
+      const quotaAfter = await queryUserQuota(db, seededUser.id, 'n_web_search_calls_per_day')
+      expect(quotaAfter).toBeDefined()
+      expect(quotaAfter!.used).toBeGreaterThanOrEqual(1)
+    },
+    { timeout: 120000 }
+  )
+
+  test(
+    'tracks google_places tool usage in usage_ledger and v_user_quota',
+    async () => {
+      // Verify initial state - no google_places usage recorded
+      const initialLedger = await db.$client.query.usageLedger.findMany({
+        where: (ledger, { and, eq }) =>
+          and(eq(ledger.userId, seededUser.id), eq(ledger.key, 'n_google_places_calls_per_day')),
+      })
+      expect(initialLedger).toHaveLength(0)
+
+      const initialQuota = await queryUserQuota(db, seededUser.id, 'n_google_places_calls_per_day')
+      expect(initialQuota).toBeDefined()
+      expect(initialQuota!.used).toBe(0)
+
+      // Send a message that triggers google_places
+      await runContext(
+        {
+          db,
+          storage,
+          chat,
+          webSearch,
+          user: seededUser,
+          entitlements: seededEntitlements,
+          notification: {
+            userName: seededUser.name,
+            userWaId: seededUser.waId,
+            userPhone: seededUser.waId,
+            timestamp: new Date(),
+            message: {
+              type: 'text',
+              messageWaId: 'wamid.places.usage.1',
+              text: 'Send me the location of the Eiffel Tower',
+            },
+          },
+        },
+        async () => {
+          await ingest()
+          await agent()
+        }
+      )
+
+      // Verify usage_ledger has an entry for google_places
+      const ledgerAfter = await db.$client.query.usageLedger.findMany({
+        where: (ledger, { and, eq }) =>
+          and(eq(ledger.userId, seededUser.id), eq(ledger.key, 'n_google_places_calls_per_day')),
+      })
+      expect(ledgerAfter.length).toBe(1)
+      expect(ledgerAfter[0]).toMatchObject({
+        userId: seededUser.id,
+        key: 'n_google_places_calls_per_day',
+        value: 1,
+      })
+
+      // Verify v_user_quota shows used = 1
+      const quotaAfter = await queryUserQuota(db, seededUser.id, 'n_google_places_calls_per_day')
+      expect(quotaAfter).toBeDefined()
+      expect(quotaAfter!.used).toBe(1)
+    },
+    { timeout: 120000 }
+  )
+
+  test(
+    'tracks file storage usage in resource table and v_user_quota',
+    async () => {
+      // Verify initial state - no storage usage
+      const initialResources = await db.$client.query.resource.findMany({
+        where: (resource, { eq }) => eq(resource.userId, seededUser.id),
+      })
+      expect(initialResources).toHaveLength(0)
+
+      const initialQuota = await queryUserQuota(db, seededUser.id, 'n_storage_size')
+      expect(initialQuota).toBeDefined()
+      expect(initialQuota!.used).toBe(0)
+
+      // Send first image
+      const imgBuffer = Uint8Array.fromBase64(imgBase64).buffer
+      const imgSize = imgBuffer.byteLength
+
+      await runContext(
+        {
+          db,
+          storage,
+          chat,
+          webSearch,
+          user: seededUser,
+          entitlements: seededEntitlements,
+          notification: {
+            userName: seededUser.name,
+            userWaId: seededUser.waId,
+            userPhone: seededUser.waId,
+            timestamp: new Date(),
+            message: {
+              type: 'image',
+              messageWaId: 'wamid.storage.1',
+              data: imgBuffer,
+              mimeType: 'image/png',
+            },
+          },
+        },
+        async () => {
+          await ingest()
+          await agent()
+        }
+      )
+
+      // Verify resource table has an entry with correct size
+      const resourcesAfterFirst = await db.$client.query.resource.findMany({
+        where: (resource, { eq }) => eq(resource.userId, seededUser.id),
+      })
+      expect(resourcesAfterFirst).toHaveLength(1)
+      expect(resourcesAfterFirst[0]!.size).toBe(imgSize)
+
+      // Verify v_user_quota shows used = imgSize
+      const quotaAfterFirst = await queryUserQuota(db, seededUser.id, 'n_storage_size')
+      expect(quotaAfterFirst).toBeDefined()
+      expect(quotaAfterFirst!.used).toBe(imgSize)
+
+      // Send second image (different hash by adding timestamp to force new resource)
+      const secondImgData = new Uint8Array(imgBuffer.byteLength + 8)
+      secondImgData.set(new Uint8Array(imgBuffer), 0)
+      new DataView(secondImgData.buffer).setBigUint64(imgBuffer.byteLength, BigInt(Date.now()))
+      const secondImgBuffer = secondImgData.buffer
+      const secondImgSize = secondImgBuffer.byteLength
+
+      await runContext(
+        {
+          db,
+          storage,
+          chat,
+          webSearch,
+          user: seededUser,
+          entitlements: seededEntitlements,
+          notification: {
+            userName: seededUser.name,
+            userWaId: seededUser.waId,
+            userPhone: seededUser.waId,
+            timestamp: new Date(),
+            message: {
+              type: 'image',
+              messageWaId: 'wamid.storage.2',
+              data: secondImgBuffer,
+              mimeType: 'image/png',
+            },
+          },
+        },
+        async () => {
+          await ingest()
+          await agent()
+        }
+      )
+
+      // Verify resource table has two entries
+      const resourcesAfterSecond = await db.$client.query.resource.findMany({
+        where: (resource, { eq }) => eq(resource.userId, seededUser.id),
+      })
+      expect(resourcesAfterSecond).toHaveLength(2)
+
+      // Verify v_user_quota shows cumulative storage usage
+      const quotaAfterSecond = await queryUserQuota(db, seededUser.id, 'n_storage_size')
+      expect(quotaAfterSecond).toBeDefined()
+      expect(quotaAfterSecond!.used).toBe(imgSize + secondImgSize)
+    },
+    { timeout: 120000 }
+  )
+
+  test(
     'embeds text messages',
     async () => {
       const text = 'Hello.'
@@ -558,7 +895,7 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
               chat,
               webSearch,
               user: seededUser,
-          entitlements: seededEntitlements,
+              entitlements: seededEntitlements,
               notification: {
                 userName: seededUser.name,
                 userWaId: seededUser.waId,
@@ -695,7 +1032,7 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
             chat,
             webSearch,
             user: seededUser,
-          entitlements: seededEntitlements,
+            entitlements: seededEntitlements,
             notification: {
               userName: seededUser.name,
               userWaId: seededUser.waId,
@@ -723,7 +1060,7 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
             chat,
             webSearch,
             user: seededUser,
-          entitlements: seededEntitlements,
+            entitlements: seededEntitlements,
             notification: {
               userName: seededUser.name,
               userWaId: seededUser.waId,

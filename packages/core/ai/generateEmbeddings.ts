@@ -1,7 +1,6 @@
 import { createOpenAI } from '@ai-sdk/openai'
 import { embedMany } from 'ai'
 import { inspect } from 'node:util'
-import { createCloudflareCompatibleFetch } from '../utils/cloudflareFetch'
 import { splitIntoChunks } from '../utils/splitIntoChunks'
 
 export interface ChunkData {
@@ -17,7 +16,6 @@ const accountId = import.meta.env.CF_ACCOUNT_ID
 export const cfProvider = createOpenAI({
   baseURL: `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/v1`,
   apiKey: import.meta.env.CF_API_TOKEN,
-  fetch: createCloudflareCompatibleFetch(fetch),
 })
 
 const embeddingModel = cfProvider.textEmbeddingModel('@cf/google/embeddinggemma-300m')
@@ -45,7 +43,6 @@ export const generateEmbeddings: GenerateEmbeddings = async (texts) => {
       {
         input: texts,
         totalChunks: allChunks.length,
-        usage: result.usage,
         responseHeaders: result.responses?.[0]?.headers,
       },
       { depth: null }

@@ -1,4 +1,16 @@
-import { and, desc, eq, inArray, isNotNull, lte, notInArray, or, sql, type SQL } from 'drizzle-orm'
+import {
+  and,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  lte,
+  notInArray,
+  or,
+  sql,
+  type SQL,
+} from 'drizzle-orm'
 import type { BunSQLDatabase } from 'drizzle-orm/bun-sql'
 import { inspect } from 'node:util'
 import { FailedToPersistUserError } from '../errors'
@@ -358,11 +370,13 @@ export namespace Postgres {
           queryEmbedding,
           limit: MAX_FILES * 10,
           rrfK: RRF_K,
-          extraConditions: [isNotNull(Schema.message.resourceId)],
+          extraConditions: [
+            isNotNull(Schema.message.resourceId),
+            isNull(Schema.resource.deletedAt),
+          ],
           joinResource: true,
         })
 
-        // Group by resourceId
         const groups = new Map<
           string,
           {

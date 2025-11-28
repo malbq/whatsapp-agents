@@ -40,6 +40,7 @@ import type { TextMessage } from '@batman/whatsapp'
 import { ok } from 'node:assert'
 import { getContext } from './context'
 import { embedOutboundMessages } from './systems/embedOutboundMessages'
+import { recordUsage } from './systems/entitlements'
 import { responseGeneration } from './systems/responseGeneration'
 import { storeAgentResponse } from './systems/storeAgentResponse'
 
@@ -73,6 +74,7 @@ export async function agent(): Promise<void> {
   try {
     await storeAgentResponse()
     await embedOutboundMessages()
+    await recordUsage('n_messages_per_day', 1)
   } catch (error) {
     console.error("Error after agent's response", error)
   }
