@@ -44,14 +44,20 @@ export const plan = pgTable('plan', {
   createdAt: timestamp({ mode: 'date' }).notNull().defaultNow(),
 })
 
-export const userPlan = pgTable('user_plan', {
-  userId: text()
-    .primaryKey()
-    .references(() => user.id),
-  planId: text()
-    .notNull()
-    .references(() => plan.id),
-})
+export const userSubscription = pgTable(
+  'user_subscription',
+  {
+    id: PostgresSchema.uuidv7().primaryKey(),
+    userId: text()
+      .notNull()
+      .references(() => user.id),
+    planId: text()
+      .notNull()
+      .references(() => plan.id),
+    startedAt: timestamp({ mode: 'date' }).notNull().defaultNow(),
+  },
+  (table) => [index('idx_user_subscription_user_id').on(table.userId)]
+)
 
 export const planEntitlement = pgTable(
   'plan_entitlement',
@@ -120,14 +126,19 @@ export const userQuota = pgView('v_user_quota', {
     FROM resource
     GROUP BY "userId"
   ),
+  latest_subscription AS (
+    SELECT DISTINCT ON ("userId") "userId", "planId"
+    FROM user_subscription
+    ORDER BY "userId", "startedAt" DESC
+  ),
   resolved_entitlements AS (
     SELECT
       u.id AS "userId",
       pe.key,
       CAST(COALESCE(ueo.value, pe.value) AS INTEGER) AS limit_value
     FROM "user" u
-    JOIN user_plan up ON up."userId" = u.id
-    JOIN plan_entitlement pe ON pe."planId" = up."planId"
+    JOIN latest_subscription us ON us."userId" = u.id
+    JOIN plan_entitlement pe ON pe."planId" = us."planId"
     LEFT JOIN user_entitlement_override ueo ON ueo."userId" = u.id AND ueo.key = pe.key
     WHERE pe.key IN (
       'n_messages_per_day',
@@ -156,38 +167,30 @@ export const userQuota = pgView('v_user_quota', {
   LEFT JOIN storage_usage su ON su."userId" = re."userId"
 `)
 
-export const userConsent = pgTable('user_consent', {
-  userId: text()
-    .primaryKey()
-    .references(() => user.id),
-  consentedAt: timestamp({ mode: 'date' }).notNull().defaultNow(),
-})
 
-export const userRelations = relations(user, ({ many, one }) => ({
+
+export const userRelations = relations(user, ({ many }) => ({
   profileVersions: many(userProfileVersion),
   messages: many(message),
   resources: many(resource),
   reminders: many(reminder),
-  userPlan: one(userPlan, {
-    fields: [user.id],
-    references: [userPlan.userId],
-  }),
+  subscriptions: many(userSubscription),
   entitlementOverrides: many(userEntitlementOverride),
   usageLedgerEntries: many(usageLedger),
 }))
 
 export const planRelations = relations(plan, ({ many }) => ({
   entitlements: many(planEntitlement),
-  userPlans: many(userPlan),
+  subscriptions: many(userSubscription),
 }))
 
-export const userPlanRelations = relations(userPlan, ({ one }) => ({
+export const userSubscriptionRelations = relations(userSubscription, ({ one }) => ({
   user: one(user, {
-    fields: [userPlan.userId],
+    fields: [userSubscription.userId],
     references: [user.id],
   }),
   plan: one(plan, {
-    fields: [userPlan.planId],
+    fields: [userSubscription.planId],
     references: [plan.id],
   }),
 }))

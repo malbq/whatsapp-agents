@@ -1,5 +1,5 @@
 -- Base user seed for agent tests
--- Creates a user with consent, plan, and entitlements ready for agent interactions
+-- Creates a user with subscription (consent + plan) and entitlements ready for agent interactions
 
 -- Create the 'basic' plan (all features enabled)
 INSERT INTO "plan" ("id", "active", "metadata", "createdAt") 
@@ -22,10 +22,6 @@ INSERT INTO "plan_entitlement" ("planId", "key", "value") VALUES
 INSERT INTO "user" ("id", "waId", "name", "joinedAt") 
 VALUES ('user_test_1', '1234567890', 'Test User', NOW());
 
--- Create user consent (using userId instead of waId)
-INSERT INTO "user_consent" ("userId", "consentedAt")
-VALUES ('user_test_1', NOW());
-
--- Assign user to plan
-INSERT INTO "user_plan" ("userId", "planId")
-VALUES ('user_test_1', 'basic');
+-- Create user subscription (consent + plan assignment)
+INSERT INTO "user_subscription" ("id", "userId", "planId")
+VALUES ('019acb4c-db66-7097-aa07-596d8b55aeff', 'user_test_1', 'basic');

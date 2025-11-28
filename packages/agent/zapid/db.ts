@@ -1,6 +1,6 @@
 import type { DB } from '@batman/core/infra/db'
 import { Postgres } from '@batman/core/infra/dbPostgres'
-import { and, eq, inArray, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, sql } from 'drizzle-orm'
 import { BunSQLDatabase, drizzle } from 'drizzle-orm/bun-sql'
 import * as schema from './dbSchema'
 import {
@@ -148,22 +148,48 @@ export const dbFactory = (): ZapidRepository => {
 
     async hasConsent({ userId }) {
       const result = await client.execute(
-        sql`select 1 from ${schema.userConsent} where ${schema.userConsent.userId} = ${userId}`
+        sql`select 1 from ${schema.userSubscription} where ${schema.userSubscription.userId} = ${userId} limit 1`
       )
-      if (result.length > 1) {
-        console.warn('Multiple consents found for user', { userId })
-      }
-      return result.length === 1
+      return result.length >= 1
     },
 
     async completeOnboarding({ userId }) {
-      await client.transaction(async (tx) => {
-        await tx.insert(schema.userConsent).values({ userId }).onConflictDoNothing()
-        await tx.insert(schema.userPlan).values({ userId, planId: 'free' }).onConflictDoNothing()
-      })
+      const existing = await client.execute(
+        sql`select 1 from ${schema.userSubscription} where ${schema.userSubscription.userId} = ${userId} limit 1`
+      )
+      if (existing.length === 0) {
+        await client.insert(schema.userSubscription).values({ userId, planId: 'free' })
+      }
     },
 
     async getUserEntitlements({ userId }) {
+      // Get the latest subscription for this user
+      const latestSubscription = await client
+        .select({ planId: schema.userSubscription.planId })
+        .from(schema.userSubscription)
+        .where(eq(schema.userSubscription.userId, userId))
+        .orderBy(desc(schema.userSubscription.startedAt))
+        .limit(1)
+
+      const subscription = latestSubscription[0]
+      if (!subscription) {
+        // No subscription found, return empty entitlements
+        const features = Object.fromEntries(
+          BOOLEAN_ENTITLEMENTS.map((key) => [key, false])
+        ) as Record<BooleanEntitlementKey, boolean>
+
+        const quotas = Object.fromEntries(
+          NUMERIC_ENTITLEMENTS.map((key) => [
+            key,
+            { limit: 0, used: 0, remaining: 0 },
+          ])
+        ) as Record<NumericEntitlementKey, RemainingUsage>
+
+        return { features, quotas }
+      }
+
+      const { planId } = subscription
+
       const [usageRows, booleanRows] = await Promise.all([
         client
           .select({
@@ -179,18 +205,17 @@ export const dbFactory = (): ZapidRepository => {
             key: schema.planEntitlement.key,
             value: sql<string>`COALESCE(${schema.userEntitlementOverride.value}, ${schema.planEntitlement.value})`,
           })
-          .from(schema.userPlan)
-          .innerJoin(
-            schema.planEntitlement,
-            eq(schema.userPlan.planId, schema.planEntitlement.planId)
-          )
+          .from(schema.planEntitlement)
           .leftJoin(
             schema.userEntitlementOverride,
-            eq(schema.userPlan.userId, schema.userEntitlementOverride.userId)
+            and(
+              eq(schema.userEntitlementOverride.userId, userId),
+              eq(schema.userEntitlementOverride.key, schema.planEntitlement.key)
+            )
           )
           .where(
             and(
-              eq(schema.userPlan.userId, userId),
+              eq(schema.planEntitlement.planId, planId),
               inArray(schema.planEntitlement.key, BOOLEAN_ENTITLEMENTS)
             )
           ),

@@ -2,8 +2,6 @@
 
 ## User Management
 
-- user subscription table, composed by plan and consent
-- user_plan should be a ledger as well, to store plan history
 - when new file is stored, run storage check in background to delete old files if quota exceeded
 
 ## Billing
