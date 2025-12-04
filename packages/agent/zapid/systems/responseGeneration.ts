@@ -73,6 +73,7 @@ export async function responseGeneration() {
     model,
     system,
     messages: agentContext,
+    abortSignal: context.abortSignal,
     tools: createToolSet({
       userId: user.id,
       recentMessageIds,

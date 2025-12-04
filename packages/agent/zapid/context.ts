@@ -17,25 +17,49 @@ type Context = {
   outbound: DB.MessageInsert[]
   responseOutput?: OutgoingMessage
   improvedProfile?: string
+  abortSignal: AbortSignal
 }
 
 const asyncLocalStorage = new AsyncLocalStorage<Context>()
+const activeGenerations = new Map<string, AbortController>()
 
 export function runContext<T>(
-  initContext: Omit<Context, 'outbound'> & { outbound?: Context['outbound'] },
+  initContext: Omit<Context, 'outbound' | 'abortSignal'> & { outbound?: Context['outbound'] },
   callback: () => Promise<T>
 ): Promise<T> {
-  return asyncLocalStorage.run(
-    {
-      ...initContext,
-      outbound: initContext.outbound ?? [],
-    },
-    callback
-  )
+  const userId = initContext.user.id
+
+  const existing = activeGenerations.get(userId)
+  if (existing) {
+    console.debug(`[context] Aborting in-flight generation for user ${userId}`)
+    existing.abort()
+  }
+
+  const abortController = new AbortController()
+  activeGenerations.set(userId, abortController)
+
+  return asyncLocalStorage
+    .run(
+      {
+        ...initContext,
+        outbound: initContext.outbound ?? [],
+        abortSignal: abortController.signal,
+      },
+      callback
+    )
+    .finally(() => {
+      if (activeGenerations.get(userId) === abortController) {
+        activeGenerations.delete(userId)
+      }
+    })
 }
 
-export const getContext = () => {
+export function getContext() {
   const context = asyncLocalStorage.getStore()
   ok(context, 'Context not found')
   return context
+}
+
+export function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === 'AbortError'
 }

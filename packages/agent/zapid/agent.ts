@@ -38,7 +38,7 @@ import { toDbMessage } from '@batman/core/utils/toDbMessage'
 import { toAssistantModelMessage } from '@batman/core/utils/toModelMessage'
 import type { TextMessage } from '@batman/whatsapp'
 import { ok } from 'node:assert'
-import { getContext } from './context'
+import { getContext, isAbortError } from './context'
 import { embedOutboundMessages } from './systems/embedOutboundMessages'
 import { recordUsage } from './systems/entitlements'
 import { responseGeneration } from './systems/responseGeneration'
@@ -55,6 +55,11 @@ export async function agent(): Promise<void> {
   try {
     await responseGeneration()
   } catch (error) {
+    if (isAbortError(error)) {
+      console.debug('Response generation aborted - user sent new message')
+      return
+    }
+
     console.error('Response flow error', { error })
 
     const errorMessage: TextMessage = {

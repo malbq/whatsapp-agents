@@ -109,7 +109,10 @@ export async function generateWhatsappMessage<TOOLS extends ToolSet>({
   }
 }
 
-function extractOutput(result: { output: GeneratedWhatsappResponse; text: string }): GeneratedWhatsappMessage {
+function extractOutput(result: {
+  output: GeneratedWhatsappResponse
+  text: string
+}): GeneratedWhatsappMessage {
   const jsonCodeBlockPrefix = /^json\n/
 
   try {
