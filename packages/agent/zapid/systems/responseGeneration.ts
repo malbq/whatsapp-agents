@@ -88,9 +88,10 @@ export async function responseGeneration() {
       },
     },
   }).catch((error) => {
-    if (RetryError.isInstance(error)) {
-      // TODO: probably caused by flex service
-    } else if (error instanceof DOMException && error.name === 'TimeoutError') {
+    if (
+      RetryError.isInstance(error) ||
+      (error instanceof DOMException && error.name === 'TimeoutError')
+    ) {
       // TODO: probably caused by flex service
     }
     throw error

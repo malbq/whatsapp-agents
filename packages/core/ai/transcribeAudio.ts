@@ -9,7 +9,7 @@ const transcriptionModel = googleProvider('gemini-2.5-flash')
 const TRANSCRIPTION_GEN_TEMP = 0
 
 export interface TranscribeAudio {
-  (params: { instructions?: string; audio: ArrayBuffer }): Promise<string>
+  (params: { instructions?: string; audio: ArrayBuffer; mimeType: string }): Promise<string>
 }
 
 const defaultInstructions = 'Transcribe the audio file'
@@ -17,12 +17,13 @@ const defaultInstructions = 'Transcribe the audio file'
 export const transcribeAudio: TranscribeAudio = async ({
   instructions = defaultInstructions,
   audio,
+  mimeType,
 }) => {
   const result = await generateText({
     model: transcriptionModel,
     temperature: TRANSCRIPTION_GEN_TEMP,
     system: instructions,
-    messages: [{ role: 'user', content: [{ type: 'file', data: audio, mediaType: 'audio/ogg' }] }],
+    messages: [{ role: 'user', content: [{ type: 'file', data: audio, mediaType: mimeType }] }],
   })
 
   console.debug(`Audio transcribed with ${transcriptionModel.modelId}`, {

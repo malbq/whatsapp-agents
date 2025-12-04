@@ -2,7 +2,6 @@
 
 ## Fixes
 
-- Audio sent as document get application/octet-stream mime type and breaks model response (msg id 019ad748-f37e-7000-8ac9-39450cc9eee0)
 - Assistant couldn't analyze youtube video
 - web_fetch errors are outputing html that must be parsed or ignored before being sent to model - we could ignore if content-type header is text/html
 
@@ -24,7 +23,6 @@
 
 ## Performance & Reliability
 
-- Retry when model fails to respect output schema
 - Resend typing indicator after whatsapp time out while assistant is generating response (indicator lasts 25s)
 - Support user sending contact/location messages
 - Cost Monitoring: Set up alerts for AI provider usage thresholds (e.g., via OpenAI dashboard hooks)

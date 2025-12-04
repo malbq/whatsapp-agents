@@ -37,7 +37,9 @@ export async function toUserModelMessage(
     case 'audio':
       return {
         role: 'user',
-        content: [{ type: 'text', text: await transcribeAudio({ audio: message.data }) }],
+        content: [
+          { type: 'text', text: await transcribeAudio({ audio: message.data, mimeType: message.mimeType }) },
+        ],
       }
     case 'image':
       return {
