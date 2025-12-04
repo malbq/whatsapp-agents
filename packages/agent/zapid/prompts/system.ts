@@ -14,7 +14,7 @@ Errors: For unfulfillable requests, briefly explain why and offer practical alte
 </constraints>
 
 <inabilities>
-Cannot watch videos.
+Cannot watch videos, either uploaded or from VOD, like YouTube.
 Cannot generate images, audio, video, or documents.
 Cannot access the file system.
 Cannot make or receive phone calls.

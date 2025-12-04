@@ -1,9 +1,9 @@
 # Progress
 
-## Fixes
+## To Do
 
-- Assistant couldn't analyze youtube video
-- web_fetch errors are outputing html that must be parsed or ignored before being sent to model - we could ignore if content-type header is text/html
+- Halt generation when user sends another message before assistant responds - do not halt ingestion
+- What should we do for long audios? One user send a 10min audio.
 
 ## Billing
 
@@ -21,6 +21,11 @@
   - the difference between incoming and outgoing is not clear
   - outgoind document and image refer to resourceId, and record should be a unknown concept by whatsapp module
 
+## UX Improvements
+
+- flag assistant messages with sent/delivered/read/failed status
+- Handle openai flex service availability error - respond with "try again later"
+
 ## Performance & Reliability
 
 - Resend typing indicator after whatsapp time out while assistant is generating response (indicator lasts 25s)
@@ -30,12 +35,6 @@
 - Retry mechanisms
 - Improved error handling
 - Test Parallel Search API: https://parallel.ai/blog/introducing-parallel-search
-
-## UX Improvements
-
-- flag assistant messages with sent/delivered/read/failed status
-- Halt generation when user sends another message before assistant responds - do not halt audio or file ingestion
-- Handle openai flex service availability error - respond with "try again later"
 
 ## Privacy & Compliance
 
@@ -57,6 +56,7 @@
 
 ## Future (after MVP)
 
+- Assistant couldn't analyze youtube video, should we try to do it via gemini?
 - TTS: Answer with audio message
 - Video processing
 - Tools:
