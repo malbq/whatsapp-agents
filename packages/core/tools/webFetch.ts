@@ -28,7 +28,10 @@ export const webFetchTool = tool({
     try {
       if (!/^https?:\/\//i.test(params.url)) {
         console.warn('web_fetch invalid URL format', params)
-        return 'invalid URL (must start with http:// or https://)'
+        return {
+          error: 'Invalid URL',
+          details: 'URL must start with http:// or https://',
+        } satisfies ToolExecutionError
       }
 
       const { format = 'text' } = params
@@ -59,18 +62,28 @@ export const webFetchTool = tool({
       clearTimeout(t)
 
       if (!resp) {
-        console.error('web_fetch no response received', { ...params })
-        return 'network error'
+        return {
+          error: 'Network error',
+          details: 'No response received from server',
+        } satisfies ToolExecutionError
       }
+
       if (!resp.ok) {
         const errorText = await resp.text()
+        const contentType = resp.headers.get('content-type') || ''
+        const errorContent = contentType.includes('text/html')
+          ? await extractTextFromHTML(errorText)
+          : errorText
         console.error('web_fetch HTTP error', {
           ...params,
           status: resp.status,
           statusText: resp.statusText,
-          error: errorText,
+          error: errorContent,
         })
-        return `request failed (${resp.status} ${resp.statusText})`
+        return {
+          error: `HTTP ${resp.status} ${resp.statusText}`,
+          details: errorContent.slice(0, 500),
+        } satisfies ToolExecutionError
       }
 
       const lenHeader = resp.headers.get('content-length')
@@ -80,7 +93,10 @@ export const webFetchTool = tool({
           declaredSize: parseInt(lenHeader, 10),
           maxSize: MAX_RESPONSE_SIZE,
         })
-        return 'response too large (exceeds 5MB)'
+        return {
+          error: 'Response too large',
+          details: 'Content exceeds 5MB limit',
+        } satisfies ToolExecutionError
       }
 
       const buffer = await resp.arrayBuffer()
@@ -90,7 +106,10 @@ export const webFetchTool = tool({
           actualSize: buffer.byteLength,
           maxSize: MAX_RESPONSE_SIZE,
         })
-        return 'response too large (exceeds 5MB)'
+        return {
+          error: 'Response too large',
+          details: 'Content exceeds 5MB limit',
+        } satisfies ToolExecutionError
       }
 
       const contentType = resp.headers.get('content-type') || ''
