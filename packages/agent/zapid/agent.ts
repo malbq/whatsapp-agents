@@ -56,7 +56,7 @@ export async function agent(): Promise<void> {
     await responseGeneration()
   } catch (error) {
     if (isAbortError(error)) {
-      console.debug('Response generation aborted - user sent new message')
+      console.debug('Response generation aborted')
       return
     }
 

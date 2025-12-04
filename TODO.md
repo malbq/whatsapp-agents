@@ -2,7 +2,6 @@
 
 ## To Do
 
-- Halt generation when user sends another message before assistant responds - do not halt ingestion
 - What should we do for long audios? One user send a 10min audio.
 
 ## Billing

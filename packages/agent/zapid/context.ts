@@ -31,7 +31,7 @@ export function runContext<T>(
 
   const existing = activeGenerations.get(userId)
   if (existing) {
-    console.debug(`[context] Aborting in-flight generation for user ${userId}`)
+    console.debug(`Aborting in-flight generation`)
     existing.abort()
   }
 
