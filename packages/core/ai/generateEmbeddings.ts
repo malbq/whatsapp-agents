@@ -1,7 +1,6 @@
 import { createOpenAI } from '@ai-sdk/openai'
 import { embedMany } from 'ai'
 import { ok } from 'node:assert'
-import { inspect } from 'node:util'
 import { splitIntoChunks } from '../utils/splitIntoChunks'
 
 ok(import.meta.env.CF_ACCOUNT_ID, 'CF_ACCOUNT_ID is required')
@@ -41,17 +40,13 @@ export const generateEmbeddings: GenerateEmbeddings = async (texts) => {
     values: allChunks,
   })
 
-  console.debug(
-    `Batch embeddings generated with ${embeddingModel.provider}/${embeddingModel.modelId}`,
-    inspect(
-      {
-        input: texts,
-        totalChunks: allChunks.length,
-        responseHeaders: result.responses?.[0]?.headers,
-      },
-      { depth: null }
-    )
-  )
+  console.debug(`Batch embeddings generated`, {
+    provider: embeddingModel.provider,
+    modelId: embeddingModel.modelId,
+    input: texts,
+    totalChunks: allChunks.length,
+    responseHeaders: result.responses?.[0]?.headers,
+  })
 
   let embeddingIndex = 0
   const embeddings = groupedChunks.map<Array<ChunkData>>((textChunks) => {

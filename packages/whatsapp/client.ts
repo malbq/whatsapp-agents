@@ -26,21 +26,17 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
   const authorizationHeader = `Bearer ${config.apiToken}`
 
   async function fetchReceivedMedia(mediaId: string, sha256: string): Promise<ArrayBuffer> {
-    const init: RequestInit = {
-      headers: {
-        Authorization: authorizationHeader,
-      },
-    }
+    const init: RequestInit = { headers: { Authorization: authorizationHeader } }
     const urlData = (await fetch(
       `https://graph.facebook.com/${WA_API_VERSION}/${mediaId}/`,
       init
     ).then((response) => response.json())) as WhatsAppApi.MediaUrlResponse
-    console.debug(`Media URL: ${urlData.url}`)
+    console.debug('Downloading media', { url: urlData.url })
 
     const mediaResponse = await fetch(urlData.url, init)
 
     if (!mediaResponse.body) {
-      console.error('Failed to download media from {url}: {status} {statusText}', {
+      console.error('Failed to download media', {
         url: urlData.url,
         status: mediaResponse.status,
         statusText: mediaResponse.statusText,
@@ -85,15 +81,13 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
 
     if (!uploadResponse.ok) {
       const body = await uploadResponse.text()
-      console.error(
-        `Failed to upload media: [${uploadResponse.status} ${uploadResponse.statusText}] ${body}`,
-        {
-          status: uploadResponse.status,
-          statusText: uploadResponse.statusText,
-          body,
-          mimeType,
-        }
-      )
+      console.error('Failed to upload media', {
+        filename: blobFilename,
+        mimeType,
+        status: uploadResponse.status,
+        statusText: uploadResponse.statusText,
+        body,
+      })
       throw new ResponseDeliveryError('Failed to upload media')
     }
 
@@ -102,10 +96,9 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
   }
 
   async function sendMessageRequest<T extends WhatsAppApi.OutgoingMessageUnion>(
-    requestBody: T
+    request: T
   ): Promise<string> {
-    console.debug('Sending message request:')
-    console.dir(requestBody, { depth: null })
+    console.debug('Sending WhatsApp message request', { request })
     const httpResponse = await fetch(
       `https://graph.facebook.com/${WA_API_VERSION}/${config.businessPhoneId}/messages`,
       {
@@ -114,12 +107,12 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
           Authorization: authorizationHeader,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify(request),
       }
     )
 
     if (!httpResponse.ok) {
-      console.error(`Failed to send message: ${httpResponse.status} ${httpResponse.statusText}`, {
+      console.error('Failed to send WhatsApp message', {
         status: httpResponse.status,
         statusText: httpResponse.statusText,
         body: await httpResponse.json(),
@@ -130,18 +123,13 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
     const response = (await httpResponse.json()) as WhatsAppApi.OutgoingMessageResponse
 
     if (!response.messages?.[0]?.id) {
-      console.error('Send message request succeeded but no message ID was returned', {
+      console.error('Send WhatsApp message request succeeded but no message ID was returned', {
         ...response,
       })
       throw new ResponseDeliveryError('Failed to send message')
     }
     const messageId = response.messages[0].id
-    console.debug(
-      `Sent "${requestBody.type}${
-        requestBody.type === 'interactive' ? `-${requestBody.interactive.type}` : ''
-      }" response`,
-      { messageId }
-    )
+    console.debug('Sent WhatsApp message', { messageId, response })
     return messageId
   }
 
@@ -149,7 +137,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
     parseNotification: async (body) => {
       const waNotification = WhatsAppApi.notificationSchema.safeParse(body)
       if (!waNotification.success) {
-        console.debug('Failed to parse notification', waNotification.error)
+        console.warn('Failed to parse notification', waNotification.error)
         return null
       }
 
@@ -157,7 +145,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
       if (!change) return null
 
       if (change.statuses?.[0]?.errors?.length) {
-        console.debug('Status update error', change.statuses?.[0]?.errors)
+        console.warn('Status update error', change.statuses?.[0]?.errors)
         return null
       }
 
@@ -327,15 +315,14 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
           }
         })) as WhatsAppApi.AcknowledgeMessageResponse
 
-      if (response.success) {
-        console.log(`Message acknowledged: ${messageId}`)
-        return
+      if (!response.success) {
+        console.error('Failed to acknowledge message', {
+          code: response.error?.code,
+          type: response.error?.type,
+          message: response.error?.message,
+          details: response.error?.error_data?.details,
+        })
       }
-
-      console.error(
-        `Failed to acknowledge message: ${response.error?.code} ${response.error?.type} ${response.error?.message}`,
-        response.error?.error_data?.details
-      )
     },
 
     sendTypingIndicator: async (messageId) => {
@@ -366,15 +353,14 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
           }
         })) as WhatsAppApi.AcknowledgeMessageResponse
 
-      if (response.success) {
-        console.log(`Typing indicator sent: ${messageId}`)
-        return
+      if (!response.success) {
+        console.error('Failed to send typing indicator', {
+          code: response.error?.code,
+          type: response.error?.type,
+          message: response.error?.message,
+          details: response.error?.error_data?.details,
+        })
       }
-
-      console.error(
-        `Failed to send typing indicator: ${response.error?.code} ${response.error?.type} ${response.error?.message}`,
-        response.error?.error_data?.details
-      )
     },
 
     sendText: async (userId, message) => {

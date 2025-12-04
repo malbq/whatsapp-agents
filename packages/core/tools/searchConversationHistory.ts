@@ -1,11 +1,9 @@
 import { tool } from 'ai'
 import { ok } from 'node:assert'
-import { inspect } from 'node:util'
 import { z } from 'zod'
 import { generateEmbeddings } from '../ai/generateEmbeddings'
 import type { ToolExecutionError } from '../errors'
 import type { DB } from '../infra/db'
-import { spreadError } from '../utils/spreadError'
 
 export interface SearchConversationHistoryContext {
   userId: string
@@ -17,7 +15,7 @@ export function createSearchConversationHistoryTool(ctx: SearchConversationHisto
   return tool({
     title: 'search_conversation_history',
     description: `Search through past conversation history to find relevant context, details, or preferences mentioned in previous messages. Use this to answer questions about what was discussed previously or to recall specific details provided by the user. The query should be a semantic search string optimized to find the relevant information.
-Examples: 
+Examples:
 - User query: "What is the secret door code I told you earlier?" => \`search_conversation_history\` query: "secret door code"
 - User query: "What did we discuss about the auth flow?" => \`search_conversation_history\` query: "auth flow discussion"
 - User query: "Do I have any preferences for code style?" => \`search_conversation_history\` query: "code style preferences"
@@ -28,7 +26,7 @@ Examples:
       query: z.string().describe('The query to search for relevant memories'),
     }),
     execute: async ({ query }) => {
-      console.debug('search_conversation_history query:', query)
+      console.debug('search_conversation_history', { query })
       try {
         const [embeddings] = await generateEmbeddings([query])
         const queryEmbedding = embeddings?.[0]?.embedding
@@ -41,10 +39,7 @@ Examples:
           excludeIds: ctx.recentMessageIds,
         })
 
-        console.debug(
-          'search_conversation_history results',
-          inspect({ query, similarMessages }, { depth: null })
-        )
+        console.debug('search_conversation_history results', { similarMessages })
 
         return similarMessages.map((message) => ({
           role: message.role,
@@ -54,10 +49,7 @@ Examples:
           timestamp: message.timestamp.toISOString(),
         }))
       } catch (error) {
-        console.error('search_conversation_history failed', {
-          query,
-          ...spreadError(error),
-        })
+        console.error('search_conversation_history failed', { error })
         return {
           error: 'Tool execution failed',
           details: error instanceof Error ? error.message : 'unknown',

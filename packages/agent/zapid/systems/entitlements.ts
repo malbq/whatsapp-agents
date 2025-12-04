@@ -54,7 +54,6 @@ export function isFeatureEnabled(key: BooleanEntitlementKey): boolean {
 export function hasQuotaRemaining(key: DailyLedgerEntitlementKey): boolean {
   const { entitlements } = getContext()
   const quota = entitlements.quotas[key]
-  console.debug(`[hasQuotaRemaining] Quota for ${key}:`, quota)
   return quota.remaining === null || quota.remaining > 0
 }
 

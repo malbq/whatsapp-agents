@@ -1,5 +1,4 @@
 import type { ToolExecutionError } from '@batman/core/errors'
-import { spreadError } from '@batman/core/utils/spreadError'
 import { tool } from 'ai'
 import { ok } from 'node:assert'
 import { z } from 'zod'
@@ -62,7 +61,7 @@ Output requirements:
     ok(user, 'User not found')
     try {
       if (improvedProfile.trim().length === 0) {
-        console.warn('skipped, no improvement', {
+        console.warn('update_user_profile skipped, no improvement', {
           improvedProfile,
           currentProfileLength: user.profile.length,
         })
@@ -70,32 +69,23 @@ Output requirements:
       }
 
       if (improvedProfile === user.profile) {
-        console.warn('skipped, same profile', {
+        console.warn('update_user_profile skipped, same profile', {
           improvedProfile,
           profileLength: improvedProfile.length,
         })
         return 'You cannot update the profile to the same profile'
       }
 
-      const context = getContext()
       context.improvedProfile = improvedProfile
 
-      console.log('stored improved profile in context', {
-        userId: user.id,
-        currentProfileLength: user.profile?.length ?? 0,
-        improvedProfileLength: improvedProfile.length,
-      })
-      console.debug('profile diff', {
-        current: user.profile ?? '',
-        improved: improvedProfile,
+      console.debug('stored improved profile in context', {
+        currentProfile: user.profile ?? '',
+        improvedProfile,
       })
 
       return 'Profile updated'
     } catch (error) {
-      console.error('Tool execution failed', {
-        improvedProfile,
-        ...spreadError(error),
-      })
+      console.error('update_user_profile failed', { error })
       return {
         error: 'Tool execution failed',
         details: error instanceof Error ? error.message : 'unknown',

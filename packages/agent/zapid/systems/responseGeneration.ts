@@ -12,7 +12,7 @@ import {
 import { sendWhatsappMessage } from '@batman/core/utils/sendWhatsappMessage'
 import { toDbMessage } from '@batman/core/utils/toDbMessage'
 import { toSystemModelMessage } from '@batman/core/utils/toModelMessage'
-import { stepCountIs, type ModelMessage, type ToolSet } from 'ai'
+import { RetryError, stepCountIs, type ModelMessage, type ToolSet } from 'ai'
 import { ok } from 'node:assert'
 import { getContext } from '../context'
 import type { ZapidRepository } from '../db'
@@ -48,7 +48,7 @@ export async function responseGeneration() {
 
   // Build agent context
   const agentContext: Array<ModelMessage> = [
-    toSystemModelMessage(`Current date and time: ${new Date().toISOString()}.`),
+    toSystemModelMessage(`Current date: ${new Date().toDateString()}.`),
   ]
 
   if (user.profile.length > 0) {
@@ -64,6 +64,11 @@ export async function responseGeneration() {
     ...recentMessages.map((message) => message.modelMessage)
   )
 
+  console.debug(`Generating WhatsApp message`, {
+    provider: model.provider,
+    model: model.modelId,
+    context: agentContext,
+  })
   const response = await generateWhatsappMessage({
     model,
     system,
@@ -79,8 +84,21 @@ export async function responseGeneration() {
         serviceTier: 'flex',
         textVerbosity: 'low',
         reasoningSummary: null,
+        parallelToolCalls: false,
       },
     },
+  }).catch((error) => {
+    if (RetryError.isInstance(error)) {
+      // TODO: probably caused by flex service
+    } else if (error instanceof DOMException && error.name === 'TimeoutError') {
+      // TODO: probably caused by flex service
+    }
+    throw error
+  })
+  console.debug('Generated WhatsApp message', {
+    provider: model.provider,
+    model: model.modelId,
+    response,
   })
 
   const assistantMessageId = await sendWhatsappMessage({
@@ -105,7 +123,6 @@ async function fillMediaMessagesWithData(
   recentMessages: Awaited<ReturnType<ZapidRepository['findRecentMessages']>>
 ) {
   const context = getContext()
-  console.log('fillMediaMessagesWithData: Processing', recentMessages.length, 'messages')
 
   const messagesToFill = new Map(
     recentMessages
@@ -118,13 +135,11 @@ async function fillMediaMessagesWithData(
   await Promise.all(
     keys.values().map(async (storageKey) => {
       const fileData = await context.storage.retrieve(storageKey)
-      console.log(
-        `fillMediaMessagesWithData: Retrieved ${storageKey} - ${fileData.data.byteLength} bytes`
+      console.debug(
+        `[fillMediaMessagesWithData] Retrieved ${storageKey} - ${fileData.data.byteLength} bytes`
       )
       if (fileData.data.byteLength === 0) {
-        console.error(
-          `fillMediaMessagesWithData: WARNING - Empty data for storage key ${storageKey}`
-        )
+        console.warn(`[fillMediaMessagesWithData] Empty data for storage key ${storageKey}`)
       }
       data.set(storageKey, fileData.data)
     })

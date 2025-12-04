@@ -1,7 +1,6 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { generateText, type TextPart } from 'ai'
 import { ok } from 'node:assert'
-import { inspect } from 'node:util'
 
 ok(import.meta.env.GOOGLE_GENERATIVE_AI_API_KEY, 'GOOGLE_GENERATIVE_AI_API_KEY is required')
 
@@ -42,15 +41,10 @@ export const analyzeImage: AnalyzeImage = async ({
       },
     ],
   })
-  console.debug(
-    `Image analyzed with ${imageAnalysisModel.provider}/${imageAnalysisModel.modelId}`,
-    inspect(
-      {
-        result: result.content,
-        totalUsage: result.totalUsage,
-      },
-      { depth: null }
-    )
-  )
+  console.debug(`Image analyzed with`, {
+    provider: imageAnalysisModel.provider,
+    model: imageAnalysisModel.modelId,
+    totalUsage: result.totalUsage,
+  })
   return result.text
 }

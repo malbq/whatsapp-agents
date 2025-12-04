@@ -1,6 +1,6 @@
-import { ok } from 'node:assert'
 import { createStorage } from 'unstorage'
 import fsDriver from 'unstorage/drivers/fs'
+import { FileRetrievalError } from '../errors'
 import type { Storage } from './storage'
 
 export namespace FilesystemStorage {
@@ -16,7 +16,7 @@ export namespace FilesystemStorage {
 
       retrieve: async (key) => {
         const data = await fsStorage.getItemRaw(key)
-        ok(data, new Error(`Object not found: ${key}`))
+        if (!data) throw new FileRetrievalError(`Object not found: ${key}`)
 
         const meta = await fsStorage.getMeta(key)
         return {

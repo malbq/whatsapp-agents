@@ -16,7 +16,7 @@ export async function embedInboundMessage(
 
   const text = await extractText(message)
   if (!text) {
-    console.log('No text to embed for inbound message')
+    console.warn('No text to embed for inbound message')
     return
   }
 
@@ -31,7 +31,10 @@ export async function embedInboundMessage(
   }))
 
   await context.db.storeSnippets(snippetInserts)
-  console.log(`Embedded inbound message: ${snippetInserts.length} chunks`)
+  console.debug('Embedded inbound message', {
+    snippetsLength: snippetInserts.length,
+    messageId: inbound.id,
+  })
 }
 
 async function extractText(message: IncomingMessage): Promise<string | undefined> {

@@ -8,7 +8,9 @@ export async function storeAgentResponse(): Promise<void> {
 
   const messageIds = await context.db.storeMessage(context.outbound)
 
-  console.log(`Stored ${messageIds.length} outbound messages`)
+  console.debug('Stored outbound messages', {
+    messageIds,
+  })
 
   for (let i = 0; i < context.outbound.length; i++) {
     context.outbound[i]!.id = messageIds[i]!
@@ -31,9 +33,9 @@ export async function storeAgentResponse(): Promise<void> {
         messageId,
       })
 
-      console.log('Updated user profile', {
-        userId: context.user.id,
-        profileLength: context.improvedProfile.length,
+      console.debug('Updated user profile', {
+        currentProfile: context.user.profile,
+        improvedProfile: context.improvedProfile,
       })
     }
   }

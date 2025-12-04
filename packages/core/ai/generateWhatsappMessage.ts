@@ -9,17 +9,14 @@ import {
 } from '@batman/whatsapp'
 import {
   generateText as aiGenerateText,
-  APICallError,
+  NoObjectGeneratedError,
   Output,
-  RetryError,
   type AssistantModelMessage,
   type FinishReason,
-  type LanguageModel,
   type LanguageModelUsage,
   type ToolModelMessage,
   type ToolSet,
 } from 'ai'
-import { inspect } from 'node:util'
 import { z } from 'zod'
 
 const whatsappMessageSchema = z.discriminatedUnion('type', [
@@ -77,8 +74,6 @@ export async function generateWhatsappMessage<TOOLS extends ToolSet>({
   system,
   ...options
 }: GenerateWaOptions<TOOLS>): Promise<GeneratedResponse> {
-  console.debug(`Generating WhatsApp message with model ${modelName(options.model)}`)
-
   const messages: MessageWithDetails[] = []
 
   const result = await aiGenerateText<TOOLS, Output.Output<GeneratedWhatsappResponse>>({
@@ -88,7 +83,6 @@ export async function generateWhatsappMessage<TOOLS extends ToolSet>({
       schema: whatsappResponseSchema,
     }),
     onStepFinish: (stepResult) => {
-      console.debug(`Step finished with reason: ${stepResult.finishReason}`)
       if (stepResult.response.messages.at(-1)?.role === 'tool') {
         stepResult.response.messages.slice(-2).forEach((message) => {
           messages.push({
@@ -105,25 +99,33 @@ export async function generateWhatsappMessage<TOOLS extends ToolSet>({
         finishReason: stepResult.finishReason,
       })
     },
-  } as GenerateOptions<TOOLS>).catch((error) => {
-    if (RetryError.isInstance(error)) {
-      console.error('generateWhatsappMessage: Retry', inspect(error, { depth: null }))
-    } else if (APICallError.isInstance(error)) {
-      console.error('generateWhatsappMessage: API Call', inspect(error, { depth: null }))
-    } else {
-      console.error('generateWhatsappMessage: Error', inspect(error, { depth: null }))
-    }
-    throw error
-  })
+  } as GenerateOptions<TOOLS>)
 
-  console.debug(`Generated WhatsApp message with model ${modelName(options.model)}: ${result.text}`)
+  const output = extractOutput(result)
 
   return {
-    output: result.output.message,
-    messages: messages,
+    output,
+    messages,
   }
 }
 
-function modelName(model: LanguageModel) {
-  return typeof model === 'string' ? model : `${model.provider}/${model.modelId}`
+function extractOutput(result: { output: GeneratedWhatsappResponse; text: string }): GeneratedWhatsappMessage {
+  const jsonCodeBlockPrefix = /^json\n/
+
+  try {
+    return result.output.message
+  } catch (error) {
+    if (!NoObjectGeneratedError.isInstance(error) || !jsonCodeBlockPrefix.test(result.text)) {
+      throw error
+    }
+
+    const jsonText = result.text.replace(jsonCodeBlockPrefix, '')
+    const parsed = whatsappResponseSchema.safeParse(JSON.parse(jsonText))
+
+    if (!parsed.success) {
+      throw error
+    }
+
+    return parsed.data.message
+  }
 }

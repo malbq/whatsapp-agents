@@ -2,9 +2,10 @@ import { FilesystemStorage } from '@batman/core/infra/storageFilesystem'
 import { WebSearchBrave } from '@batman/core/infra/webSearchBrave'
 import { createServer } from '@batman/server'
 import { createWebhookApp, createWhatsappClient } from '@batman/whatsapp'
+import * as Sentry from '@sentry/bun'
 import { ok } from 'node:assert'
-import { inspect } from 'node:util'
 import { agent } from './agent'
+import { createChatRoute } from './chat'
 import { runContext } from './context'
 import { dbFactory } from './db'
 import { ingest, isContentMessage } from './ingest'
@@ -40,10 +41,10 @@ const webhookApp = createWebhookApp(
     onMessage: async (notification, raw) => {
       db.storeRawIncomingMessage(raw)
       const { message, userWaId, userName } = notification
-      console.debug('[onMessage] Notification received', inspect(notification, { depth: null }))
+      console.debug('Notification received', { notification })
 
       if (message.type === 'reaction') {
-        console.debug('Skip reaction message', { userWaId })
+        console.debug('Skip reaction message')
         return
       }
 
@@ -51,22 +52,28 @@ const webhookApp = createWebhookApp(
 
       const user = await db.persistUser({ waId: userWaId, name: userName })
       const entitlements = await db.getUserEntitlements({ userId: user.id })
-      console.debug('[onMessage] User persisted', inspect(user, { depth: null }))
-      console.debug('[onMessage] User entitlements', inspect(entitlements, { depth: null }))
+      Sentry.setUser({ id: user.id, username: user.name, waId: user.waId })
 
       await runContext(
         { notification, db, storage, chat, webSearch, user, entitlements },
         async () => {
+          const hasConsented = await checkUserConsent()
+          console.debug('User identified', {
+            user,
+            hasConsented,
+            features: entitlements.features,
+            quotas: entitlements.quotas,
+          })
+
           if (isContentMessage(message)) {
+            // !flow-reply
             await ingest()
           }
 
-          const canRespond = await checkUserConsent()
-          console.debug('[onMessage] Consent check result', { userWaId, canRespond })
-          if (!canRespond) return
+          if (!hasConsented) return
 
           if (!hasQuotaRemaining('n_messages_per_day')) {
-            console.log('Message quota exceeded', { userWaId })
+            console.warn('Message quota exceeded')
             // TODO send template message
             chat.sendText(userWaId, {
               text: '_Você atingiu o limite de mensagens de hoje._',
@@ -84,5 +91,6 @@ const webhookApp = createWebhookApp(
 const port = parseInt(import.meta.env.PORT || '8080')
 const { app, serve } = createServer({ name: 'Zapid agent', version: pkg.version, port })
 app.route('/webhook', webhookApp)
+app.get('/chat', createChatRoute(db))
 
 serve()

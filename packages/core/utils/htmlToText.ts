@@ -26,8 +26,8 @@ export async function extractTextFromHTML(html: string): Promise<string> {
 
     await res.text()
     return text.trim().replace(/\n+/g, '\n')
-  } catch (err) {
-    console.error('HTML to text conversion failed', { err })
+  } catch (error) {
+    console.error('HTML to text conversion failed', { error })
     return 'web_fetch: error converting HTML to text'
   }
 }

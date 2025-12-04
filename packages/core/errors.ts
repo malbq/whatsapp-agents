@@ -74,3 +74,17 @@ export interface ToolExecutionError {
   error: string
   details: string
 }
+
+export class HttpError extends Error {
+  status: number
+  statusText: string
+  body: string
+
+  constructor(status: number, statusText: string, body: string) {
+    super(`HTTP error: [${status} ${statusText}] ${body}`)
+    this.name = 'HttpError'
+    this.status = status
+    this.statusText = statusText
+    this.body = body
+  }
+}

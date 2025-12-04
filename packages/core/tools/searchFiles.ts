@@ -1,8 +1,6 @@
 import type { ToolExecutionError } from '@batman/core/errors'
-import { spreadError } from '@batman/core/utils/spreadError'
 import { tool } from 'ai'
 import { ok } from 'node:assert'
-import { inspect } from 'node:util'
 import { z } from 'zod'
 import { generateEmbeddings } from '../ai/generateEmbeddings'
 import type { DB } from '../infra/db'
@@ -26,7 +24,7 @@ If several are close, ask a clarifying question or present the list for selectio
       query: z.string().describe('The query to search for files'),
     }),
     execute: async ({ query }) => {
-      console.debug('search_files query:', query)
+      console.debug('search_files', { query })
       try {
         const [embeddings] = await generateEmbeddings([query])
         const queryEmbedding = embeddings?.[0]?.embedding
@@ -38,25 +36,15 @@ If several are close, ask a clarifying question or present the list for selectio
           queryEmbedding,
         })
 
-        console.debug(
-          'search_files results',
-          inspect(
-            {
-              query,
-              filesCount: files.length,
-              topScore: files[0]?.score ?? 0,
-              files,
-            },
-            { depth: null }
-          )
-        )
+        console.debug('search_files results', {
+          filesCount: files.length,
+          topScore: files[0]?.score ?? 0,
+          files,
+        })
 
         return files
       } catch (error) {
-        console.error('search_files failed', {
-          query,
-          ...spreadError(error),
-        })
+        console.error('search_files failed', { error })
         return {
           error: 'Tool execution failed',
           details: error instanceof Error ? error.message : 'unknown',

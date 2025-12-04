@@ -50,12 +50,12 @@ export async function agent(): Promise<void> {
 
   ok(context.user, 'User not found')
 
-  console.log('Starting agent response flow', { userId: context.user.id })
+  console.debug('Starting response flow')
 
   try {
     await responseGeneration()
   } catch (error) {
-    console.error('Agent response flow error', error)
+    console.error('Response flow error', { error })
 
     const errorMessage: TextMessage = {
       type: 'text',
@@ -76,6 +76,6 @@ export async function agent(): Promise<void> {
     await embedOutboundMessages()
     await recordUsage('n_messages_per_day', 1)
   } catch (error) {
-    console.error("Error after agent's response", error)
+    console.error("Error after agent's response", { error })
   }
 }

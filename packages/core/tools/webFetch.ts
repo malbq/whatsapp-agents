@@ -2,7 +2,6 @@ import { tool } from 'ai'
 import { z } from 'zod'
 import type { ToolExecutionError } from '../errors'
 import { extractTextFromHTML } from '../utils/htmlToText'
-import { spreadError } from '../utils/spreadError'
 
 const DEFAULT_TIMEOUT_MS = 30_000
 const MAX_RESPONSE_SIZE = 5 * 1024 * 1024 // 5MB
@@ -28,7 +27,7 @@ export const webFetchTool = tool({
 
     try {
       if (!/^https?:\/\//i.test(params.url)) {
-        console.warn('invalid URL format', params)
+        console.warn('web_fetch invalid URL format', params)
         return 'invalid URL (must start with http:// or https://)'
       }
 
@@ -52,20 +51,20 @@ export const webFetchTool = tool({
           Accept: accept,
           'Accept-Language': 'en-US,en;q=0.9',
         },
-      }).catch((e) => {
-        console.error('fetch request failed', { ...params, ...spreadError(e) })
+      }).catch((error) => {
+        console.error('web_fetch request failed', { ...params, error })
         return undefined
       })
 
       clearTimeout(t)
 
       if (!resp) {
-        console.error('no response received', { ...params })
+        console.error('web_fetch no response received', { ...params })
         return 'network error'
       }
       if (!resp.ok) {
         const errorText = await resp.text()
-        console.error('HTTP error', {
+        console.error('web_fetch HTTP error', {
           ...params,
           status: resp.status,
           statusText: resp.statusText,
@@ -76,7 +75,7 @@ export const webFetchTool = tool({
 
       const lenHeader = resp.headers.get('content-length')
       if (lenHeader && parseInt(lenHeader, 10) > MAX_RESPONSE_SIZE) {
-        console.error('response too large', {
+        console.error('web_fetch response too large', {
           ...params,
           declaredSize: parseInt(lenHeader, 10),
           maxSize: MAX_RESPONSE_SIZE,
@@ -86,7 +85,7 @@ export const webFetchTool = tool({
 
       const buffer = await resp.arrayBuffer()
       if (buffer.byteLength > MAX_RESPONSE_SIZE) {
-        console.error('response too large', {
+        console.error('web_fetch response too large', {
           ...params,
           actualSize: buffer.byteLength,
           maxSize: MAX_RESPONSE_SIZE,
@@ -101,14 +100,10 @@ export const webFetchTool = tool({
         return await extractTextFromHTML(websiteContent)
       }
 
-      console.log('completed', {
+      console.debug('web_fetch response', {
         ...params,
-        contentType,
         size: buffer.byteLength,
         contentLength: websiteContent.length,
-      })
-      console.debug('response', {
-        ...params,
         contentType,
         websiteContent,
         headers: Object.fromEntries(resp.headers),
@@ -119,7 +114,7 @@ export const webFetchTool = tool({
 
       return websiteContent
     } catch (error) {
-      console.error('Tool execution failed', { ...params, ...spreadError(error) })
+      console.error('web_fetch failed', { ...params, error })
       return {
         error: 'Tool execution failed',
         details: error instanceof Error ? error.message : 'unknown',

@@ -12,7 +12,6 @@ import {
   type SQL,
 } from 'drizzle-orm'
 import type { BunSQLDatabase } from 'drizzle-orm/bun-sql'
-import { inspect } from 'node:util'
 import { FailedToPersistUserError } from '../errors'
 import type { DB } from './db'
 import { PostgresSchema as Schema } from './dbSchema'
@@ -210,9 +209,6 @@ export namespace Postgres {
           .returning({ id: Schema.message.id })
           .then((result) => result.map((r) => r.id))
 
-        console.debug('Stored messages')
-        console.dir(messageArray, { depth: null })
-
         return messageIds
       },
 
@@ -220,20 +216,6 @@ export namespace Postgres {
         if (snippets.length === 0) return
 
         await client.insert(Schema.snippet).values(snippets)
-
-        console.debug(
-          `Stored snippets`,
-          inspect(
-            {
-              snippets: snippets.map((s) => ({
-                messageId: s.messageId,
-                sequence: s.sequence,
-                content: s.content,
-              })),
-            },
-            { depth: null }
-          )
-        )
       },
 
       async findRecentMessages({ userId }) {

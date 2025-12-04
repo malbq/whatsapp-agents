@@ -1,6 +1,5 @@
 import { ok } from 'node:assert'
 import { WebSearchError } from '../errors.js'
-import { spreadError } from '../utils/spreadError.js'
 import type { SearchParams, SearchResult, WebSearch } from './webSearch.js'
 
 ok(import.meta.env.BRAVE_SEARCH_API_KEY, 'BRAVE_SEARCH_API_KEY is required')
@@ -26,7 +25,7 @@ interface BraveSearchError {
 }
 
 interface BraveSearchResponse {
-  web: { results: BraveSearchResult[] }
+  web?: { results?: BraveSearchResult[] }
 }
 
 interface QueuedRequest {
@@ -206,16 +205,14 @@ export namespace WebSearchBrave {
           headers: Object.fromEntries(response.headers.entries()),
         })
 
-        const jsonResponse = (await response.json()) as BraveSearchResponse
+        const jsonResponse = (await response.json()) as BraveSearchResponse | undefined
         console.debug('webSearchBrave: JSON parsed successfully', {
           query: queuedRequest.params.query,
-          hasWebResults: !!jsonResponse.web?.results,
-          resultsCount: jsonResponse.web?.results?.length || 0,
+          hasWebResults: !!jsonResponse?.web?.results,
+          response: jsonResponse,
         })
 
-        const {
-          web: { results },
-        } = jsonResponse
+        const results = jsonResponse?.web?.results || []
 
         const searchResults: SearchResult[] = results.map((result) => ({
           url: result.url,
@@ -249,7 +246,7 @@ export namespace WebSearchBrave {
             errorType: (error as Error)?.name,
             errorMessage: (error as Error)?.message,
             isAbortError: (error as Error)?.name === 'AbortError',
-            ...spreadError(error),
+            error,
           })
         }
         queuedRequest.reject(error as Error)

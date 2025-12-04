@@ -23,8 +23,6 @@ There should be a **system prompt** for each plan so the model knows its capabil
    - Send confirmation message via WhatsApp.
    - Trigger invoice email (e.g. via Postmark).
 
-> We do **not** physically reset usage counters by deleting rows. Daily quotas naturally "reset" because enforcement only considers `usage_ledger.timestamp >= (now() - interval '24 hours')`. If we ever need to correct past usage, we insert a negative compensating row in the ledger (if supported) or handle it via overrides.
-
 ## Decisions To Be Made
 
 2. **Timezone & day boundary** for per-day limits.

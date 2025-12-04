@@ -9,6 +9,7 @@ declare global {
     GOOGLE_PLACES_API_KEY: string
     WA_ONBOARDING_TEMPLATE: string
     PORT?: string
+    SENTRY_DSN?: string
   }
 }
 

@@ -53,12 +53,10 @@ export const transcribeDocument: TranscribeDocument = async ({
       },
     ],
   })
-  console.debug(`Document transcribed with ${documentTranscriptionModel.modelId}`, {
-    gatewayLogId: result.response.headers?.['cf-aig-log-id'],
+  console.debug('Document transcribed', {
+    provider: documentTranscriptionModel.provider,
+    model: documentTranscriptionModel.modelId,
     totalUsage: result.totalUsage,
-    steps: result.steps.map(({ request: _, response: __, ...step }) => {
-      return step
-    }),
   })
   return result.text
 }

@@ -1,8 +1,10 @@
 # Progress
 
-## User Management
+## Fixes
 
-- when new file is stored, run storage check in background to delete old files if quota exceeded
+- Audio sent as document get application/octet-stream mime type and breaks model response (msg id 019ad748-f37e-7000-8ac9-39450cc9eee0)
+- Assistant couldn't analyze youtube video
+- web_fetch errors are outputing html that must be parsed or ignored before being sent to model - we could ignore if content-type header is text/html
 
 ## Billing
 
@@ -13,6 +15,8 @@
 ## Next
 
 - o11y
+  - AI SDK telemetry
+- when new file is stored, run storage check in background to delete old files if quota exceeded
 - every outbound message must be persisted to db, including error messages
 - refactor whatsapp schemas/types
   - the difference between incoming and outgoing is not clear

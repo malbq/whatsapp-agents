@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync } from 'node:fs'
 
-const entry = new URL('../index.ts', import.meta.url).pathname
+const entry = new URL('../instrument.ts', import.meta.url).pathname
 const outfile = new URL('./zapid', import.meta.url).pathname
 const storageDir = new URL('../storage', import.meta.url).pathname
 

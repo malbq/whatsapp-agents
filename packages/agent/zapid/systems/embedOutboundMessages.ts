@@ -1,27 +1,32 @@
 import { generateEmbeddings } from '@batman/core/ai/generateEmbeddings'
 import type { DB } from '@batman/core/infra/db'
 import type { OutgoingMessage } from '@batman/whatsapp'
-import { ok } from 'node:assert'
 import { getContext } from '../context'
 
 export async function embedOutboundMessages() {
   const context = getContext()
-  ok(context.responseOutput, 'Response output not found')
+  if (!context.responseOutput) {
+    console.warn('Response output not found')
+    return
+  }
 
   const lastOutbound = context.outbound[context.outbound.length - 1]
-  ok(lastOutbound?.id, 'Last outbound message not found')
+  if (!lastOutbound?.id) {
+    console.warn('Last outbound message not found')
+    return
+  }
 
   const assistantText = extractText(context.responseOutput)
 
   if (!assistantText) {
-    console.log('No text to embed for outbound message')
+    console.warn('No text to embed for outbound message')
     return
   }
 
   const messagesWithText = new Map<string, string>()
   messagesWithText.set(lastOutbound.id, assistantText)
 
-  console.log('Embedding outbound message')
+  console.debug('Embedding outbound message')
 
   const embeddingGroups = await generateEmbeddings(messagesWithText.values().toArray())
   const snippetInserts: Array<DB.SnippetInsert> = []
@@ -40,7 +45,10 @@ export async function embedOutboundMessages() {
   })
 
   await context.db.storeSnippets(snippetInserts)
-  console.log(`Embedded outbound message: ${snippetInserts.length} chunks`)
+  console.debug('Embedded outbound message', {
+    chunks: snippetInserts.length,
+    messageId: lastOutbound.id,
+  })
 }
 
 function extractText(message: OutgoingMessage): string | undefined {

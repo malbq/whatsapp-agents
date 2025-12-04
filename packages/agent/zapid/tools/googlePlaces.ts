@@ -1,5 +1,4 @@
-import type { ToolExecutionError } from '@batman/core/errors'
-import { spreadError } from '@batman/core/utils/spreadError'
+import { HttpError, type ToolExecutionError } from '@batman/core/errors'
 import { tool } from 'ai'
 import { ok } from 'node:assert'
 import { z } from 'zod'
@@ -92,11 +91,9 @@ Examples of queries that this tool can handle:
 
       if (!searchResponse.ok) {
         const errorText = await searchResponse.text()
-        console.error('API error', {
+        console.error('google_places API error', {
           ...params,
-          status: searchResponse.status,
-          statusText: searchResponse.statusText,
-          error: errorText,
+          error: new HttpError(searchResponse.status, searchResponse.statusText, errorText),
         })
         return {
           error: 'Tool execution failed',
@@ -107,24 +104,19 @@ Examples of queries that this tool can handle:
       const { places = [] } = (await searchResponse.json()) as PlacesSearchResponse
 
       if (places.length === 0) {
-        console.warn('no results found', params)
+        console.warn('google_places no results found', params)
         return `No places found for query: "${query}"`
       }
 
-      console.log('Tool google_places')
-      console.dir(
-        {
-          ...params,
-          result: places,
-        },
-        { depth: null }
-      )
+      console.info('google_places result', {
+        result: places,
+      })
 
       return places
     } catch (error) {
-      console.error('Tool execution failed', {
+      console.error('google_places failed', {
         ...params,
-        ...spreadError(error),
+        error,
       })
       return {
         error: 'Tool execution failed',

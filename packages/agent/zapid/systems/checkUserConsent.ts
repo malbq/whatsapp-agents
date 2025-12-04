@@ -19,18 +19,16 @@ export async function checkUserConsent(): Promise<boolean> {
 
   if (isConsentFlowReply(ctx.notification.message)) {
     await ctx.db.completeOnboarding({ userId: ctx.user.id })
-    console.log('[checkUserConsent] Onboarding completed', { userId: ctx.user.id })
 
     // Refresh entitlements after onboarding since plan was just activated
     const freshEntitlements = await ctx.db.getUserEntitlements({ userId: ctx.user.id })
     ctx.entitlements = freshEntitlements
+    console.info('Onboarding completed, refreshed entitlements')
 
     return true
   }
 
   const hasConsent = await ctx.db.hasConsent({ userId: ctx.user.id })
-  console.log('[checkUserConsent] Consent status', { userId: ctx.user.id, hasConsent })
-
   if (!hasConsent) {
     // TODO: track template sent in ephemeral KV to avoid spamming
     ctx.chat.sendTemplate(ctx.user.waId, {
@@ -38,7 +36,7 @@ export async function checkUserConsent(): Promise<boolean> {
       language: 'pt_BR',
       flowToken: 'onboarding',
     })
-    console.log('Sent onboarding template', { userWaId: ctx.user.waId })
+    console.info("User hasn't consented, sent onboarding template")
     return false
   }
 

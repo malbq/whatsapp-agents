@@ -5,7 +5,7 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "bun run --hot --no-clear-screen index.ts",
+    "dev": "NODE_ENV=development bun run --hot --no-clear-screen index.ts",
     "build": "bun run ./bin/build.ts",
     "start": "bun run ./bin/start.ts",
     "stop": "bun run ./bin/stop.ts",
@@ -18,12 +18,14 @@
     "knip": "bunx knip"
   },
   "dependencies": {
+    "@ai-sdk/openai": "catalog:",
     "@batman/core": "workspace:*",
     "@batman/server": "workspace:*",
     "@batman/whatsapp": "workspace:*",
-    "@ai-sdk/openai": "catalog:",
+    "@sentry/bun": "catalog:",
     "ai": "catalog:",
     "drizzle-orm": "catalog:",
+    "hono": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

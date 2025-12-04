@@ -1,7 +1,6 @@
 import { tool } from 'ai'
 import { z } from 'zod'
 import type { ToolExecutionError } from '../errors'
-import { spreadError } from '../utils/spreadError'
 
 export interface SendReactionContext {
   sendReaction: (emoji: string) => Promise<unknown>
@@ -18,15 +17,9 @@ export function createSendReactionTool(ctx: SendReactionContext) {
     execute: ({ emoji }) =>
       ctx
         .sendReaction(emoji)
-        .then(() => {
-          console.debug('send_reaction: sent', { emoji })
-          return 'Reaction delivered to user'
-        })
+        .then(() => 'Reaction delivered to user')
         .catch((error) => {
-          console.error('send_reaction: failed', {
-            emoji,
-            ...spreadError(error),
-          })
+          console.error('send_reaction: failed', { error })
           return {
             error: 'Tool execution failed',
             details: error instanceof Error ? error.message : 'unknown',

@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 const root = new URL('..', import.meta.url).pathname
+const envFile = join(root, '.env.production')
 const storage = join(root, 'storage')
 const binExec = join(root, 'bin', 'zapid')
 const pidFile = join(storage, 'zapid.pid')
@@ -42,8 +43,14 @@ if (!existsSync(binExec)) {
   process.exit(1)
 }
 
-// Start detached with setsid and log redirection via shell
-const cmd = `setsid "${binExec}" 1>>"${outLog}" 2>>"${errLog}" & echo $!`
+if (!existsSync(envFile)) {
+  console.error('.env.production not found:', envFile)
+  console.error('Copy .env to .env.production and set NODE_ENV=production')
+  process.exit(1)
+}
+
+// Start detached with setsid, load .env.production
+const cmd = `set -a && . "${envFile}" && set +a && setsid "${binExec}" 1>>"${outLog}" 2>>"${errLog}" & echo $!`
 const sh = Bun.spawn(['sh', '-c', cmd], { stdout: 'pipe', stderr: 'inherit' })
 const pidOut = await new Response(sh.stdout).text()
 const pid = pidOut.trim()
@@ -55,4 +62,4 @@ if (!pid) {
 
 writeFileSync(pidFile, pid + '\n')
 console.log(`Zapid started. PID=${pid}`)
-console.log(`Logs: ${outLog} (stdout), ${errLog} (stderr)`)
+console.log(`Logs: Sentry (stdout), ${errLog} (stderr)`)

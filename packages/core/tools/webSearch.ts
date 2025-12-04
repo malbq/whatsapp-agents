@@ -1,9 +1,7 @@
 import { tool } from 'ai'
-import { inspect } from 'node:util'
 import { z } from 'zod'
 import type { ToolExecutionError } from '../errors'
 import type { WebSearch } from '../infra/webSearch'
-import { spreadError } from '../utils/spreadError'
 
 export interface WebSearchContext {
   webSearch: WebSearch
@@ -42,16 +40,10 @@ After discovering relevant URLs, use \`web_fetch\` to retrieve full content when
         }
 
         const results = await ctx.webSearch({ query, signal: abortSignal })
-        console.debug(
-          'web_search results',
-          inspect(
-            {
-              query,
-              resultsCount: results.length,
-            },
-            { depth: null }
-          )
-        )
+        console.debug('web_search results', {
+          query,
+          resultsCount: results.length,
+        })
 
         if (results.length === 0) {
           console.warn('web_search no results', { query })
@@ -62,7 +54,7 @@ After discovering relevant URLs, use \`web_fetch\` to retrieve full content when
       } catch (error) {
         console.error('web_search execution failed', {
           ...params,
-          error: spreadError(error),
+          error,
         })
         return {
           error: 'Tool execution failed',

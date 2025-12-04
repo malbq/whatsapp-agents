@@ -1181,6 +1181,88 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
     },
     { timeout: 120000 }
   )
+
+  test(
+    'acknowledges inability to generate images, audio, video, or documents',
+    async () => {
+      const run = async (text: string) => {
+        await runContext(
+          {
+            db,
+            storage,
+            chat,
+            webSearch,
+            user: seededUser,
+            entitlements: seededEntitlements,
+            notification: {
+              userName: seededUser.name,
+              userWaId: seededUser.waId,
+              userPhone: seededUser.waId,
+              timestamp: new Date(),
+              message: {
+                type: 'text',
+                messageWaId: `wamid.capabilities.${Date.now()}`,
+                text,
+              },
+            },
+          },
+          async () => {
+            await ingest()
+            await agent()
+          }
+        )
+      }
+
+      await run('Can you generate an image of a sunset for me?')
+      const imageResponse = chat.sentMessages.at(-1)!
+      expect('text' in imageResponse).toBe(true)
+      const imageResponseText = 'text' in imageResponse ? imageResponse.text : ''
+      expect(imageResponseText).toMatch(/can.?t|cannot|unable|don.?t|not able|no/i)
+
+      await run('Can you create an audio file or voice recording for me?')
+      const audioResponse = chat.sentMessages.at(-1)!
+      expect('text' in audioResponse).toBe(true)
+      const audioResponseText = 'text' in audioResponse ? audioResponse.text : ''
+      expect(audioResponseText).toMatch(/can.?t|cannot|unable|don.?t|not able|no/i)
+
+      await run('Can you watch and analyze a video for me?')
+      const videoResponse = chat.sentMessages.at(-1)!
+      expect('text' in videoResponse).toBe(true)
+      const videoResponseText = 'text' in videoResponse ? videoResponse.text : ''
+      expect(videoResponseText).toMatch(/can.?t|cannot|unable|don.?t|not able|no/i)
+
+      await run('Can you create a PDF or Word document for me?')
+      const docResponse = chat.sentMessages.at(-1)!
+      expect('text' in docResponse).toBe(true)
+      const docResponseText = 'text' in docResponse ? docResponse.text : ''
+      expect(docResponseText).toMatch(/can.?t|cannot|unable|don.?t|not able|no/i)
+
+      await run('Can you make a phone call to my friend for me?')
+      const phoneResponse = chat.sentMessages.at(-1)!
+      expect('text' in phoneResponse).toBe(true)
+      const phoneResponseText = 'text' in phoneResponse ? phoneResponse.text : ''
+      expect(phoneResponseText).toMatch(/can.?t|cannot|unable|don.?t|not able|no/i)
+
+      await run('Can you send an email to john@example.com for me?')
+      const emailResponse = chat.sentMessages.at(-1)!
+      expect('text' in emailResponse).toBe(true)
+      const emailResponseText = 'text' in emailResponse ? emailResponse.text : ''
+      expect(emailResponseText).toMatch(/can.?t|cannot|unable|don.?t|not able|no/i)
+
+      await run('Can you run this Python code for me: print("hello")')
+      const codeResponse = chat.sentMessages.at(-1)!
+      expect('text' in codeResponse).toBe(true)
+      const codeResponseText = 'text' in codeResponse ? codeResponse.text : ''
+      expect(codeResponseText).toMatch(/can.?t|cannot|unable|don.?t|not able|no/i)
+
+      await run('Can you buy me a pizza from Dominos and pay with my credit card?')
+      const purchaseResponse = chat.sentMessages.at(-1)!
+      expect('text' in purchaseResponse).toBe(true)
+      const purchaseResponseText = 'text' in purchaseResponse ? purchaseResponse.text : ''
+      expect(purchaseResponseText).toMatch(/can.?t|cannot|unable|don.?t|not able|no/i)
+    },
+    { timeout: 480000 }
+  )
 })
 
 const esc = (value: string) => `'${value.replace(/'/g, "''")}'`

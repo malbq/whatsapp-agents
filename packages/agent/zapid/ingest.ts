@@ -30,15 +30,15 @@ export async function ingest(): Promise<void> {
   const [messageId] = await context.db.storeMessage(inbound)
   inbound.id = messageId
 
-  console.log('Ingested message', {
-    id: messageId,
-    type: inbound.type,
-    userId: user.id,
+  console.info('Ingested message', {
+    messageId,
+    waMessageId: inbound.waId,
+    messageType: inbound.type,
   })
 
   // Embed asynchronously (best-effort, don't block response)
   embedInboundMessage(inbound, message).catch((error) => {
-    console.error('Failed to embed inbound message', error)
+    console.error('Failed to embed inbound message', { error })
   })
 }
 
@@ -67,7 +67,7 @@ async function storeMedia(inbound: DB.MessageInsert, message: IncomingMessage): 
   })
 
   if (existingResourceId) {
-    console.log(`Found existing resource ${existingResourceId}, reusing it`)
+    console.info('Reusing existing resource', { existingResourceId })
     inbound.resourceId = existingResourceId
     return
   }
@@ -92,7 +92,7 @@ async function storeMedia(inbound: DB.MessageInsert, message: IncomingMessage): 
 
   inbound.resourceId = resource.id
 
-  console.log(`Stored ${inbound.type} media`, {
+  console.info('Stored media', {
     type: inbound.type,
     size: message.data.byteLength,
     storageKey: resource.storageKey,

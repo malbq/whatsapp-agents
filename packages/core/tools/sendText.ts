@@ -1,7 +1,6 @@
 import { tool } from 'ai'
 import { z } from 'zod'
 import type { ToolExecutionError } from '../errors'
-import { spreadError } from '../utils/spreadError'
 
 export interface SendTextContext {
   userWhatsappId: string
@@ -18,18 +17,10 @@ export function createSendTextTool(ctx: SendTextContext) {
     execute: async ({ text }) => {
       try {
         await ctx.sendText(text)
-
-        console.log('send_text: delivered', {
-          text,
-          textLength: text.length,
-        })
-
+        console.debug('send_text', { text })
         return `Sent message to user: ${text}`
       } catch (error) {
-        console.error('Tool execution failed', {
-          text,
-          ...spreadError(error),
-        })
+        console.error('send_text failed', { error })
         return {
           error: 'Tool execution failed',
           details: error instanceof Error ? error.message : 'unknown',
