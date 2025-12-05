@@ -44,13 +44,9 @@ export const generateEmbeddings: GenerateEmbeddings = async (texts) => {
     },
   })
 
-  console.debug(`Batch embeddings generated`, {
-    provider: embeddingModel.provider,
-    modelId: embeddingModel.modelId,
-    input: texts,
-    totalChunks: allChunks.length,
-    responseHeaders: result.responses?.[0]?.headers,
-  })
+  console.debug(
+    `Batch embeddings generated with ${embeddingModel.provider}/${embeddingModel.modelId}`
+  )
 
   let embeddingIndex = 0
   const embeddings = groupedChunks.map<Array<ChunkData>>((textChunks) => {

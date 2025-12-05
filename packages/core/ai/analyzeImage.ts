@@ -45,10 +45,6 @@ export const analyzeImage: AnalyzeImage = async ({
       isEnabled: true,
     },
   })
-  console.debug(`Image analyzed with`, {
-    provider: imageAnalysisModel.provider,
-    model: imageAnalysisModel.modelId,
-    totalUsage: result.totalUsage,
-  })
+  console.debug(`Image analyzed with ${imageAnalysisModel.provider}/${imageAnalysisModel.modelId}`)
   return result.text
 }

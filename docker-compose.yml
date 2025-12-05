@@ -21,7 +21,7 @@ services:
     build:
       context: .
       target: production
-    image: zapid:0.4.39
+    image: zapid:0.4.41
     container_name: zapid
     restart: on-failure:5
     env_file:

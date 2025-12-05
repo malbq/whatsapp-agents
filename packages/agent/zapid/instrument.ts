@@ -15,48 +15,54 @@ if (import.meta.env.SENTRY_DSN && import.meta.env.NODE_ENV !== 'development') {
     tracesSampleRate: 1.0,
     environment: import.meta.env.NODE_ENV,
     release: pkg.version,
-    sendDefaultPii: true,
-    integrations: [Sentry.vercelAIIntegration()],
+    integrations: [
+      Sentry.vercelAIIntegration({
+        recordInputs: true,
+        recordOutputs: true,
+      }),
+      Sentry.consoleIntegration({ levels: [] }),
+    ],
   })
+
+  globalThis.console.log = new Proxy(globalThis.console.log, captureConsoleLog('info'))
+  globalThis.console.info = new Proxy(globalThis.console.info, captureConsoleLog('info'))
+  globalThis.console.debug = new Proxy(globalThis.console.debug, captureConsoleLog('debug'))
+  globalThis.console.warn = new Proxy(globalThis.console.warn, captureConsoleLog('warn'))
+  globalThis.console.error = new Proxy(globalThis.console.error, captureConsoleLog('error'))
 }
 
-const captureConsoleLog = (
+function captureConsoleLog(
   level: 'info' | 'debug' | 'warn' | 'error'
-): ProxyHandler<typeof console.log> => ({
-  apply(target, thisArg, args) {
-    Reflect.apply(target, thisArg, args)
+): ProxyHandler<typeof console.log> {
+  return {
+    apply(target, thisArg, args) {
+      Reflect.apply(target, thisArg, args)
 
-    // Expected format: console.log(message: string, attrs?: object)
-    const [msg, attrs] = args
-    if (typeof msg !== 'string') return
-    if (attrs !== undefined && typeof attrs !== 'object') return
+      const [msg, attrs] = args
+      if (typeof msg !== 'string') return
+      if (attrs !== undefined && typeof attrs !== 'object') return
 
-    let logAttrs = attrs ?? {}
-    if (level === 'error' && 'error' in logAttrs && logAttrs.error instanceof Error) {
-      // capture exceptions in `error` attribute
-      Sentry.captureException(logAttrs.error)
-      delete logAttrs.error
-    }
-
-    let normalizedAttrs: Record<string, unknown> = {}
-    for (const [key, value] of Object.entries(logAttrs)) {
-      if (typeof value === 'object' && value !== null) {
-        for (const [subKey, subValue] of Object.entries(value)) {
-          normalizedAttrs[`${key}.${subKey}`] = subValue
-        }
-      } else {
-        normalizedAttrs[key] = value
+      let logAttrs = attrs ?? {}
+      if (level === 'error' && 'error' in logAttrs && logAttrs.error instanceof Error) {
+        // capture exceptions in `error` attribute
+        Sentry.captureException(logAttrs.error)
+        delete logAttrs.error
       }
-    }
 
-    Sentry.logger[level](msg, normalizedAttrs)
-  },
-})
+      let normalizedAttrs: Record<string, unknown> = {}
+      for (const [key, value] of Object.entries(logAttrs)) {
+        if (typeof value === 'object' && value !== null) {
+          for (const [subKey, subValue] of Object.entries(value)) {
+            normalizedAttrs[`${key}.${subKey}`] = subValue
+          }
+        } else {
+          normalizedAttrs[key] = value
+        }
+      }
 
-globalThis.console.log = new Proxy(globalThis.console.log, captureConsoleLog('info'))
-globalThis.console.info = new Proxy(globalThis.console.info, captureConsoleLog('info'))
-globalThis.console.debug = new Proxy(globalThis.console.debug, captureConsoleLog('debug'))
-globalThis.console.warn = new Proxy(globalThis.console.warn, captureConsoleLog('warn'))
-globalThis.console.error = new Proxy(globalThis.console.error, captureConsoleLog('error'))
+      Sentry.logger[level](msg, normalizedAttrs)
+    },
+  }
+}
 
 await import('./index')

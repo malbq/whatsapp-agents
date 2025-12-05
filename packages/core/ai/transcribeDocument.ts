@@ -57,10 +57,8 @@ export const transcribeDocument: TranscribeDocument = async ({
       isEnabled: true,
     },
   })
-  console.debug('Document transcribed', {
-    provider: documentTranscriptionModel.provider,
-    model: documentTranscriptionModel.modelId,
-    totalUsage: result.totalUsage,
-  })
+  console.debug(
+    `Document transcribed with ${documentTranscriptionModel.provider}/${documentTranscriptionModel.modelId}`
+  )
   return result.text
 }

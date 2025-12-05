@@ -30,12 +30,8 @@ export const transcribeAudio: TranscribeAudio = async ({
     },
   })
 
-  console.debug(`Audio transcribed with ${transcriptionModel.modelId}`, {
-    gatewayLogId: result.response.headers?.['cf-aig-log-id'],
-    totalUsage: result.totalUsage,
-    steps: result.steps.map(({ request: _, response: __, ...step }) => {
-      return step
-    }),
-  })
+  console.debug(
+    `Audio transcribed with ${transcriptionModel.provider}/${transcriptionModel.modelId}`
+  )
   return result.text
 }
