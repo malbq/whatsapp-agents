@@ -28,7 +28,6 @@
 ## UX Improvements
 
 - flag assistant messages with sent/delivered/read/failed status
-- Handle openai flex service availability error - respond with "try again later"
 
 ## Performance & Reliability
 

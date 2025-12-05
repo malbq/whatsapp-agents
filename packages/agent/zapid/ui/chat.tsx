@@ -1,50 +1,61 @@
-import type { ModelMessage } from 'ai'
+import type { DB } from '@batman/core/infra/db'
 import { desc, eq } from 'drizzle-orm'
 import type { Context } from 'hono'
 import type { Child, FC } from 'hono/jsx'
-import type { ZapidRepository } from './db'
-import * as schema from './dbSchema'
+import type { ZapidRepository } from '../db'
+import * as schema from '../dbSchema'
 
-interface User {
-  id: string
-  waId: string
-  name: string
-  joinedAt: Date
-}
-
-interface Message {
-  id: string
-  role: string
-  modelMessage: ModelMessage
-  timestamp: Date
+interface ModelCost {
+  input: number
+  output: number
+  cache_read?: number
+  reasoning?: number
 }
 
 interface ChatPageProps {
-  users: User[]
-  selectedUser?: User
-  messages: Message[]
+  users: DB.User[]
+  selectedUser?: DB.User
+  messages: DB.Message[]
+  modelCost: ModelCost | null
+}
+
+const PROVIDER = 'openai'
+const MODEL_ID = 'gpt-5-mini'
+
+async function fetchModelCost(): Promise<ModelCost | null> {
+  try {
+    const res = await fetch('https://models.dev/api.json')
+    if (!res.ok) return null
+
+    const data = (await res.json()) as Record<
+      string,
+      { models?: Record<string, { cost?: ModelCost }> }
+    >
+    return data[PROVIDER]?.models?.[MODEL_ID]?.cost ?? null
+  } catch (err) {
+    console.error('[fetchModelCost] Error:', err)
+    return null
+  }
 }
 
 export function createChatRoute(db: ZapidRepository) {
   return async (c: Context) => {
-    const users = await db.$client.query.user.findMany({
-      orderBy: (user, { desc }) => [desc(user.joinedAt)],
-    })
+    const [users, modelCost] = await Promise.all([
+      db.$client.query.user.findMany({
+        orderBy: (user, { desc }) => [desc(user.joinedAt)],
+      }),
+      fetchModelCost(),
+    ])
 
     const selectedUserId = c.req.query('user')
     let selectedUser: (typeof users)[0] | undefined
-    let messages: Message[] = []
+    let messages: DB.Message[] = []
 
     if (selectedUserId) {
       selectedUser = users.find((u) => u.id === selectedUserId)
       if (selectedUser) {
         messages = await db.$client
-          .select({
-            id: schema.message.id,
-            role: schema.message.role,
-            modelMessage: schema.message.modelMessage,
-            timestamp: schema.message.timestamp,
-          })
+          .select()
           .from(schema.message)
           .where(eq(schema.message.userId, selectedUserId))
           .orderBy(desc(schema.message.timestamp))
@@ -58,6 +69,7 @@ export function createChatRoute(db: ZapidRepository) {
         users={users}
         selectedUser={selectedUser}
         messages={messages}
+        modelCost={modelCost}
       />
     )
   }
@@ -197,13 +209,29 @@ const Layout: FC<{ title: string; children: Child }> = ({ title, children }) => 
           color: #888;
           font-size: 16px;
         }
+        .message-cost {
+          font-size: 12px;
+          color: #666;
+          margin-top: 4px;
+          padding-top: 4px;
+          border-top: 1px solid rgba(0,0,0,0.08);
+        }
+        .message-cost span {
+          margin-right: 8px;
+        }
+        .message-cost .cost-label {
+          color: #888;
+        }
+        .message-cost .cost-total {
+          font-weight: 600;
+        }
       `}</style>
     </head>
     <body>{children}</body>
   </html>
 )
 
-const UserListItem: FC<{ user: User; isActive: boolean }> = ({ user, isActive }) => (
+const UserListItem: FC<{ user: DB.User; isActive: boolean }> = ({ user, isActive }) => (
   <a
     href={`/chat?user=${user.id}`}
     class={`user-item ${isActive ? 'active' : ''}`}
@@ -220,7 +248,49 @@ interface ParsedMessage {
   toolData?: string
 }
 
-function parseMessage(message: Message): ParsedMessage {
+interface CostBreakdown {
+  inputCost: number
+  inputTokens: number
+  outputCost: number
+  outputTokens: number
+  cachedCost: number
+  cachedTokens: number
+  total: number
+}
+
+function calculateCost(message: DB.Message, cost: ModelCost): CostBreakdown | null {
+  const { usageInputTokens, usageOutputTokens, usageCachedInputTokens, usageReasoningTokens } =
+    message
+  if (usageInputTokens === null && usageOutputTokens === null) {
+    return null
+  }
+
+  const cacheRate = cost.cache_read ?? 0
+
+  const inputTokens = (usageInputTokens ?? 0) - (usageCachedInputTokens ?? 0)
+  const outputTokens = (usageOutputTokens ?? 0) + (usageReasoningTokens ?? 0)
+  const cachedTokens = usageCachedInputTokens ?? 0
+
+  const inputCost = (inputTokens / 1_000_000) * cost.input
+  const outputCost = (outputTokens / 1_000_000) * cost.output
+  const cachedCost = (cachedTokens / 1_000_000) * cacheRate
+
+  return {
+    inputCost,
+    inputTokens,
+    outputCost,
+    outputTokens,
+    cachedCost,
+    cachedTokens,
+    total: inputCost + outputCost + cachedCost,
+  }
+}
+
+function formatCost(dollars: number): string {
+  return `$${dollars.toFixed(4)}`
+}
+
+function parseMessage(message: DB.Message): ParsedMessage {
   const msg = message.modelMessage
 
   // Tool result messages (role === 'tool')
@@ -257,9 +327,11 @@ function parseMessage(message: Message): ParsedMessage {
     }
 
     // Regular assistant message with structured output (WhatsApp message)
-    const textParts = msg.content.filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+    const textParts = msg.content.filter(
+      (p): p is { type: 'text'; text: string } => p.type === 'text'
+    )
     if (textParts.length > 0) {
-      const text = textParts.map(p => p.text).join('\n')
+      const text = textParts.map((p) => p.text).join('\n')
       const content = parseWhatsAppOutput(text)
       return {
         label: 'ASSISTANT',
@@ -280,7 +352,7 @@ function parseMessage(message: Message): ParsedMessage {
 
   // User messages with mixed content
   if (message.role === 'user' && Array.isArray(msg.content)) {
-    const parts = msg.content.map(part => {
+    const parts = msg.content.map((part) => {
       if (part.type === 'text') return part.text
       if (part.type === 'image') return '[Image]'
       if (part.type === 'file') return '[File]'
@@ -315,7 +387,9 @@ function parseWhatsAppOutput(text: string): string {
       case 'text':
         return message.text ?? text
       case 'location':
-        return `📍 Location: ${message.name ?? ''} ${message.address ?? ''}\n(${message.latitude}, ${message.longitude})`
+        return `📍 Location: ${message.name ?? ''} ${message.address ?? ''}\n(${
+          message.latitude
+        }, ${message.longitude})`
       case 'contact':
         return `👤 Contact: ${message.name}\n📞 ${message.phone}`
       case 'document':
@@ -325,9 +399,11 @@ function parseWhatsAppOutput(text: string): string {
       case 'interactive_button':
         return `${message.body}\n\nButtons: [${message.buttons?.join('] [')}]`
       case 'interactive_list': {
-        const options = message.sections?.flatMap((s: { options?: Array<{ title: string }> }) => 
-          s.options?.map((o: { title: string }) => o.title) ?? []
-        ) ?? []
+        const options =
+          message.sections?.flatMap(
+            (s: { options?: Array<{ title: string }> }) =>
+              s.options?.map((o: { title: string }) => o.title) ?? []
+          ) ?? []
         return `${message.body}\n\nOptions: ${options.join(', ')}`
       }
       default:
@@ -349,8 +425,12 @@ function formatToolOutput(result: unknown): string {
   return str.length > 500 ? str.slice(0, 500) + '...' : str
 }
 
-const MessageBubble: FC<{ message: Message }> = ({ message }) => {
+const MessageBubble: FC<{ message: DB.Message; modelCost: ModelCost | null }> = ({
+  message,
+  modelCost,
+}) => {
   const parsed = parseMessage(message)
+  const cost = modelCost ? calculateCost(message, modelCost) : null
   return (
     <div class={`message ${parsed.bubbleClass}`}>
       <div class='message-header'>
@@ -358,11 +438,29 @@ const MessageBubble: FC<{ message: Message }> = ({ message }) => {
       </div>
       {parsed.content && <div class='message-content'>{parsed.content}</div>}
       {parsed.toolData && <div class='tool-output'>{parsed.toolData}</div>}
+      {cost && (
+        <div class='message-cost'>
+          <span>
+            <span class='cost-label'>cached:</span>
+            {formatCost(cost.cachedCost)} ({cost.cachedTokens}t)
+          </span>
+          <span>
+            <span class='cost-label'>in:</span>
+            {formatCost(cost.inputCost)} ({cost.inputTokens}t)
+          </span>
+          <span>
+            <span class='cost-label'>out:</span>
+            {formatCost(cost.outputCost)} ({cost.outputTokens}
+            t)
+          </span>
+          <span class='cost-total'>= {formatCost(cost.total)}</span>
+        </div>
+      )}
     </div>
   )
 }
 
-export const ChatPage: FC<ChatPageProps> = ({ users, selectedUser, messages }) => (
+export const ChatPage: FC<ChatPageProps> = ({ users, selectedUser, messages, modelCost }) => (
   <Layout title={`Zapid Chat - ${selectedUser?.name ?? 'Select User'}`}>
     <aside class='sidebar'>
       {users.map((user) => (
@@ -385,6 +483,7 @@ export const ChatPage: FC<ChatPageProps> = ({ users, selectedUser, messages }) =
               <MessageBubble
                 key={msg.id}
                 message={msg}
+                modelCost={modelCost}
               />
             ))}
           </div>

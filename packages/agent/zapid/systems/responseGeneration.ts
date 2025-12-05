@@ -12,7 +12,7 @@ import {
 import { sendWhatsappMessage } from '@batman/core/utils/sendWhatsappMessage'
 import { toDbMessage } from '@batman/core/utils/toDbMessage'
 import { toSystemModelMessage } from '@batman/core/utils/toModelMessage'
-import { RetryError, stepCountIs, type ModelMessage, type ToolSet } from 'ai'
+import { stepCountIs, type ModelMessage, type ToolSet } from 'ai'
 import { ok } from 'node:assert'
 import { getContext } from '../context'
 import type { ZapidRepository } from '../db'
@@ -82,20 +82,11 @@ export async function responseGeneration() {
     stopWhen: stepCountIs(MAX_STEPS),
     providerOptions: {
       openai: {
-        serviceTier: 'flex',
         textVerbosity: 'low',
         reasoningSummary: null,
         parallelToolCalls: false,
       },
     },
-  }).catch((error) => {
-    if (
-      RetryError.isInstance(error) ||
-      (error instanceof DOMException && error.name === 'TimeoutError')
-    ) {
-      // TODO: probably caused by flex service
-    }
-    throw error
   })
   console.debug('Generated WhatsApp message', {
     provider: model.provider,

@@ -5,7 +5,6 @@ import { createWebhookApp, createWhatsappClient } from '@batman/whatsapp'
 import * as Sentry from '@sentry/bun'
 import { ok } from 'node:assert'
 import { agent } from './agent'
-import { createChatRoute } from './chat'
 import { runContext } from './context'
 import { dbFactory } from './db'
 import { ingest, isContentMessage } from './ingest'
@@ -13,6 +12,7 @@ import pkg from './package.json'
 import { checkUserConsent } from './systems/checkUserConsent'
 import { hasQuotaRemaining } from './systems/entitlements'
 import { validatePlanCatalogue } from './systems/planCatalogue'
+import { createChatRoute } from './ui/chat'
 
 ok(import.meta.env.META_API_TOKEN, 'META_API_TOKEN is required')
 ok(import.meta.env.META_WEBHOOK_VERIFY_TOKEN, 'META_WEBHOOK_VERIFY_TOKEN is required')

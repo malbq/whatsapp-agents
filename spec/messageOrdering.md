@@ -16,13 +16,13 @@ From a debug dump, two messages had IDs `019adb34-99ad-7000-...` and `019adb34-9
 
 ```
 message table
-├── id (UUIDv7, PK)
-├── userId
-├── role (user | assistant | tool)
-├── modelMessage (JSON - single message)
-├── timestamp (default NOW())
-├── usageInputTokens, usageOutputTokens, ... (per-message usage)
-└── ...
+├─ id (UUIDv7, PK)
+├─ userId
+├─ role (user | assistant | tool)
+├─ modelMessage (JSON - single message)
+├─ timestamp (default NOW())
+├─ usageInputTokens, usageOutputTokens, ... (per-message usage - to be removed)
+└─ ...
 ```
 
 Messages are retrieved with:
@@ -45,80 +45,81 @@ Bundle all messages from a single assistant turn into one row. The `modelMessage
 
 ```
 message table (revised)
-├── id (UUIDv7, PK)
-├── userId
-├── role (user | assistant)
-├── messages (JSON array of { modelMessage, usage? })
-├── timestamp
-└── ...
+├─ id (UUIDv7, PK)
+├─ userId
+├─ role (user | assistant)
+├─ messages (JSON array of modelMessage)
+├─ timestamp
+└─ ...
 ```
 
 For user messages, `messages` contains a single element. For assistant turns, it contains the full sequence: tool-calls, tool-results, and final response—preserving order.
 
 ### Usage Tracking
 
-Embed usage per-message within the JSON array:
+Token usage is tracked in a separate `usage` table:
 
-```typescript
-type TurnMessages = Array<{
-  modelMessage: AssistantModelMessage | ToolModelMessage
-  usage?: LanguageModelUsage // present for assistant messages, null for tool results
-}>
+```
+usage table
+├─ id (UUIDv7, PK)
+├─ messageId (FK → message.id)
+├─ source (enum: 'image_analysis' | 'document_transcription' | 'audio_transcription' | 'tool_call' | 'assistant_response' | ...)
+├─ modelMessageIndex (integer, nullable - only for assistant turn messages)
+├─ inputTokens (integer)
+├─ outputTokens (integer)
+├─ totalTokens (integer)
+├─ cachedInputTokens (integer, nullable)
+├─ reasoningTokens (integer, nullable)
+└─ timestamp (default NOW())
 ```
 
-This preserves per-tool-call usage granularity while keeping everything in one row.
+**Usage Sources:**
 
-## Trade-offs
+- `image_analysis`: Token usage from analyzing images (references user message)
+- `document_transcription`: Token usage from transcribing documents (references user message)
+- `audio_transcription`: Token usage from transcribing audio/voice (references user message)
+- `tool_call`: Token usage for individual tool calls within an assistant turn (references assistant message, includes `modelMessageIndex`)
+- `assistant_response`: Token usage for the final assistant response (references assistant message, includes `modelMessageIndex`)
 
-### Pros
+**For User Messages:**
 
-| Benefit                   | Description                                                     |
-| ------------------------- | --------------------------------------------------------------- |
-| **Ordering guaranteed**   | Array order is deterministic; no timestamp/UUID race conditions |
-| **Atomic storage**        | One insert per turn; no partial states on failure               |
-| **Simpler retrieval**     | Fetch N turns instead of N fragmented messages                  |
-| **Matches LLM semantics** | A "turn" is the natural unit for assistant responses            |
+- Transcription/analysis usage references the user message `id` directly
+- `modelMessageIndex` is `NULL` (not applicable)
 
-### Cons
+**For Assistant Turns:**
 
-| Drawback                                  | Description                                                                             |
-| ----------------------------------------- | --------------------------------------------------------------------------------------- |
-| **Harder to query individual tool calls** | Need JSON path queries to filter by tool name                                           |
-| **Larger JSON payloads**                  | Minimal impact, but worth noting                                                        |
-| **Migration required**                    | Existing rows need reshaping                                                            |
-| **Snippet relationship**                  | Snippets currently reference `messageId`; need to decide how to handle bundled messages |
+- Each message in the bundled `messages` array can have corresponding usage rows
+- `modelMessageIndex` indicates the position (0-indexed) within the `messages` array
+- Tool results (role=tool) typically don't have usage rows, but tool calls and final responses do
 
-## Alternatives Considered
+This approach separates concerns: message ordering/structure vs. usage tracking, enabling flexible querying and aggregation of costs by source.
 
-### 1. Add `sequence` column
+Adopt the **single row per turn** approach with a separate usage table. The ordering guarantee is critical for correct agent behavior, and the cons are manageable:
 
-- Add an integer `sequence` column, auto-increment per turn or globally
-- Order by `(timestamp, sequence)`
-- **Pro**: Minimal schema change, keeps one-row-per-message
-- **Con**: Adds complexity, still multiple rows per turn
-
-### 2. Add `turnId` + `sequence`
-
-- Group messages by `turnId`, order within group by `sequence`
-- **Pro**: Flexible, queryable
-- **Con**: More columns, more complex queries
-
-### 3. Use UUIDv7 for ordering
-
-- Change `ORDER BY timestamp` to `ORDER BY id`
-- **Con**: Still has millisecond collision issues; doesn't solve the fundamental problem
-
-## Recommendation
-
-Adopt the **single row per turn** approach. The ordering guarantee is critical for correct agent behavior, and the cons are manageable:
-
-- Usage tracking: embed in JSON array (preserves granularity)
+- Usage tracking: separate table enables flexible querying and aggregation by source
 - Tool call queries: rare enough that JSON path queries are acceptable
 - Migration: one-time cost, can be scripted
+- Usage granularity: preserved through `modelMessageIndex` mapping for assistant turns
 
 ## Implementation Notes
 
-1. Update `toDbMessage` to return a single `DB.MessageInsert` for assistant turns with bundled messages
-2. Update `findRecentMessages` to flatten the arrays when building context
-3. Update snippet creation to handle bundled messages (possibly create snippets for the final text response only)
-4. Migration script to bundle existing sequential assistant/tool rows by proximity in time
+1. **Schema Migration:**
+
+   - Remove `usageInputTokens`, `usageOutputTokens`, `usageTotalTokens`, `usageCachedInputTokens`, `usageReasoningTokens` from `message` table
+   - Create new `usage` table with columns: `id`, `messageId`, `source`, `modelMessageIndex`, `inputTokens`, `outputTokens`, `totalTokens`, `cachedInputTokens`, `reasoningTokens`
+   - Add index on `usage.messageId` for efficient lookups
+
+2. **Message Storage:**
+
+   - Update `toDbMessage` to return a single `DB.MessageInsert` for assistant turns with bundled messages (no usage fields)
+   - `messages` array contains only `modelMessage` objects (no embedded usage)
+
+3. **Usage Storage:**
+
+   - Create `toDbUsage` utility to convert `LanguageModelUsage` + metadata into `DB.UsageInsert`
+   - For user messages: store transcription/analysis usage with `source` and `messageId` (no `modelMessageIndex`)
+   - For assistant turns: store usage rows with `source` ('tool_call' or 'assistant_response'), `messageId`, and `modelMessageIndex` (0-indexed position in `messages` array)
+
+4. **Retrieval:**
+
+   - Update `respondeGeneration` to flatten the messages array received from `findRecentMessages`
