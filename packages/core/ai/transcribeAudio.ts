@@ -24,6 +24,10 @@ export const transcribeAudio: TranscribeAudio = async ({
     temperature: TRANSCRIPTION_GEN_TEMP,
     system: instructions,
     messages: [{ role: 'user', content: [{ type: 'file', data: audio, mediaType: mimeType }] }],
+    experimental_telemetry: {
+      functionId: 'transcribeAudio',
+      isEnabled: true,
+    },
   })
 
   console.debug(`Audio transcribed with ${transcriptionModel.modelId}`, {

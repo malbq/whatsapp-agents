@@ -15,6 +15,8 @@ if (import.meta.env.SENTRY_DSN && import.meta.env.NODE_ENV !== 'development') {
     tracesSampleRate: 1.0,
     environment: import.meta.env.NODE_ENV,
     release: pkg.version,
+    sendDefaultPii: true,
+    integrations: [Sentry.vercelAIIntegration()],
   })
 }
 

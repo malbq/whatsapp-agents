@@ -52,6 +52,10 @@ export const transcribeDocument: TranscribeDocument = async ({
         ],
       },
     ],
+    experimental_telemetry: {
+      functionId: 'transcribeDocument',
+      isEnabled: true,
+    },
   })
   console.debug('Document transcribed', {
     provider: documentTranscriptionModel.provider,

@@ -99,6 +99,10 @@ export async function generateWhatsappMessage<TOOLS extends ToolSet>({
         finishReason: stepResult.finishReason,
       })
     },
+    experimental_telemetry: {
+      functionId: 'generateWhatsappMessage',
+      isEnabled: true,
+    },
   } as GenerateOptions<TOOLS>)
 
   const output = extractOutput(result)

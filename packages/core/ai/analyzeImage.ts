@@ -40,6 +40,10 @@ export const analyzeImage: AnalyzeImage = async ({
         ],
       },
     ],
+    experimental_telemetry: {
+      functionId: 'analyzeImage',
+      isEnabled: true,
+    },
   })
   console.debug(`Image analyzed with`, {
     provider: imageAnalysisModel.provider,

@@ -9,10 +9,10 @@ import { embedInboundMessage } from './systems/embedInboundMessage'
 export async function ingest(): Promise<void> {
   const context = getContext()
   const { notification, user } = context
-  ok(user, 'User must be set before ingesting message')
   const message = notification.message
-
   if (!isContentMessage(message)) return
+
+  ok(user, 'User must be set before ingesting message')
 
   const modelMessage = await toUserModelMessage(message)
   const inbound = toDbMessage({
@@ -21,12 +21,10 @@ export async function ingest(): Promise<void> {
     modelMessage,
   })
 
-  // Handle media storage for images and documents
   if (inbound.type === 'image' || inbound.type === 'document') {
     await storeMedia(inbound, message)
   }
 
-  // Persist message
   const [messageId] = await context.db.storeMessage(inbound)
   inbound.id = messageId
 
