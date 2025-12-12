@@ -43,7 +43,7 @@ export async function recordUsage(
     return
   }
 
-  await db.insertUsageLedger({ userId: user.id, key, value, metadata })
+  await db.insertUserEntitlementLedger({ userId: user.id, key, value, metadata })
 }
 
 export function isFeatureEnabled(key: BooleanEntitlementKey): boolean {

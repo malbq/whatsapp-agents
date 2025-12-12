@@ -1,15 +1,17 @@
-import { PostgresSchema } from '@batman/core/infra/dbPostgresSchema'
+import { PostgresSchema } from '@batman/core/infra/dbSchema'
 import { boolean, index, pgTable as table, text, timestamp } from 'drizzle-orm/pg-core'
 
 export const {
   rawIncomingMessage,
   user,
   message,
+  usage,
   resource,
   snippet,
   reminder,
   userRelations,
   messageRelations,
+  usageRelations,
   resourceRelations,
   snippetRelations,
   reminderRelations,

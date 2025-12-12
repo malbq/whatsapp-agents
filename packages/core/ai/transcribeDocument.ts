@@ -1,5 +1,5 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
-import { generateText } from 'ai'
+import { generateText, type LanguageModelUsage } from 'ai'
 import { ok } from 'node:assert'
 
 ok(import.meta.env.GOOGLE_GENERATIVE_AI_API_KEY, 'GOOGLE_GENERATIVE_AI_API_KEY is required')
@@ -7,13 +7,18 @@ ok(import.meta.env.GOOGLE_GENERATIVE_AI_API_KEY, 'GOOGLE_GENERATIVE_AI_API_KEY i
 const googleProvider = createGoogleGenerativeAI()
 const documentTranscriptionModel = googleProvider('gemini-2.5-flash-lite')
 
+export interface TranscribeDocumentResult {
+  text: string
+  usage: LanguageModelUsage
+}
+
 export interface TranscribeDocument {
   (params: {
     instructions?: string
     document: ArrayBuffer
     mimeType: string
     filename: string
-  }): Promise<string>
+  }): Promise<TranscribeDocumentResult>
 }
 
 export const defaultInstructions = `Extract the complete text content from the provided document while preserving its structure and meaning. Do not summarize, rephrase, or omit any information from the original document. Do not apply stylistic or decorative formatting such as markdown, HTML, or typographic emphasis.
@@ -60,5 +65,5 @@ export const transcribeDocument: TranscribeDocument = async ({
   console.debug(
     `Document transcribed with ${documentTranscriptionModel.provider}/${documentTranscriptionModel.modelId}`
   )
-  return result.text
+  return { text: result.text, usage: result.usage }
 }

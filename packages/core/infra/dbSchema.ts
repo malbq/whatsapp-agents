@@ -42,18 +42,31 @@ export namespace PostgresSchema {
       waId: text(),
       type: text().notNull().$type<DB.MessageType>(),
       role: text().notNull().$type<DB.MessageRole>(),
-      modelMessage: json()
+      messages: json()
         .notNull()
-        .$type<AssistantModelMessage | ToolModelMessage | UserModelMessage>(),
-      usageInputTokens: integer(),
-      usageOutputTokens: integer(),
-      usageTotalTokens: integer(),
-      usageCachedInputTokens: integer(),
-      usageReasoningTokens: integer(),
+        .$type<Array<AssistantModelMessage | ToolModelMessage | UserModelMessage>>(),
       resourceId: text().references(() => resource.id),
       timestamp: timestamp({ mode: 'date' }).notNull().defaultNow(),
     },
     (table) => [index().on(table.userId)]
+  )
+
+  export const tokenUsage = pgTable(
+    'token_usage',
+    {
+      id: uuidv7().primaryKey(),
+      messageId: text()
+        .notNull()
+        .references(() => message.id, { onDelete: 'cascade' }),
+      source: text().notNull().$type<DB.UsageSource>(),
+      modelMessageIndex: integer(),
+      inputTokens: integer().notNull(),
+      outputTokens: integer().notNull(),
+      totalTokens: integer().notNull(),
+      cachedInputTokens: integer(),
+      reasoningTokens: integer(),
+    },
+    (table) => [index().on(table.messageId)]
   )
 
   export const snippet = pgTable(
@@ -138,6 +151,14 @@ export namespace PostgresSchema {
       references: [resource.id],
     }),
     snippets: many(snippet),
+    tokenUsages: many(tokenUsage),
+  }))
+
+  export const tokenUsageRelations = relations(tokenUsage, ({ one }) => ({
+    message: one(message, {
+      fields: [tokenUsage.messageId],
+      references: [message.id],
+    }),
   }))
 
   export const snippetRelations = relations(snippet, ({ one }) => ({

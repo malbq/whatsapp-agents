@@ -1,5 +1,5 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
-import { generateText, type TextPart } from 'ai'
+import { generateText, type LanguageModelUsage, type TextPart } from 'ai'
 import { ok } from 'node:assert'
 
 ok(import.meta.env.GOOGLE_GENERATIVE_AI_API_KEY, 'GOOGLE_GENERATIVE_AI_API_KEY is required')
@@ -8,8 +8,17 @@ const googleProvider = createGoogleGenerativeAI()
 const imageAnalysisModel = googleProvider('gemini-2.5-flash')
 const IMAGE_ANALYSIS_TEMP = 0.1
 
+export interface AnalyzeImageResult {
+  text: string
+  usage: LanguageModelUsage
+}
+
 export interface AnalyzeImage {
-  (params: { instructions?: string; imageUrl: string; caption?: string }): Promise<string>
+  (params: {
+    instructions?: string
+    imageUrl: string
+    caption?: string
+  }): Promise<AnalyzeImageResult>
 }
 
 export const defaultInstructions = `Provide a detailed description of this image in English suitable for semantic retrieval and text-based memory search.
@@ -46,5 +55,5 @@ export const analyzeImage: AnalyzeImage = async ({
     },
   })
   console.debug(`Image analyzed with ${imageAnalysisModel.provider}/${imageAnalysisModel.modelId}`)
-  return result.text
+  return { text: result.text, usage: result.usage }
 }

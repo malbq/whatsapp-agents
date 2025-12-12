@@ -1,66 +1,127 @@
 import type { DB } from '@batman/core/infra/db'
-import { desc, eq } from 'drizzle-orm'
+import type { Storage } from '@batman/core/infra/storage'
+import { desc, eq, inArray } from 'drizzle-orm'
 import type { Context } from 'hono'
+import { raw } from 'hono/html'
 import type { Child, FC } from 'hono/jsx'
 import type { ZapidRepository } from '../db'
 import * as schema from '../dbSchema'
 
-interface ModelCost {
+interface MessageWithUsage extends DB.Message {
+  usages: DB.TokenUsage[]
+  imageDataUrl?: string
+}
+
+interface TokenPricing {
   input: number
   output: number
-  cache_read?: number
-  reasoning?: number
+  cache_read: number
 }
+
+interface ModelPricing {
+  name: string
+  pricing: TokenPricing
+}
+
+const MODEL_CONFIGS = [
+  { provider: 'openai', model: 'gpt-5-mini', name: 'GPT-5 Mini' },
+  { provider: 'xai', model: 'grok-4-1-fast', name: 'Grok 4.1 Fast' },
+  { provider: 'xai', model: 'grok-4-1-fast-non-reasoning', name: 'Grok 4.1 Fast NR' },
+  { provider: 'google', model: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
+] as const
 
 interface ChatPageProps {
   users: DB.User[]
   selectedUser?: DB.User
-  messages: DB.Message[]
-  modelCost: ModelCost | null
+  messages: MessageWithUsage[]
+  modelPricing: ModelPricing[]
 }
 
-const PROVIDER = 'openai'
-const MODEL_ID = 'gpt-5-mini'
-
-async function fetchModelCost(): Promise<ModelCost | null> {
+async function fetchPricing(): Promise<ModelPricing[]> {
   try {
     const res = await fetch('https://models.dev/api.json')
-    if (!res.ok) return null
-
     const data = (await res.json()) as Record<
       string,
-      { models?: Record<string, { cost?: ModelCost }> }
+      { models?: Record<string, { cost?: TokenPricing }> }
     >
-    return data[PROVIDER]?.models?.[MODEL_ID]?.cost ?? null
-  } catch (err) {
-    console.error('[fetchModelCost] Error:', err)
-    return null
+    const results: ModelPricing[] = []
+    for (const cfg of MODEL_CONFIGS) {
+      const cost = data?.[cfg.provider]?.models?.[cfg.model]?.cost
+      if (cost) {
+        results.push({ name: cfg.name, pricing: cost })
+      }
+    }
+    return results
+  } catch {
+    return []
   }
 }
 
-export function createChatRoute(db: ZapidRepository) {
+export function createChatRoute(db: ZapidRepository, storage: Storage) {
   return async (c: Context) => {
-    const [users, modelCost] = await Promise.all([
+    const [users, modelPricing] = await Promise.all([
       db.$client.query.user.findMany({
         orderBy: (user, { desc }) => [desc(user.joinedAt)],
       }),
-      fetchModelCost(),
+      fetchPricing(),
     ])
 
     const selectedUserId = c.req.query('user')
     let selectedUser: (typeof users)[0] | undefined
-    let messages: DB.Message[] = []
+    let messages: MessageWithUsage[] = []
 
     if (selectedUserId) {
       selectedUser = users.find((u) => u.id === selectedUserId)
       if (selectedUser) {
-        messages = await db.$client
-          .select()
+        const rawMessages = await db.$client
+          .select({
+            message: schema.message,
+            storageKey: schema.resource.storageKey,
+            mimeType: schema.resource.mimeType,
+          })
           .from(schema.message)
+          .leftJoin(schema.resource, eq(schema.message.resourceId, schema.resource.id))
           .where(eq(schema.message.userId, selectedUserId))
           .orderBy(desc(schema.message.timestamp))
           .limit(100)
           .then((rows) => rows.reverse())
+
+        if (rawMessages.length > 0) {
+          const messageIds = rawMessages.map((m) => m.message.id)
+          const usages = await db.$client
+            .select()
+            .from(schema.tokenUsage)
+            .where(inArray(schema.tokenUsage.messageId, messageIds))
+
+          const usageByMessageId = new Map<string, DB.TokenUsage[]>()
+          for (const u of usages) {
+            const list = usageByMessageId.get(u.messageId) ?? []
+            list.push(u)
+            usageByMessageId.set(u.messageId, list)
+          }
+
+          const imageDataUrls = new Map<string, string>()
+          const imagesToFetch = rawMessages.filter(
+            (r) => r.storageKey && r.mimeType?.startsWith('image/')
+          )
+          await Promise.all(
+            imagesToFetch.map(async (r) => {
+              try {
+                const data = await storage.retrieve(r.storageKey!)
+                const base64 = Buffer.from(data.data).toString('base64')
+                imageDataUrls.set(r.message.id, `data:${r.mimeType};base64,${base64}`)
+              } catch {
+                console.warn(`Failed to retrieve image for message ${r.message.id}`)
+              }
+            })
+          )
+
+          messages = rawMessages.map((r) => ({
+            ...r.message,
+            usages: usageByMessageId.get(r.message.id) ?? [],
+            imageDataUrl: imageDataUrls.get(r.message.id),
+          }))
+        }
       }
     }
 
@@ -69,7 +130,7 @@ export function createChatRoute(db: ZapidRepository) {
         users={users}
         selectedUser={selectedUser}
         messages={messages}
-        modelCost={modelCost}
+        modelPricing={modelPricing}
       />
     )
   }
@@ -88,70 +149,84 @@ const Layout: FC<{ title: string; children: Child }> = ({ title, children }) => 
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
           font-family: system-ui;
-          background: #fff;
+          background: #0a0a0a;
+          color: #f0f0f0;
           height: 100dvh;
           display: grid;
           grid-template-columns: auto 1fr;
           overflow: hidden;
         }
         .sidebar {
-          background: #fff;
-          border-right: 1px solid #e0e0e0;
+          background: #0f0f0f;
+          border-right: 1px solid #1a1a1a;
           display: flex;
           flex-direction: column;
         }
         .user-item {
           display: block;
           padding: 4px 8px;
-          border-bottom: 1px solid #f0f0f0;
+          border-bottom: 1px solid #1a1a1a;
           text-decoration: none;
           color: inherit;
           transition: background 0.15s;
           white-space: nowrap;
         }
         .user-item:hover {
-          background: #f5f5f5;
+          background: #1a1a1a;
         }
         .user-item.active {
-          background: #e8f5e9;
+          background: #252525;
         }
         .user-name {
           font-weight: 500;
-          color: #333;
+          color: #f0f0f0;
           margin-bottom: 2px;
         }
         .user-id {
           font-size: 12px;
-          color: #888;
+          color: #666;
         }
         .main {
-          flex: 1;
           display: flex;
           flex-direction: column;
-          background: #e5ddd5;
-          overflow-y: auto;
+          background: #0a0a0a;
+          overflow: hidden;
+          min-height: 0;
         }
         .chat-header {
           padding: 12px 16px;
-          background: #f0f2f5;
-          border-bottom: 1px solid #e0e0e0;
+          background: #111;
+          border-bottom: 1px solid #1a1a1a;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 16px;
         }
-        .chat-header h2 {
+        .header-info h2 {
           font-size: 16px;
           font-weight: 500;
+          color: #f0f0f0;
         }
-        .chat-header .subtitle {
+        .header-info .subtitle {
           font-size: 12px;
           color: #666;
+        }
+        .header-price-table {
+          font-size: 14px;
+          border-collapse: collapse;
+        }
+        .header-price-table td {
+          padding: 1px 8px 1px 0;
         }
         .messages {
           flex: 1;
           overflow-y: auto;
           padding: 16px;
+          min-height: 0;
         }
         .no-messages {
           text-align: center;
-          color: #888;
+          color: #555;
           padding: 40px;
         }
         .message {
@@ -162,18 +237,18 @@ const Layout: FC<{ title: string; children: Child }> = ({ title, children }) => 
           word-wrap: break-word;
         }
         .message.user {
-          background: #dcf8c6;
+          background: #1f1f1f;
           margin-left: auto;
         }
         .message.assistant {
-          background: #fff;
+          background: #161616;
         }
         .message.tool {
-          background: #e8f4fd;
+          border: 1px solid #141414;
           font-size: 12px;
         }
         .message.tool-call {
-          background: #fff3cd;
+          border: 1px solid #1a1a1a;
           font-size: 12px;
         }
         .message-header {
@@ -191,43 +266,75 @@ const Layout: FC<{ title: string; children: Child }> = ({ title, children }) => 
           white-space: pre-wrap;
           font-size: 14px;
           line-height: 1.4;
+          color: #f0f0f0;
         }
         .tool-input, .tool-output {
           font-family: monospace;
-          font-size: 11px;
-          background: rgba(0,0,0,0.05);
+          background: rgba(255,255,255,0.04);
           padding: 4px 6px;
           border-radius: 4px;
           margin-top: 4px;
           overflow-x: auto;
+          color: #f0f0f0;
         }
-        .select-prompt {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          height: 100%;
-          color: #888;
-          font-size: 16px;
-        }
-        .message-cost {
-          font-size: 12px;
-          color: #666;
-          margin-top: 4px;
+        .message-usage {
+          font-size: 11px;
+          color: #a0a0a0;
+          margin-top: 6px;
           padding-top: 4px;
-          border-top: 1px solid rgba(0,0,0,0.08);
+          border-top: 1px solid rgba(255,255,255,0.06);
         }
-        .message-cost span {
-          margin-right: 8px;
+        .usage-items {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
         }
-        .message-cost .cost-label {
-          color: #888;
+        .usage-item {
+          display: inline-flex;
+          gap: 2px;
         }
-        .message-cost .cost-total {
+        .usage-label {
+          color: #777777;
+        }
+        .usage-total {
           font-weight: 600;
+          color: #b0b0b0;
+        }
+        .price-table {
+          margin-top: 6px;
+          font-size: 10px;
+          border-collapse: collapse;
+          width: auto;
+        }
+        .price-table td {
+          padding: 2px 8px 2px 0;
+        }
+        .price-model {
+          color: #777777;
+        }
+        .price-cost {
+          font-family: monospace;
+          text-align: right;
+          color: #b0b0b0;
+        }
+        .message-image {
+          max-width: 100%;
+          max-height: 300px;
+          border-radius: 4px;
+          margin-bottom: 6px;
+          display: block;
         }
       `}</style>
     </head>
-    <body>{children}</body>
+    <body>
+      {children}
+      <script>
+        {raw(`
+          const messages = document.querySelector('.messages')
+          if (messages) messages.scrollTop = messages.scrollHeight
+        `)}
+      </script>
+    </body>
   </html>
 )
 
@@ -246,131 +353,168 @@ interface ParsedMessage {
   content: string
   bubbleClass: string
   toolData?: string
+  modelMessageIndex: number
 }
 
-interface CostBreakdown {
-  inputCost: number
+interface UsageSummary {
   inputTokens: number
-  outputCost: number
   outputTokens: number
-  cachedCost: number
   cachedTokens: number
-  total: number
+  reasoningTokens: number
+  totalTokens: number
+  source: string | null
 }
 
-function calculateCost(message: DB.Message, cost: ModelCost): CostBreakdown | null {
-  const { usageInputTokens, usageOutputTokens, usageCachedInputTokens, usageReasoningTokens } =
-    message
-  if (usageInputTokens === null && usageOutputTokens === null) {
-    return null
+function getTotalUsage(messages: MessageWithUsage[]): UsageSummary {
+  let inputTokens = 0
+  let outputTokens = 0
+  let cachedTokens = 0
+  let reasoningTokens = 0
+  let totalTokens = 0
+
+  for (const msg of messages) {
+    for (const u of msg.usages) {
+      inputTokens += u.inputTokens
+      outputTokens += u.outputTokens
+      cachedTokens += u.cachedInputTokens ?? 0
+      reasoningTokens += u.reasoningTokens ?? 0
+      totalTokens += u.totalTokens
+    }
   }
 
-  const cacheRate = cost.cache_read ?? 0
+  return { inputTokens, outputTokens, cachedTokens, reasoningTokens, totalTokens, source: null }
+}
 
-  const inputTokens = (usageInputTokens ?? 0) - (usageCachedInputTokens ?? 0)
-  const outputTokens = (usageOutputTokens ?? 0) + (usageReasoningTokens ?? 0)
-  const cachedTokens = usageCachedInputTokens ?? 0
-
-  const inputCost = (inputTokens / 1_000_000) * cost.input
-  const outputCost = (outputTokens / 1_000_000) * cost.output
-  const cachedCost = (cachedTokens / 1_000_000) * cacheRate
+function getUsageForIndex(usages: DB.TokenUsage[], index: number): UsageSummary | null {
+  const matching = usages.filter((u) => u.modelMessageIndex === index)
+  if (matching.length === 0) return null
 
   return {
-    inputCost,
-    inputTokens,
-    outputCost,
-    outputTokens,
-    cachedCost,
-    cachedTokens,
-    total: inputCost + outputCost + cachedCost,
+    inputTokens: matching.reduce((sum, u) => sum + u.inputTokens, 0),
+    outputTokens: matching.reduce((sum, u) => sum + u.outputTokens, 0),
+    cachedTokens: matching.reduce((sum, u) => sum + (u.cachedInputTokens ?? 0), 0),
+    reasoningTokens: matching.reduce((sum, u) => sum + (u.reasoningTokens ?? 0), 0),
+    totalTokens: matching.reduce((sum, u) => sum + u.totalTokens, 0),
+    source: matching[0]?.source ?? null,
   }
 }
 
-function formatCost(dollars: number): string {
-  return `$${dollars.toFixed(4)}`
+function getUnindexedUsage(usages: DB.TokenUsage[]): UsageSummary | null {
+  const matching = usages.filter((u) => u.modelMessageIndex === null)
+  if (matching.length === 0) return null
+
+  return {
+    inputTokens: matching.reduce((sum, u) => sum + u.inputTokens, 0),
+    outputTokens: matching.reduce((sum, u) => sum + u.outputTokens, 0),
+    cachedTokens: matching.reduce((sum, u) => sum + (u.cachedInputTokens ?? 0), 0),
+    reasoningTokens: matching.reduce((sum, u) => sum + (u.reasoningTokens ?? 0), 0),
+    totalTokens: matching.reduce((sum, u) => sum + u.totalTokens, 0),
+    source: matching[0]?.source ?? null,
+  }
 }
 
-function parseMessage(message: DB.Message): ParsedMessage {
-  const msg = message.modelMessage
+function formatTokens(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`
+  return n.toString()
+}
 
-  // Tool result messages (role === 'tool')
-  if (message.role === 'tool' && Array.isArray(msg.content)) {
-    const toolResults = msg.content.filter((p) => p.type === 'tool-result')
-    if (toolResults.length > 0) {
-      const first = toolResults[0] as { toolName?: string; output?: unknown }
-      const toolName = first?.toolName ?? 'unknown'
-      const output = toolResults
-        .map((r) => formatToolOutput((r as { output?: unknown }).output))
-        .join('\n')
-      return {
-        label: `TOOL RESULT: ${toolName}`,
-        content: '',
-        bubbleClass: 'tool',
-        toolData: output,
-      }
-    }
-  }
+function parseMessage(message: DB.Message): ParsedMessage[] {
+  const results: ParsedMessage[] = []
 
-  // Assistant messages - check for tool calls
-  if (message.role === 'assistant' && Array.isArray(msg.content)) {
-    const toolCalls = msg.content.filter((p) => p.type === 'tool-call')
-    if (toolCalls.length > 0) {
-      const first = toolCalls[0] as { toolName?: string; input?: unknown }
-      const toolName = first?.toolName ?? 'unknown'
-      const input = formatToolOutput(first?.input)
-      return {
-        label: `TOOL CALL: ${toolName}`,
-        content: '',
-        bubbleClass: 'tool-call',
-        toolData: input,
+  for (let i = 0; i < message.messages.length; i++) {
+    const msg = message.messages[i]
+    if (!msg) continue
+
+    if (msg.role === 'tool' && Array.isArray(msg.content)) {
+      const toolResults = (
+        msg.content as Array<{ type: string; toolName?: string; output?: unknown }>
+      ).filter((p) => p.type === 'tool-result')
+      if (toolResults.length > 0) {
+        const first = toolResults[0]
+        const toolName = first?.toolName ?? 'unknown'
+        const output = toolResults.map((r) => formatToolOutput(r.output)).join('\n')
+        results.push({
+          label: `TOOL RESULT: ${toolName}`,
+          content: '',
+          bubbleClass: 'tool',
+          toolData: output,
+          modelMessageIndex: i,
+        })
+        continue
       }
     }
 
-    // Regular assistant message with structured output (WhatsApp message)
-    const textParts = msg.content.filter(
-      (p): p is { type: 'text'; text: string } => p.type === 'text'
-    )
-    if (textParts.length > 0) {
-      const text = textParts.map((p) => p.text).join('\n')
-      const content = parseWhatsAppOutput(text)
-      return {
-        label: 'ASSISTANT',
-        content,
-        bubbleClass: 'assistant',
+    if (msg.role === 'assistant' && Array.isArray(msg.content)) {
+      const toolCalls = (
+        msg.content as Array<{ type: string; toolName?: string; input?: unknown }>
+      ).filter((p) => p.type === 'tool-call')
+      if (toolCalls.length > 0) {
+        const first = toolCalls[0]
+        const toolName = first?.toolName ?? 'unknown'
+        const input = formatToolOutput(first?.input)
+        results.push({
+          label: `TOOL CALL: ${toolName}`,
+          content: '',
+          bubbleClass: 'tool-call',
+          toolData: input,
+          modelMessageIndex: i,
+        })
+        continue
+      }
+
+      const textParts = (msg.content as Array<{ type: string; text?: string }>).filter(
+        (p): p is { type: 'text'; text: string } => p.type === 'text'
+      )
+      if (textParts.length > 0) {
+        const text = textParts.map((p) => p.text).join('\n')
+        const content = parseWhatsAppOutput(text)
+        results.push({
+          label: 'ASSISTANT',
+          content,
+          bubbleClass: 'assistant',
+          modelMessageIndex: i,
+        })
+        continue
       }
     }
-  }
 
-  // Simple string content
-  if (typeof msg.content === 'string') {
-    return {
-      label: message.role.toUpperCase(),
-      content: msg.content,
-      bubbleClass: message.role,
+    if (typeof msg.content === 'string') {
+      results.push({
+        label: msg.role.toUpperCase(),
+        content: msg.content,
+        bubbleClass: msg.role,
+        modelMessageIndex: i,
+      })
+      continue
     }
-  }
 
-  // User messages with mixed content
-  if (message.role === 'user' && Array.isArray(msg.content)) {
-    const parts = msg.content.map((part) => {
-      if (part.type === 'text') return part.text
-      if (part.type === 'image') return '[Image]'
-      if (part.type === 'file') return '[File]'
-      return `[${part.type}]`
+    if (msg.role === 'user' && Array.isArray(msg.content)) {
+      const textParts: string[] = []
+      for (const part of msg.content as Array<{ type: string; text?: string }>) {
+        if (part.type === 'text') {
+          textParts.push(part.text ?? '')
+        } else if (part.type === 'file') {
+          textParts.push('[File]')
+        }
+      }
+      results.push({
+        label: 'USER',
+        content: textParts.join('\n'),
+        bubbleClass: 'user',
+        modelMessageIndex: i,
+      })
+      continue
+    }
+
+    results.push({
+      label: msg.role.toUpperCase(),
+      content: JSON.stringify(msg.content, null, 2),
+      bubbleClass: msg.role,
+      modelMessageIndex: i,
     })
-    return {
-      label: 'USER',
-      content: parts.join('\n'),
-      bubbleClass: 'user',
-    }
   }
 
-  // Fallback
-  return {
-    label: message.role.toUpperCase(),
-    content: JSON.stringify(msg.content, null, 2),
-    bubbleClass: message.role,
-  }
+  return results
 }
 
 function parseWhatsAppOutput(text: string): string {
@@ -425,70 +569,164 @@ function formatToolOutput(result: unknown): string {
   return str.length > 500 ? str.slice(0, 500) + '...' : str
 }
 
-const MessageBubble: FC<{ message: DB.Message; modelCost: ModelCost | null }> = ({
-  message,
-  modelCost,
+function calculateCost(usage: UsageSummary, pricing: TokenPricing): number {
+  const inputCost = ((usage.inputTokens - usage.cachedTokens) / 1_000_000) * pricing.input
+  const outputCost = ((usage.outputTokens + usage.reasoningTokens) / 1_000_000) * pricing.output
+  const cacheCost = (usage.cachedTokens / 1_000_000) * pricing.cache_read
+  return inputCost + outputCost + cacheCost
+}
+
+function formatCost(cost: number): string {
+  if (cost < 0.01) return `$${cost.toFixed(4)}`
+  return `$${cost.toFixed(2)}`
+}
+
+const UsageDisplay: FC<{ usage: UsageSummary; modelPricing: ModelPricing[] }> = ({
+  usage,
+  modelPricing,
 }) => {
-  const parsed = parseMessage(message)
-  const cost = modelCost ? calculateCost(message, modelCost) : null
+  const costs = modelPricing.map((mp) => ({
+    name: mp.name,
+    cost: calculateCost(usage, mp.pricing),
+  }))
+
   return (
-    <div class={`message ${parsed.bubbleClass}`}>
-      <div class='message-header'>
-        <span class='message-role'>{parsed.label}</span>
+    <div class='message-usage'>
+      <div class='usage-items'>
+        <span class='usage-item'>
+          <span class='usage-label'>in:</span> {formatTokens(usage.inputTokens)}
+        </span>
+        {usage.cachedTokens > 0 && (
+          <span class='usage-item'>
+            <span class='usage-label'>cached:</span> {formatTokens(usage.cachedTokens)}
+          </span>
+        )}
+        <span class='usage-item'>
+          <span class='usage-label'>out:</span> {formatTokens(usage.outputTokens)}
+        </span>
+        {usage.reasoningTokens > 0 && (
+          <span class='usage-item'>
+            <span class='usage-label'>reasoning:</span> {formatTokens(usage.reasoningTokens)}
+          </span>
+        )}
+        <span class='usage-item usage-total'>= {formatTokens(usage.totalTokens)} tokens</span>
       </div>
-      {parsed.content && <div class='message-content'>{parsed.content}</div>}
-      {parsed.toolData && <div class='tool-output'>{parsed.toolData}</div>}
-      {cost && (
-        <div class='message-cost'>
-          <span>
-            <span class='cost-label'>cached:</span>
-            {formatCost(cost.cachedCost)} ({cost.cachedTokens}t)
-          </span>
-          <span>
-            <span class='cost-label'>in:</span>
-            {formatCost(cost.inputCost)} ({cost.inputTokens}t)
-          </span>
-          <span>
-            <span class='cost-label'>out:</span>
-            {formatCost(cost.outputCost)} ({cost.outputTokens}
-            t)
-          </span>
-          <span class='cost-total'>= {formatCost(cost.total)}</span>
-        </div>
+      {costs.length > 0 && (
+        <table class='price-table'>
+          <tbody>
+            {costs.map((c) => (
+              <tr key={c.name}>
+                <td class='price-model'>{c.name}</td>
+                <td class='price-cost'>{formatCost(c.cost)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
     </div>
   )
 }
 
-export const ChatPage: FC<ChatPageProps> = ({ users, selectedUser, messages, modelCost }) => (
-  <Layout title={`Zapid Chat - ${selectedUser?.name ?? 'Select User'}`}>
-    <aside class='sidebar'>
-      {users.map((user) => (
-        <UserListItem
-          key={user.id}
-          user={user}
-          isActive={selectedUser?.id === user.id}
-        />
-      ))}
-    </aside>
-    <main class='main'>
-      {selectedUser && (
-        <>
-          <div class='chat-header'>
-            <h2>{selectedUser.name}</h2>
-            <div class='subtitle'>{selectedUser.waId}</div>
-          </div>
-          <div class='messages'>
-            {messages.map((msg) => (
-              <MessageBubble
-                key={msg.id}
-                message={msg}
-                modelCost={modelCost}
+const MessageBubble: FC<{ message: MessageWithUsage; modelPricing: ModelPricing[] }> = ({
+  message,
+  modelPricing,
+}) => {
+  const parsedMessages = parseMessage(message)
+  const unindexedUsage = getUnindexedUsage(message.usages)
+
+  return (
+    <>
+      {parsedMessages.map((parsed, index) => {
+        const usage = getUsageForIndex(message.usages, parsed.modelMessageIndex)
+        const showUnindexed = index === 0 && unindexedUsage
+
+        return (
+          <div
+            key={index}
+            class={`message ${parsed.bubbleClass}`}
+          >
+            <div class='message-header'>
+              <span class='message-role'>{parsed.label}</span>
+            </div>
+            {index === 0 && message.imageDataUrl && (
+              <img
+                src={message.imageDataUrl}
+                class='message-image'
+                alt='User sent image'
               />
-            ))}
+            )}
+            {parsed.content && <div class='message-content'>{parsed.content}</div>}
+            {parsed.toolData && <div class='tool-output'>{parsed.toolData}</div>}
+            {showUnindexed && (
+              <UsageDisplay
+                usage={unindexedUsage}
+                modelPricing={modelPricing}
+              />
+            )}
+            {usage && (
+              <UsageDisplay
+                usage={usage}
+                modelPricing={modelPricing}
+              />
+            )}
           </div>
-        </>
-      )}
-    </main>
-  </Layout>
-)
+        )
+      })}
+    </>
+  )
+}
+
+export const ChatPage: FC<ChatPageProps> = ({ users, selectedUser, messages, modelPricing }) => {
+  const totalUsage = getTotalUsage(messages)
+  const totalCosts = modelPricing.map((mp) => ({
+    name: mp.name,
+    cost: calculateCost(totalUsage, mp.pricing),
+  }))
+
+  return (
+    <Layout title={`Zapid Chat - ${selectedUser?.name ?? 'Select User'}`}>
+      <aside class='sidebar'>
+        {users.map((user) => (
+          <UserListItem
+            key={user.id}
+            user={user}
+            isActive={selectedUser?.id === user.id}
+          />
+        ))}
+      </aside>
+      <main class='main'>
+        {selectedUser && (
+          <>
+            <div class='chat-header'>
+              <div class='header-info'>
+                <h2>{selectedUser.name}</h2>
+                <div class='subtitle'>{selectedUser.waId}</div>
+              </div>
+              {totalCosts.length > 0 && (
+                <table class='header-price-table'>
+                  <tbody>
+                    {totalCosts.map((c) => (
+                      <tr key={c.name}>
+                        <td class='price-model'>{c.name}</td>
+                        <td class='price-cost'>{formatCost(c.cost)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+            <div class='messages'>
+              {messages.map((msg) => (
+                <MessageBubble
+                  key={msg.id}
+                  message={msg}
+                  modelPricing={modelPricing}
+                />
+              ))}
+            </div>
+          </>
+        )}
+      </main>
+    </Layout>
+  )
+}

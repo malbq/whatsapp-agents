@@ -56,15 +56,17 @@ export function createStartRoute(db: DB.Repository, frmDB: FrmDB, chat: Chat) {
           waId: templateMessageId,
           type: 'text',
           role: 'assistant',
-          modelMessage: {
-            role: 'assistant',
-            content: `Olá ${candidate.name},
+          messages: [
+            {
+              role: 'assistant',
+              content: `Olá ${candidate.name},
 
 Somos do Departamento de Recrutamento e Seleção da empresa FRM.
 Com alegria informamos que o seu currículo foi selecionado para participar do processo seletivo para a vaga de *${candidate.position}*.
 
 Gostaria de dar sequência no agendamento da entrevista?`,
-          },
+            },
+          ],
         },
       ])
       console.log('Template message stored in database')

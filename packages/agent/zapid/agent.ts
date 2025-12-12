@@ -67,13 +67,14 @@ export async function agent(): Promise<void> {
       text: 'Desculpe, tive um problema ao processar sua mensagem.',
     }
     const errorMessageId = await context.chat.sendText(userWaId, errorMessage)
-    context.outbound = [
-      toDbMessage({
+    context.outbound = {
+      message: toDbMessage({
         userId: context.user.id,
         waId: errorMessageId,
         modelMessage: toAssistantModelMessage(errorMessage),
       }),
-    ]
+      usages: [],
+    }
   }
 
   try {

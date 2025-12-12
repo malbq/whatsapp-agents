@@ -91,6 +91,6 @@ const webhookApp = createWebhookApp(
 const port = parseInt(import.meta.env.PORT || '8080')
 const { app, serve } = createServer({ name: 'Zapid agent', version: pkg.version, port })
 app.route('/webhook', webhookApp)
-app.get('/chat', createChatRoute(db))
+app.get('/chat', createChatRoute(db, storage))
 
 serve()

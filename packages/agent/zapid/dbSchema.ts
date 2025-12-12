@@ -17,10 +17,12 @@ export const {
   rawIncomingMessage,
   user,
   message,
+  tokenUsage,
   resource,
   snippet,
   reminder,
   messageRelations,
+  tokenUsageRelations,
   resourceRelations,
   snippetRelations,
   reminderRelations,
@@ -85,8 +87,8 @@ export const userEntitlementOverride = pgTable(
   (table) => [primaryKey({ columns: [table.userId, table.key] })]
 )
 
-export const usageLedger = pgTable(
-  'usage_ledger',
+export const userEntitlementLedger = pgTable(
+  'user_entitlement_ledger',
   {
     id: PostgresSchema.uuidv7().primaryKey(),
     userId: text()
@@ -98,8 +100,8 @@ export const usageLedger = pgTable(
     metadata: json().$type<Record<string, unknown>>(),
   },
   (table) => [
-    index('idx_usage_ledger_user_key_ts').on(table.userId, table.key, table.timestamp),
-    index('idx_usage_ledger_key_ts').on(table.key, table.timestamp),
+    index('idx_user_entitlement_ledger_user_key_ts').on(table.userId, table.key, table.timestamp),
+    index('idx_user_entitlement_ledger_key_ts').on(table.key, table.timestamp),
   ]
 )
 
@@ -115,7 +117,7 @@ export const userQuota = pgView('v_user_quota', {
       "userId",
       key,
       COALESCE(SUM(value), 0) AS used_24h
-    FROM usage_ledger
+    FROM user_entitlement_ledger
     WHERE "timestamp" >= (NOW() - INTERVAL '24 hours')
     GROUP BY "userId", key
   ),
@@ -167,8 +169,6 @@ export const userQuota = pgView('v_user_quota', {
   LEFT JOIN storage_usage su ON su."userId" = re."userId"
 `)
 
-
-
 export const userRelations = relations(user, ({ many }) => ({
   profileVersions: many(userProfileVersion),
   messages: many(message),
@@ -176,7 +176,7 @@ export const userRelations = relations(user, ({ many }) => ({
   reminders: many(reminder),
   subscriptions: many(userSubscription),
   entitlementOverrides: many(userEntitlementOverride),
-  usageLedgerEntries: many(usageLedger),
+  userEntitlementLedgerEntries: many(userEntitlementLedger),
 }))
 
 export const planRelations = relations(plan, ({ many }) => ({
@@ -209,9 +209,9 @@ export const userEntitlementOverrideRelations = relations(userEntitlementOverrid
   }),
 }))
 
-export const usageLedgerRelations = relations(usageLedger, ({ one }) => ({
+export const userEntitlementLedgerRelations = relations(userEntitlementLedger, ({ one }) => ({
   user: one(user, {
-    fields: [usageLedger.userId],
+    fields: [userEntitlementLedger.userId],
     references: [user.id],
   }),
 }))

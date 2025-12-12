@@ -57,7 +57,7 @@ export interface ZapidRepository extends DB.Repository {
   hasConsent: (params: { userId: string }) => Promise<boolean>
   completeOnboarding: (params: { userId: string }) => Promise<void>
   getUserEntitlements: (params: { userId: string }) => Promise<UserEntitlements>
-  insertUsageLedger: (params: {
+  insertUserEntitlementLedger: (params: {
     userId: string
     key: DailyLedgerEntitlementKey
     value: number
@@ -246,8 +246,8 @@ export const dbFactory = (): ZapidRepository => {
       return { features, quotas }
     },
 
-    async insertUsageLedger({ userId, key, value, metadata }) {
-      await client.insert(schema.usageLedger).values({
+    async insertUserEntitlementLedger({ userId, key, value, metadata }) {
+      await client.insert(schema.userEntitlementLedger).values({
         userId,
         key,
         value,

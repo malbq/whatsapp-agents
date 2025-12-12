@@ -785,13 +785,13 @@ export function ThreadsPage({ threads }: ThreadsPageProps) {
               : thread.messages
                   .map(
                     (msg) => `
-            <div class="message message-${msg.modelMessage.role === 'user' ? 'user' : 'assistant'}">
+            <div class="message message-${msg.role === 'user' ? 'user' : 'assistant'}">
               <div class="message-header">
-                <strong>${msg.modelMessage.role}</strong> • 
+                <strong>${msg.role}</strong> • 
                 ${msg.timestamp.toLocaleString('pt-BR')}
               </div>
               <pre class="message-content">${JSON.stringify(
-                msg.modelMessage.content,
+                msg.messages.map((m) => m.content),
                 null,
                 2
               )}</pre>

@@ -1,6 +1,7 @@
 import type { DB } from '@batman/core/infra/db'
 import { sendWhatsappMessage } from '@batman/core/utils/sendWhatsappMessage'
-import { toDbMessage } from '@batman/core/utils/toDbMessage'
+import { toDbMessage, type AssistantTurnResult } from '@batman/core/utils/toDbMessage'
+import { toDbTokenUsage } from '@batman/core/utils/toDbUsage'
 import { toUserModelMessage } from '@batman/core/utils/toModelMessage'
 import type { Chat, MessageNotification, TextMessage } from '@batman/whatsapp'
 import type { ModelMessage } from 'ai'
@@ -73,9 +74,12 @@ export const processMessage =
         return []
       })
 
-    const userModelMessage = (await toUserModelMessage(message))!
+    const { message: userModelMessage, usage: transcriptionUsage } = await toUserModelMessage(
+      message
+    )
+
     const messages: ModelMessage[] = [
-      ...recentMessages.map((msg) => msg.modelMessage),
+      ...recentMessages.flatMap((row) => row.messages),
       userModelMessage,
     ]
 
@@ -111,22 +115,48 @@ export const processMessage =
     })
 
     try {
-      const messagesToStore = [
-        toDbMessage({
-          userId: user.id,
-          waId: message.messageId,
-          type: message.type,
-          modelMessage: userModelMessage,
-          timestamp,
-        }),
-        ...toDbMessage({
-          userId: user.id,
-          assistantWaMessageId: assistantMessageId,
-          response,
-        }),
-      ]
+      // Store inbound user message
+      const userMessage = toDbMessage({
+        userId: user.id,
+        waId: message.messageId,
+        type: message.type,
+        modelMessage: userModelMessage,
+        timestamp,
+      })
 
-      await deps.db.storeMessage(messagesToStore)
+      // Store bundled assistant response
+      const assistantTurn: AssistantTurnResult = toDbMessage({
+        userId: user.id,
+        assistantWaMessageId: assistantMessageId,
+        response,
+      })
+
+      const [userMessageId, assistantMessageDbId] = await deps.db.storeMessage([
+        userMessage,
+        assistantTurn.message,
+      ])
+
+      if (transcriptionUsage && userMessageId) {
+        await deps.db.storeTokenUsage(
+          toDbTokenUsage({
+            messageId: userMessageId,
+            source: 'audio_transcription',
+            usage: transcriptionUsage,
+          })
+        )
+      }
+
+      if (assistantTurn.usages.length > 0 && assistantMessageDbId) {
+        const usageInserts = assistantTurn.usages.map((u) =>
+          toDbTokenUsage({
+            messageId: assistantMessageDbId,
+            source: u.source,
+            modelMessageIndex: u.modelMessageIndex,
+            usage: u.usage,
+          })
+        )
+        await deps.db.storeTokenUsage(usageInserts)
+      }
     } catch (error) {
       console.error('Error storing message:', error)
     }

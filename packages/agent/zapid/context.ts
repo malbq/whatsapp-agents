@@ -1,6 +1,6 @@
-import type { DB } from '@batman/core/infra/db'
 import type { Storage } from '@batman/core/infra/storage'
 import type { WebSearch } from '@batman/core/infra/webSearch'
+import type { AssistantTurnResult } from '@batman/core/utils/toDbMessage'
 import type { Chat, MessageNotification, OutgoingMessage } from '@batman/whatsapp'
 import { ok } from 'node:assert'
 import { AsyncLocalStorage } from 'node:async_hooks'
@@ -14,7 +14,7 @@ type Context = {
   webSearch: WebSearch
   user: UserWithProfile
   entitlements: UserEntitlements
-  outbound: DB.MessageInsert[]
+  outbound?: AssistantTurnResult
   responseOutput?: OutgoingMessage
   improvedProfile?: string
   abortSignal: AbortSignal
@@ -24,7 +24,7 @@ const asyncLocalStorage = new AsyncLocalStorage<Context>()
 const activeGenerations = new Map<string, AbortController>()
 
 export function runContext<T>(
-  initContext: Omit<Context, 'outbound' | 'abortSignal'> & { outbound?: Context['outbound'] },
+  initContext: Omit<Context, 'outbound' | 'abortSignal'>,
   callback: () => Promise<T>
 ): Promise<T> {
   const userId = initContext.user.id
@@ -42,7 +42,6 @@ export function runContext<T>(
     .run(
       {
         ...initContext,
-        outbound: initContext.outbound ?? [],
         abortSignal: abortController.signal,
       },
       callback

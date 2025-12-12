@@ -8,7 +8,10 @@ const MAX_RESPONSE_SIZE = 5 * 1024 * 1024 // 5MB
 
 export const webFetchTool = tool({
   title: 'web_fetch',
-  description: `Fetch a URL and return its content. Use this directly when the user's message includes a URL; do not call web_search first. Also use this to read sources discovered by web_search.
+  description: `Fetch a URL and return its content.
+When the user's message includes a URL, use this tool directly without calling web_search first.
+Also use this to read sources discovered by web_search.
+Avoid guessing URLs if they're not present in the user's message or in the web_search results.
 - format: "text" (default) converts HTML to plain text via HTMLRewriter; "html" returns raw HTML.
 - On errors, returns a short message and continues.
 - Maximum response size is 5MB.

@@ -3,8 +3,16 @@ import { generateEmbeddings } from '@batman/core/ai/generateEmbeddings'
 import { transcribeDocument } from '@batman/core/ai/transcribeDocument'
 import type { DB } from '@batman/core/infra/db'
 import { parsePdf } from '@batman/core/utils/parsePdf'
+import { toDbTokenUsage } from '@batman/core/utils/toDbUsage'
 import type { IncomingMessage } from '@batman/whatsapp'
+import type { LanguageModelUsage } from 'ai'
 import { getContext } from '../context'
+
+interface ExtractTextResult {
+  text: string
+  usage?: LanguageModelUsage
+  source?: DB.UsageSource
+}
 
 export async function embedInboundMessage(
   inbound: DB.MessageInsert,
@@ -14,13 +22,24 @@ export async function embedInboundMessage(
 
   if (!inbound.id) return
 
-  const text = await extractText(message)
-  if (!text) {
+  const result = await extractText(message)
+  if (!result) {
     console.warn('No text to embed for inbound message')
     return
   }
 
-  const [embeddingGroup] = await generateEmbeddings([text])
+  if (result.usage && result.source) {
+    await context.db.storeTokenUsage(
+      toDbTokenUsage({
+        messageId: inbound.id,
+        source: result.source,
+        usage: result.usage,
+      })
+    )
+    console.debug(`Stored ${result.source} usage`, { messageId: inbound.id })
+  }
+
+  const [embeddingGroup] = await generateEmbeddings([result.text])
   if (!embeddingGroup) return
 
   const snippetInserts: Array<DB.SnippetInsert> = embeddingGroup.map((chunk, sequence) => ({
@@ -37,9 +56,10 @@ export async function embedInboundMessage(
   })
 }
 
-async function extractText(message: IncomingMessage): Promise<string | undefined> {
+async function extractText(message: IncomingMessage): Promise<ExtractTextResult | undefined> {
   if (message.type === 'text') {
-    return message.text.trim() || undefined
+    const text = message.text.trim()
+    return text ? { text } : undefined
   }
 
   if (message.type === 'image' && 'data' in message && 'mimeType' in message) {
@@ -47,8 +67,9 @@ async function extractText(message: IncomingMessage): Promise<string | undefined
       'base64'
     )}`
     const caption = 'caption' in message ? message.caption : undefined
-    const description = await analyzeImage({ imageUrl, caption })
-    return description.trim() || undefined
+    const result = await analyzeImage({ imageUrl, caption })
+    const text = result.text.trim()
+    return text ? { text, usage: result.usage, source: 'image_analysis' } : undefined
   }
 
   if (
@@ -59,14 +80,15 @@ async function extractText(message: IncomingMessage): Promise<string | undefined
   ) {
     if (message.mimeType === 'application/pdf') {
       const text = await parsePdf(message.data)
-      if (text.length > 0) return text
+      if (text.length > 0) return { text }
     }
-    const transcription = await transcribeDocument({
+    const result = await transcribeDocument({
       document: message.data,
       mimeType: message.mimeType,
       filename: message.filename,
     })
-    return transcription.trim() || undefined
+    const text = result.text.trim()
+    return text ? { text, usage: result.usage, source: 'document_transcription' } : undefined
   }
 
   return undefined

@@ -1,5 +1,6 @@
 import type { DB } from '@batman/core/infra/db'
 import { toDbMessage } from '@batman/core/utils/toDbMessage'
+import { toDbTokenUsage } from '@batman/core/utils/toDbUsage'
 import { toUserModelMessage } from '@batman/core/utils/toModelMessage'
 import type { IncomingMessage } from '@batman/whatsapp'
 import { ok } from 'node:assert'
@@ -14,7 +15,7 @@ export async function ingest(): Promise<void> {
 
   ok(user, 'User must be set before ingesting message')
 
-  const modelMessage = await toUserModelMessage(message)
+  const { message: modelMessage, usage } = await toUserModelMessage(message)
   const inbound = toDbMessage({
     userId: user.id,
     notification,
@@ -27,6 +28,17 @@ export async function ingest(): Promise<void> {
 
   const [messageId] = await context.db.storeMessage(inbound)
   inbound.id = messageId
+
+  if (usage && messageId) {
+    await context.db.storeTokenUsage(
+      toDbTokenUsage({
+        messageId,
+        source: 'audio_transcription',
+        usage,
+      })
+    )
+    console.debug('Stored audio transcription usage', { messageId })
+  }
 
   console.info('Ingested message', {
     messageId,
@@ -99,9 +111,11 @@ async function storeMedia(inbound: DB.MessageInsert, message: IncomingMessage): 
     resourceId: resource.id,
   })
 
-  // Clear binary data from modelMessage before it gets stored
-  if (Array.isArray(inbound.modelMessage.content)) {
-    for (const part of inbound.modelMessage.content) {
+  // Clear binary data from messages before it gets stored
+  // User messages have a single element in the messages array
+  const modelMessage = inbound.messages[0]
+  if (modelMessage && Array.isArray(modelMessage.content)) {
+    for (const part of modelMessage.content) {
       if ('image' in part) part.image = ''
       if ('data' in part) part.data = ''
     }

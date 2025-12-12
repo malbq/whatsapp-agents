@@ -58,11 +58,11 @@ export async function responseGeneration() {
 
   const recentMessageIds = recentMessages.map((m) => m.id)
 
+  // Flatten messages array from each row and fill media data
   await fillMediaMessagesWithData(recentMessages)
-  agentContext.push(
-    //toSystemModelMessage(recentMessagesPrompt),
-    ...recentMessages.map((message) => message.modelMessage)
-  )
+  for (const row of recentMessages) {
+    agentContext.push(...row.messages)
+  }
 
   console.debug(`Generating WhatsApp message`, {
     provider: model.provider,
@@ -117,9 +117,10 @@ async function fillMediaMessagesWithData(
 ) {
   const context = getContext()
 
+  // Map row index to storage key (only user messages can have resources)
   const messagesToFill = new Map(
     recentMessages
-      .map<[number, string | undefined | null]>((message, index) => [index, message.storageKey])
+      .map<[number, string | undefined | null]>((row, index) => [index, row.storageKey])
       .filter(([_, storageKey]) => !!storageKey) as Array<[number, string]>
   )
   const data = new Map<DB.Resource['storageKey'], ArrayBuffer>()
@@ -138,10 +139,13 @@ async function fillMediaMessagesWithData(
     })
   )
 
+  // Fill media data in messages array (user messages have single element)
   for (const [index, storageKey] of messagesToFill.entries()) {
-    const message = recentMessages[index]!
-    if (Array.isArray(message.modelMessage.content)) {
-      for (const part of message.modelMessage.content) {
+    const row = recentMessages[index]!
+    // User messages have a single element in the messages array
+    const modelMessage = row.messages[0]
+    if (modelMessage && Array.isArray(modelMessage.content)) {
+      for (const part of modelMessage.content) {
         if ('image' in part) {
           part.image = data.get(storageKey)!
         }

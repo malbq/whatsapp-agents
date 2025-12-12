@@ -2,11 +2,6 @@
 
 ## To Do
 
-- Refactor message ordering [@messageOrdering.md](./spec/messageOrdering.md)
-- Track transcription token usage
-  - audio
-  - image
-  - document
 - What should we do for long audios? One user send a 10min audio.
 
 ## Billing

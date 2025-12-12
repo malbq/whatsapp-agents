@@ -26,13 +26,20 @@ export namespace DB {
     | 'reaction'
     | 'flow_reply'
     | 'unsupported'
-    | 'tool-call'
-    | 'tool-result'
 
-  export type MessageRole = 'user' | 'assistant' | 'tool'
+  export type MessageRole = 'user' | 'assistant'
+
+  export type UsageSource =
+    | 'image_analysis'
+    | 'document_transcription'
+    | 'audio_transcription'
+    | 'tool_call'
+    | 'assistant_response'
 
   export type Message = SelectModel<'message'>
   export type MessageInsert = InsertModel<'message'>
+  export type TokenUsage = SelectModel<'tokenUsage'>
+  export type TokenUsageInsert = InsertModel<'tokenUsage'>
   export type User = SelectModel<'user'>
   export type Resource = SelectModel<'resource'>
   export type Reminder = SelectModel<'reminder'>
@@ -53,6 +60,7 @@ export namespace DB {
     storeRawIncomingMessage: (payload: string) => Promise<boolean>
     persistUser: (user: InsertModel<'user'>) => Promise<User>
     storeMessage: (params: MessageInsert | Array<MessageInsert>) => Promise<Array<string>>
+    storeTokenUsage: (params: TokenUsageInsert | Array<TokenUsageInsert>) => Promise<void>
     storeSnippets: (snippets: Array<SnippetInsert>) => Promise<void>
     findRecentMessages: (params: {
       userId: string

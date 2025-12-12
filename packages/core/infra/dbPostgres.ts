@@ -218,6 +218,14 @@ export namespace Postgres {
         await client.insert(Schema.snippet).values(snippets)
       },
 
+      async storeTokenUsage(usages) {
+        const usageArray = Array.isArray(usages) ? usages : [usages]
+
+        if (usageArray.length === 0) return
+
+        await client.insert(Schema.tokenUsage).values(usageArray)
+      },
+
       async findRecentMessages({ userId }) {
         const MAX_RECENT_MESSAGES = parseInt(import.meta.env.MAX_RECENT_MESSAGES ?? '10')
         return await client
@@ -227,12 +235,7 @@ export namespace Postgres {
             waId: Schema.message.waId,
             type: Schema.message.type,
             role: Schema.message.role,
-            modelMessage: Schema.message.modelMessage,
-            usageInputTokens: Schema.message.usageInputTokens,
-            usageOutputTokens: Schema.message.usageOutputTokens,
-            usageTotalTokens: Schema.message.usageTotalTokens,
-            usageCachedInputTokens: Schema.message.usageCachedInputTokens,
-            usageReasoningTokens: Schema.message.usageReasoningTokens,
+            messages: Schema.message.messages,
             resourceId: Schema.message.resourceId,
             timestamp: Schema.message.timestamp,
             storageKey: Schema.resource.storageKey,

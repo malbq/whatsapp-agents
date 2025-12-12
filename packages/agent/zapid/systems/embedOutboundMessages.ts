@@ -10,9 +10,10 @@ export async function embedOutboundMessages() {
     return
   }
 
-  const lastOutbound = context.outbound[context.outbound.length - 1]
-  if (!lastOutbound?.id) {
-    console.warn('Last outbound message not found')
+  // Get the message ID from the bundled assistant turn
+  const messageId = context.outbound?.message.id
+  if (!messageId) {
+    console.warn('Outbound message not found or not stored')
     return
   }
 
@@ -23,31 +24,22 @@ export async function embedOutboundMessages() {
     return
   }
 
-  const messagesWithText = new Map<string, string>()
-  messagesWithText.set(lastOutbound.id, assistantText)
-
   console.debug('Embedding outbound message')
 
-  const embeddingGroups = await generateEmbeddings(messagesWithText.values().toArray())
-  const snippetInserts: Array<DB.SnippetInsert> = []
+  const [embeddingGroup] = await generateEmbeddings([assistantText])
+  if (!embeddingGroup) return
 
-  messagesWithText.keys().forEach((messageId, i) => {
-    const embeddingGroup = embeddingGroups[i]!
-    let chunkSequence = 0
-    for (const chunk of embeddingGroup) {
-      snippetInserts.push({
-        messageId,
-        sequence: chunkSequence++,
-        content: chunk.content,
-        vector: chunk.embedding,
-      })
-    }
-  })
+  const snippetInserts: Array<DB.SnippetInsert> = embeddingGroup.map((chunk, sequence) => ({
+    messageId,
+    sequence,
+    content: chunk.content,
+    vector: chunk.embedding,
+  }))
 
   await context.db.storeSnippets(snippetInserts)
   console.debug('Embedded outbound message', {
     chunks: snippetInserts.length,
-    messageId: lastOutbound.id,
+    messageId,
   })
 }
 

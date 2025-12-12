@@ -15,11 +15,11 @@ BEGIN
   INSERT INTO plan_entitlement ("planId", key, value)
   SELECT 'free', entitlements.key, entitlements.value FROM (VALUES
     ('b_enable_profile_tool', 'true'),
-    ('b_enable_file_retrieval', 'false'),
+    ('b_enable_file_retrieval', 'true'),
     ('b_enable_web_fetch_tool', 'true'),
-    ('b_enable_memory_tool', 'false'),
-    ('b_enable_web_search_tool', 'false'),
-    ('b_enable_google_places_tool', 'false'),
+    ('b_enable_memory_tool', 'true'),
+    ('b_enable_web_search_tool', 'true'),
+    ('b_enable_google_places_tool', 'true'),
     ('n_messages_per_day', '20'),
     ('n_storage_size', '10485760'),
     ('n_web_search_calls_per_day', '20'),

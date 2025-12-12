@@ -226,7 +226,7 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
     'tracks message usage in usage_ledger and v_user_quota',
     async () => {
       // Verify initial state - no usage recorded
-      const initialLedger = await db.$client.query.usageLedger.findMany({
+      const initialLedger = await db.$client.query.userEntitlementLedger.findMany({
         where: (ledger, { eq }) => eq(ledger.userId, seededUser.id),
       })
       expect(initialLedger).toHaveLength(0)
@@ -263,7 +263,7 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
       )
 
       // Verify usage_ledger has an entry
-      const ledgerAfterFirst = await db.$client.query.usageLedger.findMany({
+      const ledgerAfterFirst = await db.$client.query.userEntitlementLedger.findMany({
         where: (ledger, { eq }) => eq(ledger.userId, seededUser.id),
       })
       expect(ledgerAfterFirst).toHaveLength(1)
@@ -306,7 +306,7 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
       )
 
       // Verify usage_ledger has two entries
-      const ledgerAfterSecond = await db.$client.query.usageLedger.findMany({
+      const ledgerAfterSecond = await db.$client.query.userEntitlementLedger.findMany({
         where: (ledger, { eq }) => eq(ledger.userId, seededUser.id),
       })
       expect(ledgerAfterSecond).toHaveLength(2)
@@ -563,7 +563,7 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
     'tracks web_search tool usage in usage_ledger and v_user_quota',
     async () => {
       // Verify initial state - no web_search usage recorded
-      const initialLedger = await db.$client.query.usageLedger.findMany({
+      const initialLedger = await db.$client.query.userEntitlementLedger.findMany({
         where: (ledger, { and, eq }) =>
           and(eq(ledger.userId, seededUser.id), eq(ledger.key, 'n_web_search_calls_per_day')),
       })
@@ -601,7 +601,7 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
       )
 
       // Verify usage_ledger has an entry for web_search
-      const ledgerAfter = await db.$client.query.usageLedger.findMany({
+      const ledgerAfter = await db.$client.query.userEntitlementLedger.findMany({
         where: (ledger, { and, eq }) =>
           and(eq(ledger.userId, seededUser.id), eq(ledger.key, 'n_web_search_calls_per_day')),
       })
@@ -624,7 +624,7 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
     'tracks google_places tool usage in usage_ledger and v_user_quota',
     async () => {
       // Verify initial state - no google_places usage recorded
-      const initialLedger = await db.$client.query.usageLedger.findMany({
+      const initialLedger = await db.$client.query.userEntitlementLedger.findMany({
         where: (ledger, { and, eq }) =>
           and(eq(ledger.userId, seededUser.id), eq(ledger.key, 'n_google_places_calls_per_day')),
       })
@@ -662,7 +662,7 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
       )
 
       // Verify usage_ledger has an entry for google_places
-      const ledgerAfter = await db.$client.query.usageLedger.findMany({
+      const ledgerAfter = await db.$client.query.userEntitlementLedger.findMany({
         where: (ledger, { and, eq }) =>
           and(eq(ledger.userId, seededUser.id), eq(ledger.key, 'n_google_places_calls_per_day')),
       })
@@ -945,17 +945,12 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
           // Messages next
           for (const m of messagesAfterThree) {
             sqlLines.push(
-              `INSERT INTO "message" ("id", "userId", "waId", "type", "modelMessage", "usageInputTokens", "usageOutputTokens", "usageTotalTokens", "usageCachedInputTokens", "usageReasoningTokens", "resourceId", "timestamp") VALUES (` +
+              `INSERT INTO "message" ("id", "userId", "waId", "type", "messages", "resourceId", "timestamp") VALUES (` +
                 `${esc(m.id)}, ` +
                 `${esc(m.userId)}, ` +
                 `${m.waId ? esc(m.waId) : 'NULL'}, ` +
                 `${esc(m.type)}, ` +
-                `${esc(JSON.stringify(m.modelMessage))}, ` +
-                `${m.usageInputTokens ?? 'NULL'}, ` +
-                `${m.usageOutputTokens ?? 'NULL'}, ` +
-                `${m.usageTotalTokens ?? 'NULL'}, ` +
-                `${m.usageCachedInputTokens ?? 'NULL'}, ` +
-                `${m.usageReasoningTokens ?? 'NULL'}, ` +
+                `${esc(JSON.stringify(m.messages))}, ` +
                 `${m.resourceId ? esc(m.resourceId) : 'NULL'}, ` +
                 `${m.timestamp ? esc(m.timestamp.toISOString()) : 'NOW()'}::timestamptz` +
                 `);`
@@ -986,20 +981,21 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
         const allMessages = await db.$client.query.message.findMany()
 
         const hasSearchConversationHistoryCall = allMessages.some((m) => {
-          if (m.type !== 'tool-call') return false
-          const modelMessage = m.modelMessage as any
-          if (modelMessage.toolName === 'search_conversation_history') return true
-          if (Array.isArray(modelMessage.content)) {
-            return modelMessage.content.some(
-              (c: any) => c.type === 'tool-call' && c.toolName === 'search_conversation_history'
-            )
-          }
-          if (Array.isArray(modelMessage.toolCalls)) {
-            return modelMessage.toolCalls.some(
-              (tc: any) => tc.name === 'search_conversation_history'
-            )
-          }
-          return false
+          // Search through the bundled messages array for tool calls
+          return m.messages.some((msg: any) => {
+            if (msg.role !== 'assistant') return false
+            if (Array.isArray(msg.content)) {
+              return msg.content.some(
+                (c: any) => c.type === 'tool-call' && c.toolName === 'search_conversation_history'
+              )
+            }
+            if (Array.isArray(msg.toolCalls)) {
+              return msg.toolCalls.some(
+                (tc: any) => tc.name === 'search_conversation_history'
+              )
+            }
+            return false
+          })
         })
 
         expect(hasSearchConversationHistoryCall).toBe(true)
@@ -1082,22 +1078,19 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
         // Verify search_files tool was called
         const allMessages = await db.$client.query.message.findMany()
         const hasSearchFilesCall = allMessages.some((m) => {
-          if (m.type !== 'tool-call') return false
-          const modelMessage = m.modelMessage as {
-            toolName?: string
-            content?: Array<{ type: string; toolName?: string }>
-            toolCalls?: Array<{ name: string }>
-          }
-          if (modelMessage.toolName === 'search_files') return true
-          if (Array.isArray(modelMessage.content)) {
-            return modelMessage.content.some(
-              (c) => c.type === 'tool-call' && c.toolName === 'search_files'
-            )
-          }
-          if (Array.isArray(modelMessage.toolCalls)) {
-            return modelMessage.toolCalls.some((tc) => tc.name === 'search_files')
-          }
-          return false
+          // Search through the bundled messages array for tool calls
+          return m.messages.some((msg: any) => {
+            if (msg.role !== 'assistant') return false
+            if (Array.isArray(msg.content)) {
+              return msg.content.some(
+                (c: any) => c.type === 'tool-call' && c.toolName === 'search_files'
+              )
+            }
+            if (Array.isArray(msg.toolCalls)) {
+              return msg.toolCalls.some((tc: any) => tc.name === 'search_files')
+            }
+            return false
+          })
         })
 
         expect(hasSearchFilesCall).toBe(true)
@@ -1151,22 +1144,19 @@ describe.skipIf(process.env.AI !== '1')('Agent', () => {
 
       const allMessages = await db.$client.query.message.findMany()
       const hasUpdateUserProfileCall = allMessages.some((m) => {
-        if (m.type !== 'tool-call') return false
-        const modelMessage = m.modelMessage as {
-          toolName?: string
-          content?: Array<{ type: string; toolName?: string }>
-          toolCalls?: Array<{ name: string }>
-        }
-        if (modelMessage.toolName === 'update_user_profile') return true
-        if (Array.isArray(modelMessage.content)) {
-          return modelMessage.content.some(
-            (c) => c.type === 'tool-call' && c.toolName === 'update_user_profile'
-          )
-        }
-        if (Array.isArray(modelMessage.toolCalls)) {
-          return modelMessage.toolCalls.some((tc) => tc.name === 'update_user_profile')
-        }
-        return false
+        // Search through the bundled messages array for tool calls
+        return m.messages.some((msg: any) => {
+          if (msg.role !== 'assistant') return false
+          if (Array.isArray(msg.content)) {
+            return msg.content.some(
+              (c: any) => c.type === 'tool-call' && c.toolName === 'update_user_profile'
+            )
+          }
+          if (Array.isArray(msg.toolCalls)) {
+            return msg.toolCalls.some((tc: any) => tc.name === 'update_user_profile')
+          }
+          return false
+        })
       })
 
       expect(hasUpdateUserProfileCall).toBe(true)
