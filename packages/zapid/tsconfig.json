@@ -1,0 +1,5 @@
+{
+  "extends": "../../tsconfig.json",
+  "include": ["**/*.ts", "**/*.tsx", "../core/core.d.ts", "../whatsapp/whatsapp.d.ts"],
+  "exclude": ["node_modules"]
+}

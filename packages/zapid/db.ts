@@ -25,19 +25,6 @@ interface RemainingUsage {
   remaining: number | null
 }
 
-interface EntitlementOverride {
-  value: string | null
-}
-
-interface PlanEntitlementWithPlanId {
-  value: string | null
-  planId: string
-}
-
-interface UserPlanInfo {
-  planId: string
-}
-
 export interface UserEntitlements {
   features: Record<BooleanEntitlementKey, boolean>
   quotas: Record<NumericEntitlementKey, RemainingUsage>

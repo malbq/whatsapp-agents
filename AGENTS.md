@@ -9,10 +9,11 @@ This monorepo keeps shared packages abstract and agents self-contained. Each age
 
 ## Quick links
 
-- Zapid agent: packages/agent/zapid/README.md
-- FRM agent: packages/agent/frm/README.md
+- Core package: packages/core/README.md
 - Server package: packages/server/README.md
 - WhatsApp package: packages/whatsapp/README.md
+- Zapid agent: packages/zapid/README.md
+- FRM agent: packages/frm/README.md
 
 ## Build, lint, typecheck
 

@@ -1,12 +1,11 @@
 {
   "name": "zapid",
-  "version": "0.4.43",
+  "version": "0.4.44",
   "private": true,
   "type": "module",
   "packageManager": "bun@1.3.2",
   "workspaces": [
-    "packages/*",
-    "packages/agent/*"
+    "packages/*"
   ],
   "scripts": {
     "typecheck": "bun run -F '@batman/core' -F '@batman/whatsapp' -F '@batman/server' -F '@batman/agent-zapid' typecheck",
@@ -18,7 +17,7 @@
   "catalog": {
     "@types/bun": "^1.3.2",
     "@types/node": "^24.10.0",
-    "ai": "^6.0.0-beta.94",
+    "ai": "^6.0.0-beta.148",
     "compromise": "^14.14.4",
     "drizzle-orm": "0.44.7",
     "drizzle-kit": "^0.31.6",

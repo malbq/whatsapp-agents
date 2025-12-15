@@ -21,7 +21,7 @@ export const cfProvider = createOpenAI({
   apiKey: import.meta.env.CF_API_TOKEN,
 })
 
-const embeddingModel = cfProvider.textEmbeddingModel('@cf/google/embeddinggemma-300m')
+const embeddingModel = cfProvider.embeddingModel('@cf/google/embeddinggemma-300m')
 const CHUNK_SIZE = 4096
 
 export const generateEmbeddings: GenerateEmbeddings = async (texts) => {

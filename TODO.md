@@ -1,9 +1,5 @@
 # Progress
 
-## To Do
-
-- What should we do for long audios? One user send a 10min audio.
-
 ## Billing
 
 - Subscription management
