@@ -1,9 +1,15 @@
 # Agents in this monorepo
 
-This repository hosts multiple independently deployable AI agents under `packages/agent/*`, plus shared, abstract packages that agents compose.
+This repository is a monorepo containing multiple independently deployable AI agents and shared libraries. All code resides in `packages/`.
 
-- Agents (deployable apps): `packages/agent/<name>` (e.g., `frm`, `zapid`)
-- Shared packages: `packages/core`, `packages/server`, `packages/whatsapp`
+- **Agents** (deployable apps):
+  - `packages/frm` (Recruitment agent)
+  - `packages/zapid` (Personal assistant agent)
+  - `packages/cmd` (Command agent)
+- **Shared Libraries**:
+  - `packages/core` (Abstract primitives: DB, AI, Tools)
+  - `packages/server` (Hono server abstraction)
+  - `packages/whatsapp` (WhatsApp Business API client)
 
 This monorepo keeps shared packages abstract and agents self-contained. Each agent composes server, whatsapp, and core primitives to implement its own pipeline and deploy independently.
 
@@ -14,6 +20,7 @@ This monorepo keeps shared packages abstract and agents self-contained. Each age
 - WhatsApp package: packages/whatsapp/README.md
 - Zapid agent: packages/zapid/README.md
 - FRM agent: packages/frm/README.md
+- CMD agent: packages/cmd/README.md
 
 ## Build, lint, typecheck
 
@@ -34,18 +41,20 @@ Use Bun's test runner from the root. You can scope to names or files:
 
 ## Developing agents
 
-- Start from an existing agent (see `packages/agent/frm` for a minimal example, `packages/agent/zapid` for a full pipeline).
+- Start from an existing agent:
+  - See `packages/frm` for a minimal example.
+  - See `packages/zapid` for a full, complex pipeline.
 - Compose `@batman/server` and `@batman/whatsapp` in your agent's composition root (`index.ts`).
 - Persist and embed messages through `@batman/core`.
-- Keep agent logic contained within the agent package (systems, tools, prompts, and types live inside the agent folder).
+- **Strict Isolation**: Keep agent logic contained within the agent package. Systems, tools, prompts, and types must live inside the agent folder. Do not leak agent business logic into `packages/core`.
 
 ## Conventions (repo-wide)
 
-- TypeScript strict; prefer unknown over any. Validate inputs with zod.
-- ESM only. Group imports: std libs, third-party, internal.
-- Small, focused functions. Return early instead of else.
-- Let errors bubble unless adding context. Avoid broad try/catch.
-- No global mutable state; pass dependencies explicitly.
-- Keep tokens minimal in prompts; log usage where appropriate.
+- **TypeScript Strict**: Prefer `unknown` over `any`. Validate all external inputs with `zod`.
+- **ESM Only**: Use ESM syntax. Group imports: std libs, third-party, internal.
+- **Error Handling**: Let errors bubble up unless you are adding specific context. Avoid broad `try/catch` blocks that swallow errors.
+- **State Management**: No global mutable state. Pass dependencies explicitly (Dependency Injection).
+- **Control Flow**: Use small, focused functions. Return early instead of using `else`.
+- **LLM Usage**: Keep tokens minimal in prompts; log token usage where appropriate.
 
 For agent-specific architecture, pipeline phases, and testing patterns, consult the corresponding agent README.

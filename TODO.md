@@ -8,13 +8,11 @@
 
 ## Next
 
-- o11y
-  - AI SDK telemetry
 - when new file is stored, run storage check in background to delete old files if quota exceeded
 - every outbound message must be persisted to db, including error messages
 - refactor whatsapp schemas/types
   - the difference between incoming and outgoing is not clear
-  - outgoind document and image refer to resourceId, and record should be a unknown concept by whatsapp module
+  - outgoind document and image refer to resourceId, and record should be an unknown concept by whatsapp module
 
 ## UX Improvements
 

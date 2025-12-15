@@ -115,8 +115,7 @@ Zapid segue um pipeline baseado em **Context** (estado efêmero por requisição
    - texto é usado diretamente
    - voz/áudio são transcritos com Google Gemini
    - imagens são enviadas para análise (descrição + texto na imagem)
-   - documentos são lidos (PDF → `parsePdf`, demais → `transcribeDocument`)
-   e preenchemos `context.inbound`.
+   - documentos são lidos (PDF → `parsePdf`, demais → `transcribeDocument`) e preenchemos `context.inbound`.
 3. `responseGeneration` monta o contexto do agente (data/hora atual, perfil do usuário, mensagens recentes, instruções de sistema) e chama o modelo `gpt-5-mini-2025-08-07` via Vercel AI SDK para gerar um `GeneratedWhatsappMessage`.
 4. Entrega da resposta: `sendWhatsappMessage` envia o output pelo cliente WhatsApp (`chat`) e popula `context.outbound` com a mensagem da IA e metadados de uso.
 5. Pós-resposta (best‑effort): `storeMessageExchange` persiste mensagens e mídias:
@@ -165,6 +164,17 @@ Características:
 - Tabelas específicas do Zapid:
   - `user_profile_version` (histórico de versões de perfil por usuário/mensagem)
 - Vetores: `vector(768)` com similaridade cosseno (indexados em `snippet.vector`)
+
+### Setup Inicial
+
+1. Execute `./scripts/postgres.sh` (na raiz do monorepo) para iniciar o container PostgreSQL.
+2. Conecte no banco e crie o database: `CREATE DATABASE zapid;`.
+3. Habilite a extensão pgvector: `CREATE EXTENSION IF NOT EXISTS vector;`.
+4. Rode as migrações:
+   - `bun run --filter '@batman/agent-zapid' db:clean`
+   - `bun run --filter '@batman/agent-zapid' db:generate`
+   - `bun run --filter '@batman/agent-zapid' db:migrate`
+   - `bun run --filter '@batman/agent-zapid' db:seed`
 
 ## Dicas de Testes
 

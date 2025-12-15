@@ -20,31 +20,25 @@ This package is ESM-only and exposes module subpaths for clear boundaries:
 - `@batman/core/ai/*` — AI helpers
   - `generateEmbeddings` — batch embedding with chunking
   - `transcribeAudio`, `transcribeDocument`, `analyzeImage`
+  - `generateWhatsappMessage`
 - `@batman/core/infra/*` — Infra primitives
   - `db`, `dbPostgres` — DB interfaces and PostgreSQL implementation
   - `storage`, `storageFilesystem` — object storage interfaces and filesystem adapter (dev)
-  - `scheduler`, `schedulerSystemd` — scheduler interfaces and systemd adapter (optional)
+  - `scheduler` — scheduler interfaces
   - `webSearch`, `webSearchBrave` — web search interfaces and Brave implementation
-- `@batman/core/tools/*` — First-class tools (for model tool-calling)
-  - `webSearch`, `webFetch`, `sendText`, `sendReaction`, `search_conversation_history`
+- `@batman/core/tools` — First-class tools (for model tool-calling)
+  - `webSearch`, `webFetch`, `sendText`, `sendReaction`, `searchConversationHistory`, `searchFiles`
 - `@batman/core/utils/*` — Utilities
-  - `cloudflareFetch`, `sanitizeFilename`, `htmlToText`, `priorities`, etc.
+  - `cloudflareFetch`, `sanitizeFilename`, `htmlToText`, `priorities`, `parsePdf`, etc.
+- `@batman/core/errors` — Error handling utilities
 
 Types are exported alongside each module (see source files for details). Prefer unknown over any and validate inputs with zod where applicable.
 
 ## Database and Migrations
 
 - Baseline schema: user, message, embedding, raw_incoming_message, and supporting views/tables.
-- Vectors: FLOAT32(384) with cosine similarity (indexed).
-- Each agent owns its database lifecycle. Recommended order:
-  1. Apply core baseline migrations
-  2. Apply agent-specific extension migrations
-
-From repository root:
-
-- Run core baseline migrations: `bun --filter core db:migrate`
-
-Note: keep core schema minimal and stable. Agents should add extension tables referencing core IDs when needed (e.g., `user_ext_<agent>`).
+- Vectors: FLOAT32(768) with cosine similarity (indexed).
+- Each agent owns its database lifecycle and migrations.
 
 ## Usage in Agents
 
@@ -82,23 +76,26 @@ const groups = await generateEmbeddings(['hello world'])
 - Web search tool in an agent:
 
 ```ts
-import { createWebSearchTool } from '@batman/core/tools/webSearch'
+import { createWebSearchTool } from '@batman/core/tools'
 
-const tool = createWebSearchTool({ webSearch }, 'Explain why searching helps here')
+const tool = createWebSearchTool({ webSearch })
 ```
 
 - Persist a message (PostgreSQL implementation example):
 
 ```ts
 import { Postgres } from '@batman/core/infra/dbPostgres'
+import { drizzle } from 'drizzle-orm/bun-sql'
 
-const db = Postgres.db({ url: process.env.DATABASE_URL! })
+const client = drizzle(process.env.DATABASE_URL!)
+const db = Postgres.dbFactory({ client })
+
 await db.storeMessage([
   {
-    userId,
+    userId: 'user-id',
     type: 'text',
-    modelMessage: { role: 'user', content: 'hi' },
-    content: [{ content: 'hi', embedding: [] }],
+    role: 'user',
+    messages: [{ role: 'user', content: 'hi' }],
   },
 ])
 ```

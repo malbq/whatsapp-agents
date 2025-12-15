@@ -1,6 +1,19 @@
-# Before
+# Batman Monorepo
 
-Run `./scripts/postgres.sh` to start the PostgreSQL container.
-Create database with the name of the agent, e.g. `CREATE DATABASE zapid;`.
-Enable pgvector extension, e.g. `CREATE EXTENSION IF NOT EXISTS vector;`.
-Run `bun run --filter '@batman/<agent>' db:migrate` to apply the migrations.
+This repository hosts multiple independently deployable AI agents.
+
+## Documentation
+
+Please refer to [AGENTS.md](./AGENTS.md) for:
+- Architecture overview
+- Development workflows
+- Package structure
+- Testing & Linting
+
+## Quick Links
+
+- [Core Package](./packages/core/README.md)
+- [Server Package](./packages/server/README.md)
+- [WhatsApp Package](./packages/whatsapp/README.md)
+- [Zapid Agent](./packages/zapid/README.md)
+- [FRM Agent](./packages/frm/README.md)

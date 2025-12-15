@@ -20,24 +20,27 @@ This package provides a factory function to create WhatsApp clients with injecte
 
 ```typescript
 import { createWhatsappClient } from '@batman/whatsapp'
-import type { TextMessage, ImageMessage } from '@batman/whatsapp'
+// Note: Incoming message types are inferred or imported from 'types'
 
 const chat = createWhatsappClient({
   apiToken: 'your-meta-api-token',
   businessPhoneId: 'your-business-phone-id',
 })
 
-// Parse inbound webhooks
-const { message, statusUpdate } = await chat.parseNotification(webhookBody)
+// Parse inbound webhooks (returns a Promise<Notification | null>)
+const notification = await chat.parseNotification(webhookBody)
 
-// Incoming messages are fully typed
-if (message?.type === 'text') {
-  console.log(message.text) // TypeScript knows this exists
+if (notification && 'message' in notification) {
+  const { message } = notification
+  if (message.type === 'text') {
+    console.log(message.text) 
+  }
 }
 
-// Send messages using the same types
-await chat.sendText({ text: 'Hello!' })
-await chat.sendImage({ data: buffer, mimeType: 'image/jpeg' })
+// Send messages
+await chat.sendText(userWaId, { text: 'Hello!' })
+// Note: Binary data must be an ArrayBuffer
+await chat.sendImage(userWaId, { data: buffer, mimeType: 'image/jpeg' })
 ```
 
 ### Webhook Routes (Recommended)
@@ -61,25 +64,27 @@ const webhookApp = createWebhookApp(
     verifyToken: process.env.META_WEBHOOK_VERIFY_TOKEN,
   },
   {
-    onMessage: async (message) => {
-      // Handle incoming message
-      console.log('Received message:', message)
+    onMessage: async (notification, rawBody) => {
+      // notification is of type MessageNotification
+      const { message, userWaId, userName } = notification
+      console.log(`Received ${message.type} from ${userName} (${userWaId})`)
 
       if (message.type === 'text') {
-        await chat.sendText({ text: `Echo: ${message.text}` })
+        await chat.sendText(userWaId, { text: `Echo: ${message.text}` })
       }
     },
-    onStatusUpdate: async (statusUpdate) => {
-      // Optional: handle status updates (read, delivered, sent)
-      console.log('Status update:', statusUpdate)
+    onStatusUpdate: async (statusNotification, rawBody) => {
+      // Handle status updates (read, delivered, sent)
+      console.log('Status update:', statusNotification.statusUpdate)
     },
-    onUnknownNotification: async (body) => {
-      // Optional: handle unknown notification types
-      console.warn('Unknown notification:', body)
+    onUnknownNotification: async (rawBody) => {
+      // Handle unknown notification types or parsing failures
+      console.warn('Unknown notification:', rawBody)
     },
   }
 )
 
+// Mount the webhook app
 app.route('/webhook', webhookApp)
 
 export default {
@@ -92,130 +97,100 @@ The `createWebhookApp` function:
 
 - Creates a Hono app with `GET /` for Meta's verification request
 - Creates `POST /` for incoming notifications
-- Validates HMAC-SHA256 signature automatically
-- Should be mounted using `app.route('/webhook', webhookApp)`
+- Validates HMAC-SHA256 signature automatically using `x-hub-signature-256`
 - Parses notifications and routes to appropriate handlers
-- Returns proper HTTP responses (200, 401, 403)
+- Returns proper HTTP responses (200, 401)
 
 ## Configuration
 
-### WhatsApp Client (required, injected by caller)
+### WhatsApp Client (required)
 
-- `WA_API_VERSION`: WhatsApp API version
 - `apiToken`: Meta API access token
 - `businessPhoneId`: WhatsApp Business Phone Number ID
 
-### Webhook Routes (required, injected by caller)
+**Environment Variables:**
+- `WA_API_VERSION`: Required (e.g., "v18.0") - Accessed via `import.meta.env.WA_API_VERSION`
+
+### Webhook Routes (required)
 
 - `appSecret`: Meta app secret for signature validation
 - `verifyToken`: Token for webhook verification
 
 ## Message Types
 
-The package uses a unified type system where the same message types are used for both incoming and outgoing messages:
+The package uses a unified type system.
 
 ### Base Message Types
 
-All messages extend a base type with:
-
-- `type`: Message type classification
-- `replyingTo?`: Optional message ID to reply to
+All messages generally contain specific fields based on their `type`.
 
 ### Supported Message Types
 
-- **TextMessage**: Simple text messages
-  - `text`: Message text
-- **ImageMessage**: Image messages
-  - `data?`: Image binary data (ArrayBuffer)
-  - `mimeType?`: Image MIME type
-  - `caption?`: Optional caption
-- **DocumentMessage**: Document/PDF messages
-  - `data?`: Document binary data (ArrayBuffer)
-  - `mimeType?`: Document MIME type
-  - `filename?`: Document filename
-  - `caption?`: Optional caption
-- **VoiceMessage**: Voice note messages
-  - `data?`: Audio binary data (ArrayBuffer)
-  - `mimeType?`: Audio MIME type
-- **AudioMessage**: Audio messages (non-voice)
-  - `data?`: Audio binary data (ArrayBuffer)
-  - `mimeType?`: Audio MIME type
-- **LocationMessage**: Location sharing
-  - `latitude`, `longitude`: Coordinates
-  - `name?`, `address?`: Optional location details
-- **ReactionMessage**: Emoji reactions
-  - `emoji`: Emoji character
-  - `externalChatId`: Message ID to react to
-- **ContactMessage**: Contact cards
-  - `name`: Contact name
-  - `phone`: Phone number
-- **InteractiveListMessage**: Interactive lists with sections
-- **InteractiveButtonMessage**: Interactive buttons
-- **InteractiveCtaUrlMessage**: Call-to-action URL buttons
-- **TemplateMessage**: Message templates
-- **UnsupportedMessage**: Unsupported message types
-  - `unsupportedType?`: Original type string
+- **Text**: `{ type: 'text', text: string }`
+- **Image**: `{ type: 'image', data: ArrayBuffer, mimeType: string, caption?: string }`
+- **Document**: `{ type: 'document', data: ArrayBuffer, mimeType: string, filename?: string, caption?: string }`
+- **Audio/Voice**: `{ type: 'audio' | 'voice', data: ArrayBuffer, mimeType: string }`
+- **Location**: `{ type: 'location', latitude: number, longitude: number, name?: string, address?: string }`
+- **Reaction**: `{ type: 'reaction', emoji: string, targetMessageId: string }`
+- **Contact**: `{ type: 'contacts', name: string, phone: string }`
+- **Interactive List/Button/CTA**: Complex types for interactive messages
+- **Template**: For sending approved templates
 
-### Incoming Messages
+### Incoming Notifications
 
-Incoming messages include routing metadata:
+Incoming notifications are split into types like `MessageNotification` and `StatusUpdateNotification`.
 
 ```typescript
-type IncomingMessage = Message & {
-  userExternalId: string // WhatsApp ID
-  userName: string // User's display name
-  externalId: string // Message ID
+// MessageNotification
+{
+  userWaId: string
+  userName: string
+  userPhone: string
+  timestamp: Date
+  message: IncomingMessage // (text, image, audio, etc.)
+}
+
+// StatusUpdateNotification
+{
+  userWaId: string
+  userName: string
+  userPhone: string
+  timestamp: Date
+  statusUpdate: {
+    id: string
+    status: 'sent' | 'delivered' | 'read' | 'failed'
+    // ...
+  }
 }
 ```
 
-### Outgoing Messages
+## Client Interface (`Chat`)
 
-For backward compatibility, the package also exports `Outgoing*Message` types:
-
-- `OutgoingTextMessage` = `Omit<TextMessage, 'type'>`
-- `OutgoingImageMessage` = `Omit<ImageMessage, 'type'>` (with required `data` and `mimeType`)
-- `OutgoingDocumentMessage` = `Omit<DocumentMessage, 'type'>` (with required `data` and `mimeType`)
-- etc.
-
-These types omit the `type` field since it's implicit in the send method name.
-
-## Client Interface
-
-All outbound methods return a `Promise<string>` with the message ID:
+All outbound methods return a `Promise<string>` with the message ID.
 
 - `parseNotification(body)`: Parse webhook payload
 - `acknowledgeMessage(id)`: Mark message as read
-- `sendText(params)`: Send text message
-- `sendImage(params)`: Send image
-- `sendDocument(params)`: Send document/PDF
-- `sendLocation(params)`: Send location
-- `sendReaction(params)`: Send emoji reaction
-- `sendContact(params)`: Send contact card
-- `sendInteractiveList(params)`: Send interactive list
-- `sendInteractiveButton(params)`: Send interactive buttons
-- `sendInteractiveCtaUrl(params)`: Send CTA URL button
-- `sendTemplate(params)`: Send message template
+- `sendTypingIndicator(id)`: Send a typing indicator
+- `sendText(userId, message)`: Send text message
+- `sendImage(userId, message)`: Send image
+- `sendDocument(userId, message)`: Send document/PDF
+- `sendLocation(userId, message)`: Send location
+- `sendReaction(userId, message)`: Send emoji reaction
+- `sendContact(userId, message)`: Send contact card
+- `sendInteractiveList(userId, message)`: Send interactive list
+- `sendInteractiveButton(userId, message)`: Send interactive buttons
+- `sendInteractiveCtaUrl(userId, message)`: Send CTA URL button
+- `sendTemplate(userId, message)`: Send message template
 
 ## Architecture
 
 The package maintains a clear separation between public API types and internal implementation:
 
 - **types.ts**: Public API types exposed to agents
-  - Unified message types (`TextMessage`, `ImageMessage`, etc.)
-  - Message type union (`Message`)
-  - Inbound message wrapper (`IncomingMessage`)
-  - Backward-compatible outgoing types (`OutgoingTextMessage`, etc.)
-  - Client interface (`Chat`)
 - **whatsappTypes.ts**: Internal Meta WhatsApp Business API types (not exported)
-  - Direct mappings of Meta's webhook payloads
-  - Internal request/response structures
 - **client.ts**: Factory function and client implementation
 - **webhook.ts**: Webhook routes factory with signature validation
-  - `createWebhookRoutes()`: Mounts GET/POST routes on Hono app
-  - `validateWebhookSignature()`: HMAC-SHA256 signature validator (exported for custom implementations)
-- **index.ts**: Package exports (only public types from types.ts)
-
-Configuration is exposed through a closure pattern - the factory captures configuration in the closure, eliminating the need to pass it to every method call.
+- **index.ts**: Package exports
 
 ## API Reference
 
@@ -227,27 +202,15 @@ Creates a Hono app with webhook routes.
 
 **Parameters:**
 
-- `chat`: WhatsApp client from `createWhatsappClient()`
+- `chat`: WhatsApp client instance
 - `config`: `{ appSecret, verifyToken }`
 - `handlers`: `{ onMessage, onStatusUpdate?, onUnknownNotification? }`
+  - `onMessage`: `(notification: MessageNotification, raw: string) => void`
+  - `onStatusUpdate`: `(notification: StatusUpdateNotification, raw: string) => void`
 
 **Returns:** Hono app instance
 
 **Routes created:**
 
-- `GET /` - Verification endpoint (returns challenge if valid)
-- `POST /` - Notification endpoint (validates signature, routes to handlers)
-
-**Usage:** Mount the returned app using `app.route('/webhook', webhookApp)`
-
-#### `validateWebhookSignature(body, signature, appSecret)`
-
-Validates X-Hub-Signature-256 header.
-
-**Parameters:**
-
-- `body`: Raw request body (string)
-- `signature`: Header value (with or without "sha256=" prefix)
-- `appSecret`: Meta app secret
-
-**Returns:** `boolean`
+- `GET /` - Verification endpoint
+- `POST /` - Notification endpoint
