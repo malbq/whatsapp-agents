@@ -2,6 +2,10 @@
 .env.*
 *.env
 !example.env
+
+# Credentials files (contain secrets)
+credentials.json
+**/credentials.json
 node_modules/
 storage/
 eval/

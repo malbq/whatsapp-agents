@@ -5,6 +5,7 @@ This repository hosts multiple independently deployable AI agents.
 ## Documentation
 
 Please refer to [AGENTS.md](./AGENTS.md) for:
+
 - Architecture overview
 - Development workflows
 - Package structure
@@ -16,4 +17,4 @@ Please refer to [AGENTS.md](./AGENTS.md) for:
 - [Server Package](./packages/server/README.md)
 - [WhatsApp Package](./packages/whatsapp/README.md)
 - [Zapid Agent](./packages/zapid/README.md)
-- [FRM Agent](./packages/frm/README.md)
+- [Warden Agent](./packages/warden/README.md)

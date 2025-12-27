@@ -3,7 +3,7 @@
 This repository is a monorepo containing multiple independently deployable AI agents and shared libraries. All code resides in `packages/`.
 
 - **Agents** (deployable apps):
-  - `packages/frm` (Recruitment agent)
+  - `packages/warden` (Recruitment agent)
   - `packages/zapid` (Personal assistant agent)
   - `packages/cmd` (Command agent)
 - **Shared Libraries**:
@@ -19,7 +19,7 @@ This monorepo keeps shared packages abstract and agents self-contained. Each age
 - Server package: packages/server/README.md
 - WhatsApp package: packages/whatsapp/README.md
 - Zapid agent: packages/zapid/README.md
-- FRM agent: packages/frm/README.md
+- Warden agent: packages/warden/README.md
 - CMD agent: packages/cmd/README.md
 
 ## Build, lint, typecheck
@@ -42,7 +42,7 @@ Use Bun's test runner from the root. You can scope to names or files:
 ## Developing agents
 
 - Start from an existing agent:
-  - See `packages/frm` for a minimal example.
+  - See `packages/warden` for a minimal example.
   - See `packages/zapid` for a full, complex pipeline.
 - Compose `@batman/server` and `@batman/whatsapp` in your agent's composition root (`index.ts`).
 - Persist and embed messages through `@batman/core`.
@@ -56,5 +56,6 @@ Use Bun's test runner from the root. You can scope to names or files:
 - **State Management**: No global mutable state. Pass dependencies explicitly (Dependency Injection).
 - **Control Flow**: Use small, focused functions. Return early instead of using `else`.
 - **LLM Usage**: Keep tokens minimal in prompts; log token usage where appropriate.
+- **Database Migrations**: Never manually edit SQL migration files or snapshot JSON files in `drizzle/` folders. Always use `bun drizzle-kit generate` to generate migrations from schema changes. Drizzle handles migration generation automatically.
 
 For agent-specific architecture, pipeline phases, and testing patterns, consult the corresponding agent README.

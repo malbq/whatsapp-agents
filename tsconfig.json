@@ -17,8 +17,6 @@
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
 
-    "jsx": "react-jsx",
-    "jsxImportSource": "hono/jsx",
     "resolveJsonModule": true
   }
 }

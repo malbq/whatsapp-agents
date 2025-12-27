@@ -1,0 +1,154 @@
+import { toDbMessage, type AssistantTurnResult } from '@batman/core/utils/toDbMessage'
+import { toDbTokenUsage } from '@batman/core/utils/toDbUsage'
+import { toUserModelMessage } from '@batman/core/utils/toModelMessage'
+import type { Chat, MessageNotification, TextMessage } from '@batman/whatsapp'
+import type { ModelMessage } from 'ai'
+import type { CalendarAdapter } from '../calendar/types'
+import type { WardenDB } from '../db'
+import { createTools } from '../tools'
+import { generate } from './generate'
+
+export interface ProcessMessageDeps {
+  db: WardenDB
+  chat: Chat
+  calendar: CalendarAdapter
+}
+
+export const processMessage =
+  (deps: ProcessMessageDeps) => async (notification: MessageNotification) => {
+    console.log('Warden Agent processing notification:', notification)
+
+    const { message, userWaId, userName, timestamp } = notification
+
+    deps.chat.acknowledgeMessage(message.messageWaId)
+
+    const user = await deps.db
+      .persistUser({ waId: userWaId, name: userName })
+      .catch((error) => {
+        deps.chat.sendText(userWaId, {
+          text: 'Desculpe, tive um problema ao processar sua mensagem e não consigo te responder agora.',
+        })
+        console.error('Error persisting user:', error)
+        return null
+      })
+
+    if (!user) return
+
+    if (message.type !== 'text') {
+      const response: TextMessage = {
+        type: 'text',
+        text: 'Desculpe, não entendo este tipo de mensagem. Por favor, envie uma mensagem de texto.',
+      }
+      const assistantMessageId = await deps.chat.sendText(userWaId, response)
+      deps.db.storeMessage([
+        toDbMessage({
+          userId: user.id,
+          waId: message.messageWaId,
+          modelMessage: { role: 'user', content: '<error>Unsupported message type</error>' },
+          type: 'unsupported',
+        }),
+        toDbMessage({
+          userId: user.id,
+          waId: assistantMessageId,
+          modelMessage: { role: 'assistant', content: response.text },
+        }),
+      ])
+      return
+    }
+
+    deps.chat.sendTypingIndicator(message.messageWaId)
+
+    const recentMessages = await deps.db
+      .findRecentMessages({ userId: user.id })
+      .catch((error: unknown) => {
+        console.error('Error finding recent messages:', error)
+        return []
+      })
+
+    const { message: userModelMessage, usage: transcriptionUsage } = await toUserModelMessage(
+      message
+    )
+
+    const messages: ModelMessage[] = [
+      ...recentMessages.flatMap((row) => row.messages),
+      userModelMessage,
+    ]
+
+    const tools = createTools({
+      userId: user.id,
+      userName: user.name,
+      userPhone: userWaId,
+      calendar: deps.calendar,
+      db: deps.db,
+    })
+
+    const response = await generate({ messages, tools, db: deps.db }).catch(async (error) => {
+      console.error('Error generating response:', JSON.stringify(error, null, 2))
+      await deps.chat.sendText(userWaId, {
+        text: 'Desculpe, ocorreu um problema no processamento da sua solicitação. Tente novamente mais tarde.',
+      })
+      return null
+    })
+
+    if (!response) return
+
+    // For PoC, we only handle text messages
+    const assistantMessageId = await (async () => {
+      if (response.output.type === 'text') {
+        return deps.chat.sendText(userWaId, { text: response.output.text })
+      }
+      // For non-text messages in PoC, convert to text description
+      console.warn('Non-text output type, converting to text:', response.output.type)
+      return deps.chat.sendText(userWaId, {
+        text: 'Resposta processada com sucesso.',
+      })
+    })().catch((error) => {
+      console.error(error)
+      return deps.chat.sendText(userWaId, {
+        text: 'Desculpe, ocorreu um erro ao processar a resposta.',
+      })
+    })
+
+    // Store inbound user message
+    const userMessage = toDbMessage({
+      userId: user.id,
+      waId: message.messageWaId,
+      type: message.type,
+      modelMessage: userModelMessage,
+      timestamp,
+    })
+
+    // Store bundled assistant response
+    const assistantTurn: AssistantTurnResult = toDbMessage({
+      userId: user.id,
+      assistantWaMessageId: assistantMessageId,
+      response,
+    })
+
+    const [userMessageId, assistantMessageDbId] = await deps.db.storeMessage([
+      userMessage,
+      assistantTurn.message,
+    ])
+
+    if (transcriptionUsage && userMessageId) {
+      await deps.db.storeTokenUsage(
+        toDbTokenUsage({
+          messageId: userMessageId,
+          source: 'audio_transcription',
+          usage: transcriptionUsage,
+        })
+      )
+    }
+
+    if (assistantTurn.usages.length > 0 && assistantMessageDbId) {
+      const usageInserts = assistantTurn.usages.map((u) =>
+        toDbTokenUsage({
+          messageId: assistantMessageDbId,
+          source: u.source,
+          modelMessageIndex: u.modelMessageIndex,
+          usage: u.usage,
+        })
+      )
+      await deps.db.storeTokenUsage(usageInserts)
+    }
+  }

@@ -24,6 +24,7 @@ export function createServer(config: ServerConfig): {
       Bun.serve({
         port: config.port,
         fetch: app.fetch,
+        development: import.meta.env.NODE_ENV !== 'production',
       })
     },
   }

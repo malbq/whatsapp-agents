@@ -1,0 +1,38 @@
+{
+  "name": "@batman/agent-warden",
+  "version": "0.0.1",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "bun run --hot --no-clear-screen index.ts",
+    "typecheck": "tsc",
+    "lint": "oxlint --fix",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "catalog:",
+    "@batman/core": "workspace:*",
+    "@batman/whatsapp": "workspace:*",
+    "ai": "catalog:",
+    "drizzle-orm": "catalog:",
+    "googleapis": "^169.0.0",
+    "hono": "catalog:",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "@tanstack/react-router": "^1.0.0",
+    "tailwindcss": "^4.1.0",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/bun": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "bun-plugin-tailwind": "^0.1.2",
+    "drizzle-kit": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:"
+  }
+}

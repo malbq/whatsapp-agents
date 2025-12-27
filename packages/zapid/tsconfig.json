@@ -1,5 +1,9 @@
 {
   "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "hono/jsx"
+  },
   "include": ["**/*.ts", "**/*.tsx", "../core/core.d.ts", "../whatsapp/whatsapp.d.ts"],
   "exclude": ["node_modules"]
 }

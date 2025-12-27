@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+@source "../**/*.tsx";
+
+@theme {
+  --color-primary: #4f46e5;
+  --color-primary-dark: #4338ca;
+  --color-dark: #0f172a;
+  --color-dark-mid: #1e293b;
+  --color-dark-light: #334155;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+@layer components {
+  .gradient-primary {
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  }
+
+  .gradient-dark {
+    background: linear-gradient(135deg, var(--color-dark) 0%, var(--color-dark-mid) 100%);
+  }
+
+  .gradient-primary-subtle {
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.05) 0%, rgba(67, 56, 202, 0.05) 100%);
+  }
+
+  @keyframes loading {
+    0% {
+      transform: translateX(-100%);
+      width: 30%;
+    }
+
+    50% {
+      transform: translateX(100%);
+      width: 50%;
+    }
+
+    100% {
+      transform: translateX(300%);
+      width: 30%;
+    }
+  }
+}
