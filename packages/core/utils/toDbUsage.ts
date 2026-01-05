@@ -21,7 +21,7 @@ export function toDbTokenUsage({
     inputTokens: usage.inputTokens ?? 0,
     outputTokens: usage.outputTokens ?? 0,
     totalTokens: usage.totalTokens ?? 0,
-    cachedInputTokens: usage.cachedInputTokens ?? null,
-    reasoningTokens: usage.reasoningTokens ?? null,
+    cachedInputTokens: usage.inputTokenDetails?.cacheReadTokens ?? null,
+    reasoningTokens: usage.outputTokenDetails?.reasoningTokens ?? null,
   }
 }

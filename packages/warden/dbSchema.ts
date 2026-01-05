@@ -33,6 +33,7 @@ export const service = table('service', {
   durationMinutes: integer().notNull().default(30),
   createdAt: timestamp({ mode: 'date' }).notNull().defaultNow(),
   updatedAt: timestamp({ mode: 'date' }).notNull().defaultNow(),
+  deletedAt: timestamp({ mode: 'date' }),
 })
 
 /**
@@ -68,6 +69,52 @@ export const calendarSettings = table('calendar_settings', {
   enabled: boolean().notNull().default(true),
   /** Display order in the sidebar */
   displayOrder: integer().notNull().default(0),
+  /**
+   * Force busy: treat all events from this calendar as busy regardless of transparency.
+   * Useful for holiday calendars where events may be marked as "free" but should block availability.
+   */
+  forceBusy: boolean().notNull().default(false),
+  createdAt: timestamp({ mode: 'date' }).notNull().defaultNow(),
+  updatedAt: timestamp({ mode: 'date' }).notNull().defaultNow(),
+})
+
+/**
+ * Working hours configuration for availability.
+ * Each row represents a time interval for a specific day of the week.
+ * A single day can have multiple intervals (e.g., morning and afternoon).
+ */
+export const workingHours = table(
+  'working_hours',
+  {
+    id: PostgresSchema.uuidv7().primaryKey(),
+    /** Day of week: 0=Sunday, 1=Monday, ..., 6=Saturday */
+    dayOfWeek: integer().notNull(),
+    /** Start time in HH:MM format (24h) */
+    startTime: text().notNull(),
+    /** End time in HH:MM format (24h) */
+    endTime: text().notNull(),
+    createdAt: timestamp({ mode: 'date' }).notNull().defaultNow(),
+    updatedAt: timestamp({ mode: 'date' }).notNull().defaultNow(),
+  },
+  (t) => [index().on(t.dayOfWeek)]
+)
+
+/**
+ * Availability settings for scheduling.
+ * Single-tenant: only one row expected (id = 'default').
+ */
+export const availabilitySettings = table('availability_settings', {
+  id: text().primaryKey(),
+  /** Buffer time in minutes before and after appointments (symmetric) */
+  bufferMinutes: integer().notNull().default(0),
+  /** Minimum notice in minutes required for creating new appointments */
+  minNoticeMinutes: integer().notNull().default(60),
+  /** Minimum notice in minutes required for rescheduling appointments */
+  minRescheduleNoticeMinutes: integer().notNull().default(60),
+  /** Slot granularity in minutes (step size for available slots) */
+  granularityMinutes: integer().notNull().default(60),
+  /** Maximum days ahead to show availability */
+  maxDaysAhead: integer().notNull().default(14),
   createdAt: timestamp({ mode: 'date' }).notNull().defaultNow(),
   updatedAt: timestamp({ mode: 'date' }).notNull().defaultNow(),
 })

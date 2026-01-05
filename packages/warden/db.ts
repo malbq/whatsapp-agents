@@ -4,7 +4,15 @@ import { SQL } from 'bun'
 import { eq } from 'drizzle-orm'
 import { drizzle, type BunSQLDatabase } from 'drizzle-orm/bun-sql'
 import * as schema from './dbSchema'
-import type { BusinessInfo, CalendarSettingsEntry, CustomerAppointment, Service } from './types'
+import type {
+  AppointmentWithCustomer,
+  AvailabilitySettings,
+  BusinessInfo,
+  CalendarSettingsEntry,
+  CustomerAppointment,
+  Service,
+  WorkingHoursEntry,
+} from './types'
 
 export interface Thread {
   userId: string
@@ -27,11 +35,17 @@ export interface WardenDB extends DB.Repository {
   updateBusinessInfo: (info: BusinessInfo) => Promise<void>
   listServices: () => Promise<Service[]>
   getService: (id: string) => Promise<Service | null>
+  createService: (data: Omit<Service, 'id' | 'deletedAt'>) => Promise<Service>
+  updateService: (id: string, data: Partial<Omit<Service, 'id' | 'deletedAt'>>) => Promise<Service>
+  deleteService: (id: string) => Promise<void>
   createAppointment: (appointment: Omit<CustomerAppointment, 'id'>) => Promise<CustomerAppointment>
   getAppointmentByCalendarEventId: (calendarEventId: string) => Promise<CustomerAppointment | null>
+  getAppointmentWithCustomerByCalendarEventId: (calendarEventId: string) => Promise<AppointmentWithCustomer | null>
+  getAppointmentsWithCustomerByCalendarEventIds: (calendarEventIds: string[]) => Promise<Map<string, AppointmentWithCustomer>>
   getAppointmentsByUserId: (userId: string) => Promise<CustomerAppointment[]>
   updateAppointmentStatus: (id: string, status: CustomerAppointment['status']) => Promise<void>
   listThreads: () => Promise<Array<Thread>>
+  getThread: (userId: string) => Promise<Thread | null>
   getCalendarConnection: () => Promise<CalendarConnection | null>
   saveCalendarConnection: (
     connection: Omit<CalendarConnection, 'id' | 'connectedAt'>
@@ -42,8 +56,16 @@ export interface WardenDB extends DB.Repository {
   getAppointmentCalendarId: () => Promise<string | null>
   setAppointmentCalendarId: (calendarId: string) => Promise<void>
   getEnabledCalendarIds: () => Promise<string[]>
+  getForceBusyCalendarIds: () => Promise<string[]>
   setCalendarEnabled: (calendarId: string, enabled: boolean) => Promise<void>
+  setCalendarForceBusy: (calendarId: string, forceBusy: boolean) => Promise<void>
   ensureCalendarSettings: (calendarIds: string[], defaultAppointmentCalendarId: string) => Promise<void>
+  // Availability settings
+  getAvailabilitySettings: () => Promise<AvailabilitySettings>
+  updateAvailabilitySettings: (settings: Partial<AvailabilitySettings>) => Promise<void>
+  // Working hours
+  getWorkingHours: () => Promise<WorkingHoursEntry[]>
+  setWorkingHours: (entries: Omit<WorkingHoursEntry, 'id'>[]) => Promise<void>
 }
 
 const connectionKey = Symbol.for('warden.db.connection')
@@ -140,12 +162,17 @@ export const dbFactory = (): WardenDB => {
     },
 
     async listServices() {
-      const result = await client.select().from(schema.service)
+      const { isNull } = await import('drizzle-orm')
+      const result = await client
+        .select()
+        .from(schema.service)
+        .where(isNull(schema.service.deletedAt))
       return result.map((row) => ({
         id: row.id,
         name: row.name,
         description: row.description ?? undefined,
         durationMinutes: row.durationMinutes,
+        deletedAt: row.deletedAt ?? undefined,
       }))
     },
 
@@ -164,7 +191,62 @@ export const dbFactory = (): WardenDB => {
         name: row.name,
         description: row.description ?? undefined,
         durationMinutes: row.durationMinutes,
+        deletedAt: row.deletedAt ?? undefined,
       }
+    },
+
+    async createService(data: Omit<Service, 'id' | 'deletedAt'>) {
+      const id = Bun.randomUUIDv7()
+      const result = await client
+        .insert(schema.service)
+        .values({
+          id,
+          name: data.name,
+          description: data.description ?? null,
+          durationMinutes: data.durationMinutes,
+        })
+        .returning()
+
+      const row = result[0]!
+      return {
+        id: row.id,
+        name: row.name,
+        description: row.description ?? undefined,
+        durationMinutes: row.durationMinutes,
+        deletedAt: row.deletedAt ?? undefined,
+      }
+    },
+
+    async updateService(id: string, data: Partial<Omit<Service, 'id' | 'deletedAt'>>) {
+      const result = await client
+        .update(schema.service)
+        .set({
+          ...(data.name !== undefined && { name: data.name }),
+          ...(data.description !== undefined && { description: data.description ?? null }),
+          ...(data.durationMinutes !== undefined && { durationMinutes: data.durationMinutes }),
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.service.id, id))
+        .returning()
+
+      const row = result[0]!
+      return {
+        id: row.id,
+        name: row.name,
+        description: row.description ?? undefined,
+        durationMinutes: row.durationMinutes,
+        deletedAt: row.deletedAt ?? undefined,
+      }
+    },
+
+    async deleteService(id: string) {
+      await client
+        .update(schema.service)
+        .set({
+          deletedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.service.id, id))
     },
 
     async createAppointment(appointmentData: Omit<CustomerAppointment, 'id'>) {
@@ -210,6 +292,79 @@ export const dbFactory = (): WardenDB => {
         scheduledAt: row.scheduledAt,
         status: row.status,
       }
+    },
+
+    async getAppointmentWithCustomerByCalendarEventId(calendarEventId: string): Promise<AppointmentWithCustomer | null> {
+      const result = await client
+        .select({
+          id: schema.appointment.id,
+          calendarEventId: schema.appointment.calendarEventId,
+          userId: schema.appointment.userId,
+          serviceId: schema.appointment.serviceId,
+          scheduledAt: schema.appointment.scheduledAt,
+          status: schema.appointment.status,
+          customerName: schema.user.name,
+          customerPhone: schema.user.waId,
+          serviceName: schema.service.name,
+        })
+        .from(schema.appointment)
+        .innerJoin(schema.user, eq(schema.appointment.userId, schema.user.id))
+        .leftJoin(schema.service, eq(schema.appointment.serviceId, schema.service.id))
+        .where(eq(schema.appointment.calendarEventId, calendarEventId))
+        .limit(1)
+
+      if (result.length === 0) return null
+
+      const row = result[0]!
+      return {
+        id: row.id,
+        calendarEventId: row.calendarEventId,
+        userId: row.userId,
+        serviceId: row.serviceId ?? undefined,
+        scheduledAt: row.scheduledAt,
+        status: row.status,
+        customerName: row.customerName,
+        customerPhone: row.customerPhone,
+        serviceName: row.serviceName ?? undefined,
+      }
+    },
+
+    async getAppointmentsWithCustomerByCalendarEventIds(calendarEventIds: string[]): Promise<Map<string, AppointmentWithCustomer>> {
+      if (calendarEventIds.length === 0) return new Map()
+
+      const { inArray } = await import('drizzle-orm')
+      const result = await client
+        .select({
+          id: schema.appointment.id,
+          calendarEventId: schema.appointment.calendarEventId,
+          userId: schema.appointment.userId,
+          serviceId: schema.appointment.serviceId,
+          scheduledAt: schema.appointment.scheduledAt,
+          status: schema.appointment.status,
+          customerName: schema.user.name,
+          customerPhone: schema.user.waId,
+          serviceName: schema.service.name,
+        })
+        .from(schema.appointment)
+        .innerJoin(schema.user, eq(schema.appointment.userId, schema.user.id))
+        .leftJoin(schema.service, eq(schema.appointment.serviceId, schema.service.id))
+        .where(inArray(schema.appointment.calendarEventId, calendarEventIds))
+
+      const map = new Map<string, AppointmentWithCustomer>()
+      for (const row of result) {
+        map.set(row.calendarEventId, {
+          id: row.id,
+          calendarEventId: row.calendarEventId,
+          userId: row.userId,
+          serviceId: row.serviceId ?? undefined,
+          scheduledAt: row.scheduledAt,
+          status: row.status,
+          customerName: row.customerName,
+          customerPhone: row.customerPhone,
+          serviceName: row.serviceName ?? undefined,
+        })
+      }
+      return map
     },
 
     async getAppointmentsByUserId(userId: string) {
@@ -268,6 +423,31 @@ export const dbFactory = (): WardenDB => {
       }
 
       return threads
+    },
+
+    async getThread(userId: string): Promise<Thread | null> {
+      const user = await client.query.user.findFirst({
+        where: (u, { eq }) => eq(u.id, userId),
+        columns: {
+          id: true,
+          name: true,
+          waId: true,
+        },
+      })
+
+      if (!user) return null
+
+      const messages = await client.query.message.findMany({
+        where: (message, { eq }) => eq(message.userId, userId),
+        orderBy: (message, { asc }) => [asc(message.timestamp)],
+      })
+
+      return {
+        userId: user.id,
+        userName: user.name,
+        externalId: user.waId,
+        messages,
+      }
     },
 
     async getCalendarConnection() {
@@ -337,6 +517,7 @@ export const dbFactory = (): WardenDB => {
         isAppointmentCalendar: r.isAppointmentCalendar,
         enabled: r.enabled,
         displayOrder: r.displayOrder,
+        forceBusy: r.forceBusy,
       }))
     },
 
@@ -357,11 +538,24 @@ export const dbFactory = (): WardenDB => {
         .set({ isAppointmentCalendar: false, updatedAt: new Date() })
         .where(eq(schema.calendarSettings.isAppointmentCalendar, true))
 
-      // Then set the new one
+      // Then set the new one AND ensure it is enabled
       await client
-        .update(schema.calendarSettings)
-        .set({ isAppointmentCalendar: true, updatedAt: new Date() })
-        .where(eq(schema.calendarSettings.calendarId, calendarId))
+        .insert(schema.calendarSettings)
+        .values({
+          calendarId,
+          isAppointmentCalendar: true,
+          enabled: true,
+          displayOrder: 0,
+          forceBusy: false,
+        })
+        .onConflictDoUpdate({
+          target: schema.calendarSettings.calendarId,
+          set: {
+            isAppointmentCalendar: true,
+            enabled: true,
+            updatedAt: new Date(),
+          },
+        })
     },
 
     async getEnabledCalendarIds(): Promise<string[]> {
@@ -381,11 +575,40 @@ export const dbFactory = (): WardenDB => {
           enabled,
           isAppointmentCalendar: false,
           displayOrder: 0,
+          forceBusy: false,
         })
         .onConflictDoUpdate({
           target: schema.calendarSettings.calendarId,
           set: {
             enabled,
+            updatedAt: new Date(),
+          },
+        })
+    },
+
+    async getForceBusyCalendarIds(): Promise<string[]> {
+      const result = await client
+        .select({ calendarId: schema.calendarSettings.calendarId })
+        .from(schema.calendarSettings)
+        .where(eq(schema.calendarSettings.forceBusy, true))
+
+      return result.map((r) => r.calendarId)
+    },
+
+    async setCalendarForceBusy(calendarId: string, forceBusy: boolean): Promise<void> {
+      await client
+        .insert(schema.calendarSettings)
+        .values({
+          calendarId,
+          enabled: true,
+          isAppointmentCalendar: false,
+          displayOrder: 0,
+          forceBusy,
+        })
+        .onConflictDoUpdate({
+          target: schema.calendarSettings.calendarId,
+          set: {
+            forceBusy,
             updatedAt: new Date(),
           },
         })
@@ -412,9 +635,111 @@ export const dbFactory = (): WardenDB => {
             enabled: true,
             isAppointmentCalendar: isDefault,
             displayOrder: 0,
+            forceBusy: false,
           })
           .onConflictDoNothing()
       }
+    },
+
+    async getAvailabilitySettings(): Promise<AvailabilitySettings> {
+      const result = await client
+        .select()
+        .from(schema.availabilitySettings)
+        .where(eq(schema.availabilitySettings.id, 'default'))
+        .limit(1)
+
+      if (result.length === 0) {
+        // Return defaults: buffer 0, min notice 60, granularity 60
+        const defaults: AvailabilitySettings = {
+          bufferMinutes: 0,
+          minNoticeMinutes: 60,
+          minRescheduleNoticeMinutes: 60,
+          granularityMinutes: 60,
+          maxDaysAhead: 14,
+        }
+        await this.updateAvailabilitySettings(defaults)
+        return defaults
+      }
+
+      const row = result[0]!
+      return {
+        bufferMinutes: row.bufferMinutes,
+        minNoticeMinutes: row.minNoticeMinutes,
+        minRescheduleNoticeMinutes: row.minRescheduleNoticeMinutes,
+        granularityMinutes: row.granularityMinutes,
+        maxDaysAhead: row.maxDaysAhead,
+      }
+    },
+
+    async updateAvailabilitySettings(settings: Partial<AvailabilitySettings>): Promise<void> {
+      await client
+        .insert(schema.availabilitySettings)
+        .values({
+          id: 'default',
+          bufferMinutes: settings.bufferMinutes ?? 0,
+          minNoticeMinutes: settings.minNoticeMinutes ?? 60,
+          minRescheduleNoticeMinutes: settings.minRescheduleNoticeMinutes ?? 60,
+          granularityMinutes: settings.granularityMinutes ?? 60,
+          maxDaysAhead: settings.maxDaysAhead ?? 14,
+        })
+        .onConflictDoUpdate({
+          target: schema.availabilitySettings.id,
+          set: {
+            ...(settings.bufferMinutes !== undefined && { bufferMinutes: settings.bufferMinutes }),
+            ...(settings.minNoticeMinutes !== undefined && {
+              minNoticeMinutes: settings.minNoticeMinutes,
+            }),
+            ...(settings.minRescheduleNoticeMinutes !== undefined && {
+              minRescheduleNoticeMinutes: settings.minRescheduleNoticeMinutes,
+            }),
+            ...(settings.granularityMinutes !== undefined && {
+              granularityMinutes: settings.granularityMinutes,
+            }),
+            ...(settings.maxDaysAhead !== undefined && { maxDaysAhead: settings.maxDaysAhead }),
+            updatedAt: new Date(),
+          },
+        })
+    },
+
+    async getWorkingHours(): Promise<WorkingHoursEntry[]> {
+      const result = await client
+        .select()
+        .from(schema.workingHours)
+        .orderBy(schema.workingHours.dayOfWeek, schema.workingHours.startTime)
+
+      if (result.length === 0) {
+        // Return defaults: 8-12 + 13-17 for weekdays (Mon-Fri)
+        const defaults: Omit<WorkingHoursEntry, 'id'>[] = []
+        for (let day = 1; day <= 5; day++) {
+          defaults.push({ dayOfWeek: day, startTime: '08:00', endTime: '12:00' })
+          defaults.push({ dayOfWeek: day, startTime: '13:00', endTime: '17:00' })
+        }
+        await this.setWorkingHours(defaults)
+        return this.getWorkingHours()
+      }
+
+      return result.map((row) => ({
+        id: row.id,
+        dayOfWeek: row.dayOfWeek,
+        startTime: row.startTime,
+        endTime: row.endTime,
+      }))
+    },
+
+    async setWorkingHours(entries: Omit<WorkingHoursEntry, 'id'>[]): Promise<void> {
+      // Delete existing working hours and insert new ones
+      await client.delete(schema.workingHours)
+
+      if (entries.length === 0) return
+
+      await client.insert(schema.workingHours).values(
+        entries.map((entry) => ({
+          id: Bun.randomUUIDv7(),
+          dayOfWeek: entry.dayOfWeek,
+          startTime: entry.startTime,
+          endTime: entry.endTime,
+        }))
+      )
     },
   }
 }

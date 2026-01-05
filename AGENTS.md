@@ -57,5 +57,6 @@ Use Bun's test runner from the root. You can scope to names or files:
 - **Control Flow**: Use small, focused functions. Return early instead of using `else`.
 - **LLM Usage**: Keep tokens minimal in prompts; log token usage where appropriate.
 - **Database Migrations**: Never manually edit SQL migration files or snapshot JSON files in `drizzle/` folders. Always use `bun drizzle-kit generate` to generate migrations from schema changes. Drizzle handles migration generation automatically.
+- **Color functions**: Use CSS `color-mix` function to transform colors.
 
 For agent-specific architecture, pipeline phases, and testing patterns, consult the corresponding agent README.

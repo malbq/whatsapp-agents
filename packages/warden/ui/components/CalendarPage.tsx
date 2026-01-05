@@ -1,26 +1,46 @@
-import { useLoaderData, useNavigate, useRouter, useRouterState } from '@tanstack/react-router'
+import { useLoaderData, useNavigate, useRouter, useRouterState, useSearch } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 
 import { ConnectPrompt } from './ConnectPrompt'
-import { CalendarGrid } from './calendar/CalendarGrid'
+import { AppointmentDetailsPanel } from './calendar/AppointmentDetailsPanel'
+import { MonthGrid } from './calendar/CalendarGrid'
+import { CalendarHeading } from './calendar/CalendarHeading'
 import { CalendarSidebar } from './calendar/CalendarSidebar'
 import { CreateCalendarModal } from './calendar/CreateCalendarModal'
-import type { CalendarData, CalendarResponse } from './calendar/types'
+import { CreateTimeOffModal } from './calendar/CreateTimeOffModal'
+import { WeekGrid } from './calendar/WeekGrid'
+import type { CalendarData, CalendarEvent, CalendarResponse, CalendarView, SidebarCalendar } from './calendar/types'
 
 export function CalendarPage() {
-  const data = useLoaderData({ from: '/_app/calendar' }) as CalendarResponse
+  const data = useLoaderData({ from: '/_app/' }) as CalendarResponse
+  const search = useSearch({ from: '/_app/' }) as { month?: string; view?: CalendarView }
   const navigate = useNavigate()
   const router = useRouter()
   const isLoading = useRouterState({ select: (s) => s.status === 'pending' })
 
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isTimeOffModalOpen, setIsTimeOffModalOpen] = useState(false)
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
 
   const [optimisticAppointmentCalendarId, setOptimisticAppointmentCalendarId] = useState<
     string | null | undefined
   >(undefined)
 
+  // Track optimistic enabled state changes: Map<calendarId, enabled>
+  const [optimisticEnabledState, setOptimisticEnabledState] = useState<Map<string, boolean>>(
+    new Map()
+  )
+
+  const currentView: CalendarView = search.view || 'month'
+
   useEffect(() => {
     setOptimisticAppointmentCalendarId(undefined)
+    setOptimisticEnabledState(new Map())
+  }, [data])
+
+  // Clear selected event when data changes (month navigation, etc.)
+  useEffect(() => {
+    setSelectedEvent(null)
   }, [data])
 
   if (!data.connected) {
@@ -32,18 +52,32 @@ export function CalendarPage() {
   }
 
   const calendarData = data as CalendarData
-  const currentMonth = new Date(calendarData.currentMonth)
+  // Use today as default if no month param, otherwise use the param
+  const referenceDate = search.month ? new Date(search.month) : new Date()
+  const currentMonth = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 1)
 
-  const calendars = calendarData.calendars
+  // Apply optimistic enabled state to calendars
+  const calendars: SidebarCalendar[] = calendarData.calendars.map((cal) => {
+    const optimisticEnabled = optimisticEnabledState.get(cal.id)
+    return optimisticEnabled !== undefined ? { ...cal, enabled: optimisticEnabled } : cal
+  })
   const appointmentCalendarId =
     optimisticAppointmentCalendarId !== undefined
       ? optimisticAppointmentCalendarId
       : calendarData.appointmentCalendarId
 
-  const handleMonthChange = (newMonth: Date) => {
+  const handleNavigate = (newDate: Date) => {
     navigate({
-      to: '/calendar',
-      search: { month: newMonth.toISOString() },
+      to: '/',
+      search: { month: newDate.toISOString(), view: currentView },
+    })
+  }
+
+  const handleViewChange = (view: CalendarView) => {
+    // When switching views, keep the current reference date
+    navigate({
+      to: '/',
+      search: { month: search.month, view },
     })
   }
 
@@ -56,6 +90,18 @@ export function CalendarPage() {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ calendarId }),
+    }).then(() => router.invalidate())
+  }
+
+  const handleToggleCalendarEnabled = (calendarId: string, enabled: boolean) => {
+    // Optimistic update - update UI immediately
+    setOptimisticEnabledState((prev) => new Map(prev).set(calendarId, enabled))
+
+    // Fire and forget - let router.invalidate() sync in background
+    fetch(`/api/calendar/visibility/${encodeURIComponent(calendarId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled }),
     }).then(() => router.invalidate())
   }
 
@@ -72,23 +118,83 @@ export function CalendarPage() {
     await router.invalidate()
   }
 
+  const handleCreateTimeOff = async (formData: {
+    calendarId: string
+    summary: string
+    startDate: string
+    endDate: string
+    description?: string
+  }) => {
+    const res = await fetch('/api/calendar/events/all-day', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData),
+    })
+    if (!res.ok) {
+      const err = await res.json()
+      throw new Error(err.error || 'Erro ao criar folga')
+    }
+    await router.invalidate()
+  }
+
+  const handleSelectEvent = (event: CalendarEvent | null) => {
+    setSelectedEvent(event)
+  }
+
+  const handleCloseDetails = () => {
+    setSelectedEvent(null)
+  }
+
+  // Dynamic grid columns based on whether details panel is shown
+  const gridCols = selectedEvent
+    ? 'grid-cols-[280px_1fr_320px]'
+    : 'grid-cols-[280px_1fr]'
+
   return (
-    <div className='max-w-[1400px] mx-auto'>
-      <div className='flex gap-2'>
+    <>
+      <div
+        className={`grid ${gridCols} grid-rows-[auto_1fr] h-full transition-all ${
+          isLoading ? 'opacity-50 pointer-events-none' : ''
+        }`}
+      >
         <CalendarSidebar
           calendars={calendars}
           appointmentCalendarId={appointmentCalendarId}
           onSetAppointmentCalendar={handleSetAppointmentCalendar}
+          onToggleCalendarEnabled={handleToggleCalendarEnabled}
           onCreateCalendar={() => setIsModalOpen(true)}
+          className='row-span-2'
         />
-        <div className='flex-1'>
-          <CalendarGrid
+        <CalendarHeading
+          referenceDate={referenceDate}
+          currentView={currentView}
+          onNavigate={handleNavigate}
+          onViewChange={handleViewChange}
+          onCreateTimeOff={() => setIsTimeOffModalOpen(true)}
+        />
+        {selectedEvent && (
+          <AppointmentDetailsPanel
+            event={selectedEvent}
+            onClose={handleCloseDetails}
+            className='row-span-2'
+          />
+        )}
+        {currentView === 'month' ? (
+          <MonthGrid
             events={calendarData.events}
             currentMonth={currentMonth}
-            onMonthChange={handleMonthChange}
-            isLoading={isLoading}
+            selectedEventId={selectedEvent?.id ?? null}
+            onSelectEvent={handleSelectEvent}
           />
-        </div>
+        ) : (
+          <WeekGrid
+            events={calendarData.events}
+            referenceDate={referenceDate}
+            workingHours={calendarData.workingHours}
+            selectedEventId={selectedEvent?.id ?? null}
+            onSelectEvent={handleSelectEvent}
+          />
+        )}
       </div>
 
       <CreateCalendarModal
@@ -96,6 +202,13 @@ export function CalendarPage() {
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleCreateCalendar}
       />
-    </div>
+
+      <CreateTimeOffModal
+        isOpen={isTimeOffModalOpen}
+        defaultCalendarId={appointmentCalendarId}
+        onClose={() => setIsTimeOffModalOpen(false)}
+        onSubmit={handleCreateTimeOff}
+      />
+    </>
   )
 }

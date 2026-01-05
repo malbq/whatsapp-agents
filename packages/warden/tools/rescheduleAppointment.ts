@@ -1,6 +1,6 @@
 import { tool } from 'ai'
 import { z } from 'zod'
-import type { ToolContext } from './context'
+import { createDateInTimezone, type ToolContext } from './context'
 
 export const createRescheduleAppointmentTool = (ctx: ToolContext) =>
   tool({
@@ -21,8 +21,17 @@ export const createRescheduleAppointmentTool = (ctx: ToolContext) =>
         return 'Não encontrei nenhum agendamento futuro para reagendar.'
       }
 
-      // Parse the new date and time
-      const newStart = new Date(`${newDate}T${newTime}:00`)
+      // Get calendar timezone
+      const timezone = await ctx.calendar.getCalendarTimezone()
+
+      // Parse time
+      const [hours, minutes] = newTime.split(':').map(Number)
+      if (hours === undefined || minutes === undefined || Number.isNaN(hours) || Number.isNaN(minutes)) {
+        return `Horário inválido: ${newTime}`
+      }
+
+      // Create date in calendar's timezone
+      const newStart = createDateInTimezone(newDate, hours, minutes, timezone)
       if (Number.isNaN(newStart.getTime())) {
         return `Data ou horário inválido: ${newDate} ${newTime}`
       }
@@ -43,10 +52,12 @@ export const createRescheduleAppointmentTool = (ctx: ToolContext) =>
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
+        timeZone: timezone,
       })
       const formattedTime = newStart.toLocaleTimeString('pt-BR', {
         hour: '2-digit',
         minute: '2-digit',
+        timeZone: timezone,
       })
 
       return `Agendamento reagendado com sucesso para ${formattedDate} às ${formattedTime}.`

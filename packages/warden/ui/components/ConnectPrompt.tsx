@@ -19,9 +19,9 @@ export function ConnectPrompt() {
             />
           </svg>
         </div>
-        <h2 className='text-2xl text-neutral-100 font-bold mb-3'>Calendario nao conectado</h2>
+        <h2 className='text-2xl text-neutral-100 font-bold mb-3'>Calendário não conectado</h2>
         <p className='text-neutral-400 text-base mb-8 leading-relaxed max-w-[320px] mx-auto'>
-          A conexao com o Google Calendar expirou ou nao foi estabelecida. Reconecte para visualizar
+          A conexão com o Google Calendar expirou ou não foi estabelecida. Reconecte para visualizar
           e gerenciar seus compromissos.
         </p>
         <a

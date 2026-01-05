@@ -35,6 +35,7 @@ export async function generate({
         serviceTier: 'flex',
         textVerbosity: 'low',
         reasoningSummary: null,
+        strictJsonSchema: false,
       },
     },
   })

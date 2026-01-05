@@ -2,6 +2,8 @@ import { tool } from 'ai'
 import { z } from 'zod'
 import type { ToolContext } from './context'
 
+const DEFAULT_DURATION_MINUTES = 30
+
 export const createCheckAvailabilityTool = (ctx: ToolContext) =>
   tool({
     title: 'check_availability',
@@ -15,27 +17,60 @@ export const createCheckAvailabilityTool = (ctx: ToolContext) =>
         .describe('Number of days ahead to check availability (default 7, max 14)'),
     }),
     execute: async ({ daysAhead }) => {
+      // Load settings and working hours from DB
+      const [settings, workingHours] = await Promise.all([
+        ctx.db.getAvailabilitySettings(),
+        ctx.db.getWorkingHours(),
+      ])
+
+      // Get calendar configuration
+      const appointmentCalendarId = await ctx.db.getAppointmentCalendarId()
+      if (!appointmentCalendarId) {
+        return 'Nenhum calendário de agendamentos configurado.'
+      }
+
+      const [enabledCalendarIds, forceBusyCalendarIds, timezone] = await Promise.all([
+        ctx.db.getEnabledCalendarIds(),
+        ctx.db.getForceBusyCalendarIds(),
+        ctx.calendar.getCalendarTimezone(),
+      ])
+
       const startDate = new Date()
       const endDate = new Date()
       endDate.setDate(endDate.getDate() + daysAhead)
 
-      const slots = await ctx.calendar.checkAvailability(startDate, endDate)
+      const result = await ctx.calendar.checkAvailability({
+        startDate,
+        endDate,
+        durationMinutes: DEFAULT_DURATION_MINUTES,
+        settings,
+        workingHours,
+        busyCalendarIds: enabledCalendarIds,
+        forceBusyCalendarIds,
+        appointmentCalendarId,
+        timezone,
+      })
 
-      if (slots.length === 0) {
+      if (result.slots.length === 0) {
         return 'Não há horários disponíveis nos próximos dias.'
       }
 
-      // Group by date
+      // Group by date using the calendar's timezone
       const groupedByDate: Record<string, string[]> = {}
-      for (const slot of slots) {
+      for (const slot of result.slots) {
         const dateKey = slot.start.toLocaleDateString('pt-BR', {
           weekday: 'long',
           day: '2-digit',
           month: '2-digit',
+          timeZone: result.timezone,
         })
         if (!groupedByDate[dateKey]) groupedByDate[dateKey] = []
         groupedByDate[dateKey].push(
-          slot.start.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+          slot.start.toLocaleTimeString('pt-BR', {
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: result.timezone,
+          })
         )
       }
 

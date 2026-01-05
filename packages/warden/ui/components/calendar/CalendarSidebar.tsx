@@ -5,7 +5,9 @@ interface CalendarSidebarProps {
   calendars: SidebarCalendar[]
   appointmentCalendarId: string | null
   onSetAppointmentCalendar: (calendarId: string) => void
+  onToggleCalendarEnabled: (calendarId: string, enabled: boolean) => void
   onCreateCalendar: () => void
+  className?: string
 }
 
 function PlusIcon() {
@@ -67,11 +69,15 @@ interface CalendarItemProps {
   calendar: SidebarCalendar
   isAppointment: boolean
   onSetDefault: () => void
+  onToggleEnabled: (enabled: boolean) => void
   style?: React.CSSProperties
 }
 
-function CalendarItem({ calendar, isAppointment, onSetDefault, style }: CalendarItemProps) {
+function CalendarItem({ calendar, isAppointment, onSetDefault, onToggleEnabled, style }: CalendarItemProps) {
   const bgColor = calendar.backgroundColor || '#4285f4'
+  // Appointment calendar is always enabled and cannot be toggled
+  const isEnabled = isAppointment || calendar.enabled
+  const canToggle = !isAppointment
 
   return (
     <div
@@ -80,11 +86,37 @@ function CalendarItem({ calendar, isAppointment, onSetDefault, style }: Calendar
       }`}
       style={style}
     >
-      <div
-        className='w-4 h-4 rounded-sm shrink-0'
-        style={{ backgroundColor: bgColor }}
-      />
-      <span className='flex-1 text-sm text-neutral-300 truncate'>{calendar.summary}</span>
+      <label className={`relative flex items-center ${canToggle ? 'cursor-pointer' : 'cursor-default'}`}>
+        <input
+          type='checkbox'
+          checked={isEnabled}
+          onChange={(e) => canToggle && onToggleEnabled(e.target.checked)}
+          disabled={!canToggle}
+          className='sr-only peer'
+        />
+        <div
+          className='w-4 h-4 rounded-sm border-2 peer-checked:border-transparent peer-focus:ring-2 peer-focus:ring-offset-1 peer-focus:ring-offset-neutral-900 peer-focus:ring-neutral-500 transition-colors'
+          style={{
+            backgroundColor: isEnabled ? bgColor : 'transparent',
+            borderColor: isEnabled ? 'transparent' : bgColor,
+          }}
+        >
+          {isEnabled && (
+            <svg
+              className='w-full h-full text-white'
+              viewBox='0 0 24 24'
+              fill='none'
+              stroke='currentColor'
+              strokeWidth={3}
+            >
+              <path d='M5 13l4 4L19 7' />
+            </svg>
+          )}
+        </div>
+      </label>
+      <span className={`flex-1 text-sm truncate ${isEnabled ? 'text-neutral-300' : 'text-neutral-500'}`}>
+        {calendar.summary}
+      </span>
       <button
         type='button'
         onClick={isAppointment ? undefined : onSetDefault}
@@ -116,7 +148,9 @@ export function CalendarSidebar({
   calendars,
   appointmentCalendarId,
   onSetAppointmentCalendar,
+  onToggleCalendarEnabled,
   onCreateCalendar,
+  className,
 }: CalendarSidebarProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [animation, setAnimation] = useState<AnimationState | null>(null)
@@ -194,7 +228,7 @@ export function CalendarSidebar({
   }
 
   return (
-    <div className='w-64 bg-neutral-900 rounded border border-neutral-800 shadow-sm'>
+    <div className={`bg-neutral-900 border-r border-neutral-800 ${className}`}>
       <div className='flex items-center justify-between px-4 py-3'>
         <span className='text-sm font-medium text-neutral-400 tracking-wide'>Calendários</span>
         <button
@@ -217,6 +251,7 @@ export function CalendarSidebar({
             calendar={calendar}
             isAppointment={calendar.id === (animation?.newId ?? appointmentCalendarId)}
             onSetDefault={() => handleSelect(calendar.id)}
+            onToggleEnabled={(enabled) => onToggleCalendarEnabled(calendar.id, enabled)}
             style={getItemStyle(calendar.id)}
           />
         ))}

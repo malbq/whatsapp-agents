@@ -7,8 +7,10 @@ import {
 } from '@tanstack/react-router'
 import { AppLayout } from './components/AppLayout'
 import { CalendarPage } from './components/CalendarPage'
-import { HomePage } from './components/HomePage'
+import { ChatPage, type ChatThread } from './components/ChatPage'
 import { LoginPage } from './components/LoginPage'
+import { ServicesPage, type ServicesData } from './components/ServicesPage'
+import { SettingsPage, type SettingsData } from './components/SettingsPage'
 import { ThreadsPage, type Thread } from './components/ThreadsPage'
 import type { CalendarResponse } from './components/calendar/types'
 
@@ -56,11 +58,27 @@ const appLayoutRoute = createRoute({
   component: AppLayout,
 })
 
-// Home page - uses session from context
-const indexRoute = createRoute({
+// Calendar page (index) - loads full calendar data
+const calendarRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/',
-  component: HomePage,
+  loaderDeps: ({ search }: { search: { month?: string; view?: 'month' | 'week' } }) => ({
+    month: search.month,
+    view: search.view,
+  }),
+  validateSearch: (search: Record<string, unknown>): { month?: string; view?: 'month' | 'week' } => ({
+    month: (search.month as string) || undefined,
+    view: (search.view as 'month' | 'week') || undefined,
+  }),
+  loader: async ({ deps }): Promise<CalendarResponse> => {
+    const url = deps.month ? `/api/calendar/data?month=${deps.month}` : '/api/calendar/data'
+    const res = await fetch(url)
+    if (!res.ok) {
+      return { connected: false }
+    }
+    return res.json() as Promise<CalendarResponse>
+  },
+  component: CalendarPage,
 })
 
 // Threads page - loads threads data
@@ -78,28 +96,52 @@ const threadsRoute = createRoute({
   component: ThreadsPage,
 })
 
-// Calendar page - loads full calendar data
-const calendarRoute = createRoute({
+// Chat page - loads thread messages for a specific user
+const chatRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
-  path: '/calendar',
-  loaderDeps: ({ search }: { search: { month?: string } }) => ({ month: search.month }),
-  validateSearch: (search: Record<string, unknown>) => ({
-    month: (search.month as string) || undefined,
-  }),
-  loader: async ({ deps }): Promise<CalendarResponse> => {
-    const url = deps.month ? `/api/calendar/data?month=${deps.month}` : '/api/calendar/data'
-    const res = await fetch(url)
+  path: '/chat/$userId',
+  loader: async ({ params }): Promise<{ thread: ChatThread }> => {
+    const res = await fetch(`/api/threads/${params.userId}`)
     if (!res.ok) {
-      return { connected: false }
+      throw new Error(await res.text())
     }
-    return res.json() as Promise<CalendarResponse>
+    const data = (await res.json()) as { thread: ChatThread }
+    return { thread: data.thread }
   },
-  component: CalendarPage,
+  component: ChatPage,
+})
+
+// Settings page - loads availability settings and working hours
+const settingsRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/settings',
+  loader: async (): Promise<SettingsData> => {
+    const res = await fetch('/api/availability')
+    if (!res.ok) {
+      throw new Error(await res.text())
+    }
+    return res.json() as Promise<SettingsData>
+  },
+  component: SettingsPage,
+})
+
+// Services page - loads services data
+const servicesRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/services',
+  loader: async (): Promise<ServicesData> => {
+    const res = await fetch('/api/services')
+    if (!res.ok) {
+      throw new Error(await res.text())
+    }
+    return res.json() as Promise<ServicesData>
+  },
+  component: ServicesPage,
 })
 
 const routeTree = rootRoute.addChildren([
   loginRoute,
-  appLayoutRoute.addChildren([indexRoute, threadsRoute, calendarRoute]),
+  appLayoutRoute.addChildren([calendarRoute, threadsRoute, chatRoute, settingsRoute, servicesRoute]),
 ])
 
 export const router = createRouter({

@@ -181,7 +181,7 @@ Warden connects to Google Calendar to manage appointments. The connection is est
 
 ### Connecting Google Calendar
 
-1. Log into the Warden dashboard
+1. Log into the Warden dashboardTime
 2. Go to `/settings`
 3. Click "Connect Google Calendar"
 4. Authorize Warden to access your Google Calendar
@@ -208,15 +208,6 @@ The calendar connection stores a **refresh token** that allows Warden to make Ca
 - Query free/busy information
 - Create, update, and delete calendar events
 - Uses the primary calendar by default
-
-### Cal.com (Planned)
-
-- API key authentication
-- Query available slots
-- Create, update, and delete bookings
-- Leverages Cal.com's built-in resource/staff management
-
-> **Note**: Cal.com integration is planned for future implementation.
 
 ## Reminders
 

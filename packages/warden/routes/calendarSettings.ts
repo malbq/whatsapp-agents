@@ -20,10 +20,18 @@ export interface CalendarEvent {
   id: string
   calendarId: string
   summary?: string
+  description?: string
   start?: { dateTime?: string | null; date?: string | null }
   end?: { dateTime?: string | null; date?: string | null }
   backgroundColor?: string
   isAppointmentCalendar?: boolean
+  // Appointment-specific data (only present for events from appointment calendar)
+  appointment?: {
+    customerName: string
+    customerPhone: string
+    serviceName?: string
+    status: 'scheduled' | 'confirmed' | 'cancelled' | 'completed'
+  }
 }
 
 function getOAuth2Client() {
@@ -49,7 +57,8 @@ async function fetchMultiCalendarEvents(
   calendarsMap: Map<string, CalendarListItem>,
   startOfMonth: Date,
   endOfMonth: Date,
-  appointmentCalendarId: string | null
+  appointmentCalendarId: string | null,
+  db: WardenDB
 ): Promise<CalendarEvent[]> {
   const eventPromises = calendarIds.map(async (calendarId) => {
     const calendar = calendarsMap.get(calendarId)
@@ -66,6 +75,7 @@ async function fetchMultiCalendarEvents(
         id: e.id!,
         calendarId,
         summary: e.summary ?? undefined,
+        description: e.description ?? undefined,
         start: e.start ?? undefined,
         end: e.end ?? undefined,
         backgroundColor: calendar?.backgroundColor,
@@ -75,7 +85,31 @@ async function fetchMultiCalendarEvents(
   })
 
   const allEvents = await Promise.all(eventPromises)
-  return allEvents.flat()
+  const flatEvents = allEvents.flat()
+
+  // Fetch appointment data for events from appointment calendar
+  const appointmentEventIds = flatEvents
+    .filter((e) => e.isAppointmentCalendar)
+    .map((e) => e.id)
+
+  const appointmentsMap = await db.getAppointmentsWithCustomerByCalendarEventIds(appointmentEventIds)
+
+  // Enrich events with appointment data
+  return flatEvents.map((event) => {
+    const appointment = appointmentsMap.get(event.id)
+    if (appointment) {
+      return {
+        ...event,
+        appointment: {
+          customerName: appointment.customerName,
+          customerPhone: appointment.customerPhone,
+          serviceName: appointment.serviceName,
+          status: appointment.status,
+        },
+      }
+    }
+    return event
+  })
 }
 
 async function getCalendarData(db: WardenDB) {
@@ -157,9 +191,12 @@ export function createCalendarSettingsRoute(db: WardenDB) {
             calendarData.calendarsMap,
             startOfMonth,
             endOfMonth,
-            calendarData.appointmentCalendarId
+            calendarData.appointmentCalendarId,
+            db
           )
         : []
+
+    const workingHours = await db.getWorkingHours()
 
     return c.json({
       connected: true,
@@ -168,6 +205,11 @@ export function createCalendarSettingsRoute(db: WardenDB) {
       enabledCalendarIds: calendarData.enabledCalendarIds,
       events,
       currentMonth: currentMonth.toISOString(),
+      workingHours: workingHours.map((wh) => ({
+        dayOfWeek: wh.dayOfWeek,
+        startTime: wh.startTime,
+        endTime: wh.endTime,
+      })),
     })
   })
 
@@ -209,6 +251,13 @@ export function createCalendarSettingsRoute(db: WardenDB) {
     const calendarId = decodeURIComponent(c.req.param('calendarId'))
     const body = await c.req.json<{ enabled: boolean }>()
 
+    const appointmentCalendarId = await db.getAppointmentCalendarId()
+
+    // Prevent disabling the appointment calendar
+    if (appointmentCalendarId === calendarId && !body.enabled) {
+      return c.json({ error: 'O calendário de agendamentos não pode ser desativado.' }, 400)
+    }
+
     await db.setCalendarEnabled(calendarId, body.enabled)
 
     return c.json({ success: true })
@@ -219,6 +268,70 @@ export function createCalendarSettingsRoute(db: WardenDB) {
     const body = await c.req.json<{ calendarId: string }>()
 
     await db.setAppointmentCalendarId(body.calendarId)
+
+    return c.json({ success: true })
+  })
+
+  // Create an all-day event (for OOO/time off)
+  app.post('/events/all-day', async (c) => {
+    const body = await c.req.json<{
+      calendarId: string
+      summary: string
+      startDate: string // YYYY-MM-DD
+      endDate: string // YYYY-MM-DD (exclusive end date)
+      description?: string
+    }>()
+
+    const schema = z.object({
+      calendarId: z.string().min(1, 'Calendar ID is required'),
+      summary: z.string().min(1, 'Summary is required'),
+      startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date must be YYYY-MM-DD'),
+      endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'End date must be YYYY-MM-DD'),
+      description: z.string().optional(),
+    })
+
+    const validation = schema.safeParse(body)
+    if (!validation.success) {
+      return c.json({ error: validation.error.issues[0]?.message }, 400)
+    }
+
+    const calendarClient = await getAuthenticatedCalendarClient(db)
+    if (!calendarClient) {
+      return c.json({ error: 'Calendario nao conectado' }, 400)
+    }
+
+    // Create all-day event
+    const { data: event } = await calendarClient.events.insert({
+      calendarId: body.calendarId,
+      requestBody: {
+        summary: body.summary,
+        description: body.description || undefined,
+        start: {
+          date: body.startDate, // All-day events use date without time
+        },
+        end: {
+          date: body.endDate, // Exclusive end date
+        },
+      },
+    })
+
+    return c.json({ success: true, eventId: event.id })
+  })
+
+  // Delete an event
+  app.delete('/events/:calendarId/:eventId', async (c) => {
+    const calendarId = decodeURIComponent(c.req.param('calendarId'))
+    const eventId = decodeURIComponent(c.req.param('eventId'))
+
+    const calendarClient = await getAuthenticatedCalendarClient(db)
+    if (!calendarClient) {
+      return c.json({ error: 'Calendario nao conectado' }, 400)
+    }
+
+    await calendarClient.events.delete({
+      calendarId,
+      eventId,
+    })
 
     return c.json({ success: true })
   })

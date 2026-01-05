@@ -9,9 +9,11 @@ import { processMessage } from './lib/processMessage'
 import pkg from './package.json'
 import dashboard from './ui/index.html'
 import { createAuthRoutes } from './routes/auth.ts'
+import { createAvailabilitySettingsRoute } from './routes/availabilitySettings.ts'
 import { createCalendarAuthRoutes } from './routes/calendarAuth.ts'
 import { createCalendarSettingsRoute } from './routes/calendarSettings.ts'
 import { createClearMessagesRoute } from './routes/clearMessages.ts'
+import { createServicesRoute } from './routes/services.ts'
 
 ok(import.meta.env.META_WEBHOOK_VERIFY_TOKEN, 'META_WEBHOOK_VERIFY_TOKEN is required')
 ok(import.meta.env.META_API_TOKEN, 'META_API_TOKEN is required')
@@ -49,6 +51,8 @@ app.route('/webhook', webhookApp)
 app.route('/auth', createAuthRoutes(db))
 app.route('/api/calendar', createCalendarAuthRoutes(db))
 app.route('/api/calendar', createCalendarSettingsRoute(db))
+app.route('/api/availability', createAvailabilitySettingsRoute(db))
+app.route('/api/services', createServicesRoute(db))
 
 app.get('/api/session', requireAuthApi, (c) => {
   const session = c.get('session')
@@ -58,6 +62,15 @@ app.get('/api/session', requireAuthApi, (c) => {
 app.get('/api/threads', requireAuthApi, async (c) => {
   const threads = await db.listThreads()
   return c.json({ threads })
+})
+
+app.get('/api/threads/:userId', requireAuthApi, async (c) => {
+  const userId = c.req.param('userId')
+  const thread = await db.getThread(userId)
+  if (!thread) {
+    return c.json({ error: 'Thread not found' }, 404)
+  }
+  return c.json({ thread })
 })
 
 app.delete('/api/threads/:userId/messages', requireAuthApi, createClearMessagesRoute(db))
@@ -73,7 +86,10 @@ Bun.serve({
     '/': dashboard,
     '/login': dashboard,
     '/threads': dashboard,
+    '/chat/*': dashboard,
     '/calendar': dashboard,
+    '/settings': dashboard,
+    '/services': dashboard,
   },
   async fetch(req, _server) {
     const url = new URL(req.url)

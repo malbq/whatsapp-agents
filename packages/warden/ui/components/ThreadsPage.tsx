@@ -1,4 +1,4 @@
-import { useLoaderData } from '@tanstack/react-router'
+import { Link, useLoaderData } from '@tanstack/react-router'
 
 export type Thread = {
   userId: string
@@ -10,8 +10,8 @@ export function ThreadsPage() {
   const { threads } = useLoaderData({ from: '/_app/threads' })
 
   return (
-    <div>
-      <div className='flex items-center justify-between mb-8'>
+    <div className='p-6'>
+      <div className='flex items-center justify-between mb-6'>
         <h1 className='text-2xl font-bold text-neutral-100'>Conversas</h1>
         <span className='bg-neutral-900 px-3 py-1 rounded-full text-xs font-medium text-neutral-400 border border-neutral-800'>
           {threads.length} {threads.length === 1 ? 'conversa' : 'conversas'}
@@ -41,20 +41,35 @@ export function ThreadsPage() {
       ) : (
         <div className='space-y-3'>
           {threads.map((t) => (
-            <div
+            <Link
               key={t.userId}
-              className='bg-neutral-900 border border-neutral-800 rounded-xl p-4'
+              to='/chat/$userId'
+              params={{ userId: t.userId }}
+              className='block bg-neutral-900 border border-neutral-800 rounded-xl p-4 hover:bg-neutral-800/50 hover:border-neutral-700 transition-colors no-underline'
             >
               <div className='flex items-center gap-3'>
                 <div className='w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold text-sm'>
                   {t.userName.charAt(0).toUpperCase()}
                 </div>
-                <div>
+                <div className='flex-1'>
                   <div className='font-semibold text-neutral-100'>{t.userName}</div>
                   <div className='text-sm text-neutral-500 font-mono'>{t.externalId}</div>
                 </div>
+                <svg
+                  className='w-5 h-5 text-neutral-500'
+                  fill='none'
+                  viewBox='0 0 24 24'
+                  stroke='currentColor'
+                >
+                  <path
+                    strokeLinecap='round'
+                    strokeLinejoin='round'
+                    strokeWidth={2}
+                    d='M9 5l7 7-7 7'
+                  />
+                </svg>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}

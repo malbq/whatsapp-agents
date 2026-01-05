@@ -85,6 +85,7 @@ export async function responseGeneration() {
         textVerbosity: 'low',
         reasoningSummary: null,
         parallelToolCalls: false,
+        strictJsonSchema: false,
       },
     },
   })
