@@ -8,6 +8,8 @@ interface CalendarSidebarProps {
   onToggleCalendarEnabled: (calendarId: string, enabled: boolean) => void
   onCreateCalendar: () => void
   className?: string
+  isOpen?: boolean
+  onClose?: () => void
 }
 
 function PlusIcon() {
@@ -20,6 +22,33 @@ function PlusIcon() {
       strokeWidth={2}
     >
       <path d='M12 5v14M5 12h14' />
+    </svg>
+  )
+}
+
+function CloseIcon() {
+  return (
+    <svg
+      className='w-5 h-5'
+      viewBox='0 0 24 24'
+      fill='none'
+      stroke='currentColor'
+      strokeWidth={2}
+      strokeLinecap='round'
+      strokeLinejoin='round'
+    >
+      <line
+        x1='18'
+        y1='6'
+        x2='6'
+        y2='18'
+      />
+      <line
+        x1='6'
+        y1='6'
+        x2='18'
+        y2='18'
+      />
     </svg>
   )
 }
@@ -150,7 +179,9 @@ export function CalendarSidebar({
   onSetAppointmentCalendar,
   onToggleCalendarEnabled,
   onCreateCalendar,
-  className,
+  className = '',
+  isOpen,
+  onClose,
 }: CalendarSidebarProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [animation, setAnimation] = useState<AnimationState | null>(null)
@@ -228,38 +259,67 @@ export function CalendarSidebar({
   }
 
   return (
-    <div className={`bg-neutral-900 border-r border-neutral-800 ${className}`}>
-      <div className='flex items-center justify-between px-4 py-3'>
-        <span className='text-sm font-medium text-neutral-400 tracking-wide'>Calendários</span>
-        <button
-          type='button'
-          onClick={onCreateCalendar}
-          className='p-1 rounded text-neutral-400 hover:text-neutral-300 hover:bg-neutral-800 transition-colors'
-          title='Criar novo calendario'
-        >
-          <PlusIcon />
-        </button>
-      </div>
-      <div className='text-xs text-amber-100/70 bg-amber-800/15 px-4 pt-2 uppercase font-medium tracking-wide'>
-        Calendário de agendamentos
-      </div>
-
-      <div ref={containerRef}>
-        {sortedCalendars.map((calendar) => (
-          <CalendarItem
-            key={calendar.id}
-            calendar={calendar}
-            isAppointment={calendar.id === (animation?.newId ?? appointmentCalendarId)}
-            onSetDefault={() => handleSelect(calendar.id)}
-            onToggleEnabled={(enabled) => onToggleCalendarEnabled(calendar.id, enabled)}
-            style={getItemStyle(calendar.id)}
-          />
-        ))}
-      </div>
-
-      {calendars.length === 0 && (
-        <p className='text-sm text-neutral-500 text-center py-4'>Nenhum calendario encontrado</p>
+    <>
+      {/* Mobile overlay */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 z-30 lg:hidden"
+          onClick={onClose}
+          aria-hidden="true"
+        />
       )}
-    </div>
+
+      <div
+        className={`bg-neutral-900 border-r border-neutral-800 transition-transform duration-300 ease-in-out z-40
+          lg:translate-x-0 lg:static lg:h-auto
+          fixed inset-y-0 left-0 w-80 h-full
+          ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+          ${className}`}
+      >
+        <div className='flex items-center justify-between px-4 py-3'>
+          <span className='text-sm font-medium text-neutral-400 tracking-wide'>Calendários</span>
+          <div className='flex items-center gap-2'>
+            <button
+              type='button'
+              onClick={onCreateCalendar}
+              className='p-1 rounded text-neutral-400 hover:text-neutral-300 hover:bg-neutral-800 transition-colors'
+              title='Criar novo calendario'
+            >
+              <PlusIcon />
+            </button>
+            {onClose && (
+              <button
+                type='button'
+                onClick={onClose}
+                className='p-1 rounded text-neutral-400 hover:text-neutral-300 hover:bg-neutral-800 transition-colors lg:hidden'
+                title='Fechar menu'
+              >
+                <CloseIcon />
+              </button>
+            )}
+          </div>
+        </div>
+        <div className='text-xs text-amber-100/70 bg-amber-800/15 px-4 pt-2 uppercase font-medium tracking-wide'>
+          Calendário de agendamentos
+        </div>
+
+        <div ref={containerRef}>
+          {sortedCalendars.map((calendar) => (
+            <CalendarItem
+              key={calendar.id}
+              calendar={calendar}
+              isAppointment={calendar.id === (animation?.newId ?? appointmentCalendarId)}
+              onSetDefault={() => handleSelect(calendar.id)}
+              onToggleEnabled={(enabled) => onToggleCalendarEnabled(calendar.id, enabled)}
+              style={getItemStyle(calendar.id)}
+            />
+          ))}
+        </div>
+
+        {calendars.length === 0 && (
+          <p className='text-sm text-neutral-500 text-center py-4'>Nenhum calendario encontrado</p>
+        )}
+      </div>
+    </>
   )
 }

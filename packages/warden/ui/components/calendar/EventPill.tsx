@@ -22,9 +22,11 @@ export function EventPill({ event, isSelected, onSelect, className = '', style }
     <button
       type='button'
       onClick={() => onSelect(event)}
-      className={`block min-w-0 text-[10px] px-2 py-1 rounded truncate transition-all hover:brightness-110 text-left ${
+      className={`block min-w-0 text-xs px-2 py-1 rounded truncate transition-all hover:brightness-110 text-left ${
         event.isAppointmentCalendar ? 'border-l-[3px]' : 'border-l-2'
-      } ${isSelected ? 'ring-2 ring-primary ring-offset-1 ring-offset-neutral-900' : ''} ${className}`}
+      } ${
+        isSelected ? 'ring-2 ring-primary ring-offset-1 ring-offset-neutral-900' : ''
+      } ${className}`}
       style={{
         background: `color-mix(in srgb, ${bgColor} ${isSelected ? '35%' : '20%'}, transparent)`,
         color: `color-mix(in srgb, ${bgColor} 40%, white)`,

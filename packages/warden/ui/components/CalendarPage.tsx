@@ -21,6 +21,7 @@ export function CalendarPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isTimeOffModalOpen, setIsTimeOffModalOpen] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
   const [optimisticAppointmentCalendarId, setOptimisticAppointmentCalendarId] = useState<
     string | null | undefined
@@ -163,7 +164,9 @@ export function CalendarPage() {
           onSetAppointmentCalendar={handleSetAppointmentCalendar}
           onToggleCalendarEnabled={handleToggleCalendarEnabled}
           onCreateCalendar={() => setIsModalOpen(true)}
-          className='hidden lg:block row-span-2'
+          className='lg:block row-span-2'
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
         />
         <CalendarHeading
           referenceDate={referenceDate}
@@ -171,6 +174,7 @@ export function CalendarPage() {
           onNavigate={handleNavigate}
           onViewChange={handleViewChange}
           onCreateTimeOff={() => setIsTimeOffModalOpen(true)}
+          onToggleSidebar={() => setIsSidebarOpen(true)}
         />
         {selectedEvent && (
           <AppointmentDetailsPanel
