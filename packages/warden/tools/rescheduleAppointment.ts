@@ -1,6 +1,6 @@
 import { tool } from 'ai'
 import { z } from 'zod'
-import { createDateInTimezone, type ToolContext } from './context'
+import { parseDate, type ToolContext } from './context'
 
 export const createRescheduleAppointmentTool = (ctx: ToolContext) =>
   tool({
@@ -18,7 +18,7 @@ export const createRescheduleAppointmentTool = (ctx: ToolContext) =>
       )
 
       if (!upcomingAppointment) {
-        return 'Não encontrei nenhum agendamento futuro para reagendar.'
+        return 'Nao encontrei nenhum agendamento futuro para reagendar.'
       }
 
       // Get calendar timezone
@@ -27,13 +27,13 @@ export const createRescheduleAppointmentTool = (ctx: ToolContext) =>
       // Parse time
       const [hours, minutes] = newTime.split(':').map(Number)
       if (hours === undefined || minutes === undefined || Number.isNaN(hours) || Number.isNaN(minutes)) {
-        return `Horário inválido: ${newTime}`
+        return `Horario invalido: ${newTime}`
       }
 
       // Create date in calendar's timezone
-      const newStart = createDateInTimezone(newDate, hours, minutes, timezone)
+      const newStart = parseDate({ date: newDate, hour: hours, minute: minutes, timezone })
       if (Number.isNaN(newStart.getTime())) {
-        return `Data ou horário inválido: ${newDate} ${newTime}`
+        return `Data ou horario invalido: ${newDate} ${newTime}`
       }
 
       // Default 30 min duration
@@ -60,6 +60,6 @@ export const createRescheduleAppointmentTool = (ctx: ToolContext) =>
         timeZone: timezone,
       })
 
-      return `Agendamento reagendado com sucesso para ${formattedDate} às ${formattedTime}.`
+      return `Agendamento reagendado com sucesso para ${formattedDate} as ${formattedTime}.`
     },
   })

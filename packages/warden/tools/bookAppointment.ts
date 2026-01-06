@@ -1,6 +1,6 @@
 import { tool } from 'ai'
 import { z } from 'zod'
-import { createDateInTimezone, type ToolContext } from './context'
+import { parseDate, type ToolContext } from './context'
 
 export const createBookAppointmentTool = (ctx: ToolContext) =>
   tool({
@@ -18,13 +18,13 @@ export const createBookAppointmentTool = (ctx: ToolContext) =>
       // Parse time
       const [hours, minutes] = time.split(':').map(Number)
       if (hours === undefined || minutes === undefined || Number.isNaN(hours) || Number.isNaN(minutes)) {
-        return `Horário inválido: ${time}`
+        return `Horario invalido: ${time}`
       }
       
       // Create date in calendar's timezone
-      const startDate = createDateInTimezone(date, hours, minutes, timezone)
+      const startDate = parseDate({ date, hour: hours, minute: minutes, timezone })
       if (Number.isNaN(startDate.getTime())) {
-        return `Data ou horário inválido: ${date} ${time}`
+        return `Data ou horario invalido: ${date} ${time}`
       }
 
       // Default 30 min duration - in future this would come from service config
@@ -58,6 +58,6 @@ export const createBookAppointmentTool = (ctx: ToolContext) =>
         timeZone: timezone,
       })
 
-      return `Agendamento realizado com sucesso para ${formattedDate} às ${formattedTime}.`
+      return `Agendamento realizado com sucesso para ${formattedDate} as ${formattedTime}.`
     },
   })

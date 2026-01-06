@@ -1,5 +1,7 @@
+import type { calendar_v3 } from 'googleapis'
 import { google } from 'googleapis'
 import type { WardenDB } from '../db'
+import { parseDate } from '../lib/dateUtils'
 import {
   CalendarNotConnectedError,
   SlotUnavailableError,
@@ -10,6 +12,85 @@ import {
   type CheckAvailabilityOptions,
   type TimeSlot,
 } from './types'
+
+/**
+ * Check if a calendar ID is a Google holiday calendar.
+ * Holiday calendars have IDs like: en.uk#holiday@group.v.calendar.google.com
+ */
+function isHolidayCalendarId(calendarId: string): boolean {
+  return /^.+#holiday@group\.v\.calendar\.google\.com$/.test(calendarId)
+}
+
+/**
+ * Partition calendar IDs into holiday and regular calendars.
+ */
+function partitionCalendarIds(calendarIds: string[]): {
+  holidayCalendarIds: string[]
+  regularCalendarIds: string[]
+} {
+  const holidayCalendarIds: string[] = []
+  const regularCalendarIds: string[] = []
+
+  for (const id of calendarIds) {
+    if (isHolidayCalendarId(id)) {
+      holidayCalendarIds.push(id)
+    } else {
+      regularCalendarIds.push(id)
+    }
+  }
+
+  return { holidayCalendarIds, regularCalendarIds }
+}
+
+/**
+ * Fetch all events from a holiday calendar within a time range.
+ * Holiday events are transparent by default, so FreeBusy API ignores them.
+ * We need to fetch them directly via events.list to treat them as busy.
+ */
+async function getHolidayCalendarEvents(
+  calendar: calendar_v3.Calendar,
+  calendarId: string,
+  timeMin: Date,
+  timeMax: Date,
+  timezone: string
+): Promise<BusyInterval[]> {
+  const response = await calendar.events.list({
+    calendarId,
+    timeMin: timeMin.toISOString(),
+    timeMax: timeMax.toISOString(),
+    singleEvents: true,
+    orderBy: 'startTime',
+  })
+
+  const events = response.data.items ?? []
+  const busyIntervals: BusyInterval[] = []
+
+  for (const event of events) {
+    const startDateTime = event.start?.dateTime
+    const endDateTime = event.end?.dateTime
+    const startDate = event.start?.date
+    const endDate = event.end?.date
+
+    let start: Date
+    let end: Date
+
+    if (startDateTime && endDateTime) {
+      // Timed events: parseDate handles ISO datetime strings directly
+      start = parseDate({ date: startDateTime })
+      end = parseDate({ date: endDateTime })
+    } else if (startDate && endDate) {
+      // All-day events: parse as midnight in the user's timezone
+      start = parseDate({ date: startDate, timezone })
+      end = parseDate({ date: endDate, timezone })
+    } else {
+      continue
+    }
+
+    busyIntervals.push({ start, end, calendarId })
+  }
+
+  return busyIntervals
+}
 
 function getOAuth2Client() {
   return new google.auth.OAuth2(
@@ -76,49 +157,6 @@ function getDateStringInTimezone(date: Date, timezone: string): string {
 }
 
 /**
- * Create a Date from a date string and time in a specific timezone.
- * This properly handles timezone conversion so that "08:00" in America/Sao_Paulo
- * becomes the correct UTC timestamp.
- */
-function createDateInTimezone(dateStr: string, hours: number, minutes: number, timezone: string): Date {
-  // Build a locale string representation of the target time
-  const timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`
-  const targetTimeStr = `${dateStr} ${timeStr}`
-  
-  // Create a reference point and use the timezone offset difference
-  // We parse as if it's a local time, then calculate the actual UTC time
-  const [year, month, day] = dateStr.split('-').map(Number)
-  
-  // Create a date at midnight UTC on the target date
-  const midnightUTC = Date.UTC(year!, month! - 1, day!, 0, 0, 0)
-  
-  // Calculate what time it is in the target timezone at midnight UTC
-  const atMidnightUTC = new Date(midnightUTC)
-  const tzFormatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: timezone,
-    hour: 'numeric',
-    minute: 'numeric',
-    hour12: false,
-  })
-  const tzAtMidnight = tzFormatter.format(atMidnightUTC)
-  const [tzHour, tzMin] = tzAtMidnight.split(':').map(Number)
-  
-  // The offset is how many minutes the timezone is ahead of UTC
-  // If at midnight UTC the timezone shows 21:00 (previous day), offset is -180 minutes
-  // If at midnight UTC the timezone shows 03:00 (same day), offset is +180 minutes
-  let offsetMinutes = (tzHour! * 60 + tzMin!)
-  if (offsetMinutes > 12 * 60) {
-    // If it shows e.g., 21:00, that means it's still the previous day
-    offsetMinutes = offsetMinutes - 24 * 60
-  }
-  
-  // The target time in UTC = target local time - offset
-  const targetMs = midnightUTC + (hours * 60 + minutes) * 60 * 1000 - offsetMinutes * 60 * 1000
-  
-  return new Date(targetMs)
-}
-
-/**
  * Get working hour intervals for a specific date.
  */
 function getWorkingIntervalsForDate(
@@ -139,8 +177,8 @@ function getWorkingIntervalsForDate(
     const start = parseTime(entry.startTime)
     const end = parseTime(entry.endTime)
 
-    const startDate = createDateInTimezone(dateStr, start.hours, start.minutes, timezone)
-    const endDate = createDateInTimezone(dateStr, end.hours, end.minutes, timezone)
+    const startDate = parseDate({ date: dateStr, hour: start.hours, minute: start.minutes, timezone })
+    const endDate = parseDate({ date: dateStr, hour: end.hours, minute: end.minutes, timezone })
 
     intervals.push({ start: startDate, end: endDate })
   }
@@ -207,7 +245,7 @@ function generateSlots(options: CheckAvailabilityOptions, busyIntervals: BusyInt
   while (currentDateStr <= endDateStr) {
     // Create a Date object for midnight on this day in the target timezone
     const [year, month, day] = currentDateStr.split('-').map(Number)
-    const currentDate = createDateInTimezone(currentDateStr, 0, 0, timezone)
+    const currentDate = parseDate({ date: currentDateStr, timezone })
     
     const workingIntervals = getWorkingIntervalsForDate(currentDate, workingHours, timezone)
 
@@ -293,33 +331,45 @@ function createCalendarAdapterFromGetter(
         return { slots: [], timezone }
       }
 
-      // Query FreeBusy for all enabled calendars
-      const freeBusyResponse = await calendar.freebusy.query({
-        requestBody: {
-          timeMin: startDate.toISOString(),
-          timeMax: endDate.toISOString(),
-          items: busyCalendarIds.map((id) => ({ id })),
-        },
-      })
+      const { holidayCalendarIds, regularCalendarIds } = partitionCalendarIds(busyCalendarIds)
 
       const busyIntervals: BusyInterval[] = []
-      const calendars = freeBusyResponse.data.calendars ?? {}
 
-      for (const calendarId of busyCalendarIds) {
-        const calendarBusy = calendars[calendarId]?.busy ?? []
-        // Note: FreeBusy API returns only non-transparent events.
-        // The forceBusy flag in calendar settings is for documentation intent
-        // when subscribing to holiday calendars that may have transparent events.
+      // Query FreeBusy for regular calendars (non-holiday)
+      if (regularCalendarIds.length > 0) {
+        const freeBusyResponse = await calendar.freebusy.query({
+          requestBody: {
+            timeMin: startDate.toISOString(),
+            timeMax: endDate.toISOString(),
+            items: regularCalendarIds.map((id) => ({ id })),
+          },
+        })
 
-        for (const busy of calendarBusy) {
-          if (busy.start && busy.end) {
-            busyIntervals.push({
-              start: new Date(busy.start),
-              end: new Date(busy.end),
-              calendarId,
-            })
+        const calendars = freeBusyResponse.data.calendars ?? {}
+
+        for (const calendarId of regularCalendarIds) {
+          const calendarBusy = calendars[calendarId]?.busy ?? []
+
+          for (const busy of calendarBusy) {
+            if (busy.start && busy.end) {
+              busyIntervals.push({
+                start: new Date(busy.start),
+                end: new Date(busy.end),
+                calendarId,
+              })
+            }
           }
         }
+      }
+
+      // Fetch holiday calendar events directly in parallel (they're transparent, so FreeBusy ignores them)
+      if (holidayCalendarIds.length > 0) {
+        const holidayResults = await Promise.all(
+          holidayCalendarIds.map((calendarId) =>
+            getHolidayCalendarEvents(calendar, calendarId, startDate, endDate, timezone)
+          )
+        )
+        busyIntervals.push(...holidayResults.flat())
       }
 
       const slots = generateSlots(options, busyIntervals)
@@ -332,7 +382,8 @@ function createCalendarAdapterFromGetter(
       busyCalendarIds: string[],
       forceBusyCalendarIds: string[],
       appointmentCalendarId: string,
-      bufferMinutes: number
+      bufferMinutes: number,
+      timezone: string
     ): Promise<boolean> {
       const { calendar } = await getCalendarClient()
 
@@ -344,36 +395,56 @@ function createCalendarAdapterFromGetter(
       const bufferedStart = new Date(slot.start.getTime() - bufferMinutes * 60 * 1000)
       const bufferedEnd = new Date(slot.end.getTime() + bufferMinutes * 60 * 1000)
 
-      // Check FreeBusy for the buffered time range
-      const freeBusyResponse = await calendar.freebusy.query({
-        requestBody: {
-          timeMin: bufferedStart.toISOString(),
-          timeMax: bufferedEnd.toISOString(),
-          items: busyCalendarIds.map((id) => ({ id })),
-        },
-      })
+      const { holidayCalendarIds, regularCalendarIds } = partitionCalendarIds(busyCalendarIds)
 
-      const calendars = freeBusyResponse.data.calendars ?? {}
+      // Check FreeBusy for regular calendars
+      if (regularCalendarIds.length > 0) {
+        const freeBusyResponse = await calendar.freebusy.query({
+          requestBody: {
+            timeMin: bufferedStart.toISOString(),
+            timeMax: bufferedEnd.toISOString(),
+            items: regularCalendarIds.map((id) => ({ id })),
+          },
+        })
 
-      for (const calendarId of busyCalendarIds) {
-        const calendarBusy = calendars[calendarId]?.busy ?? []
+        const calendars = freeBusyResponse.data.calendars ?? {}
 
-        for (const busy of calendarBusy) {
-          if (!busy.start || !busy.end) continue
+        for (const calendarId of regularCalendarIds) {
+          const calendarBusy = calendars[calendarId]?.busy ?? []
 
-          const busySlot = {
-            start: new Date(busy.start),
-            end: new Date(busy.end),
+          for (const busy of calendarBusy) {
+            if (!busy.start || !busy.end) continue
+
+            const busySlot = {
+              start: new Date(busy.start),
+              end: new Date(busy.end),
+            }
+
+            // For appointment calendar, use buffered slot
+            // For other calendars, use actual slot
+            const slotToCheck =
+              calendarId === appointmentCalendarId
+                ? { start: bufferedStart, end: bufferedEnd }
+                : slot
+
+            if (rangesOverlap(slotToCheck, busySlot)) {
+              return false
+            }
           }
+        }
+      }
 
-          // For appointment calendar, use buffered slot
-          // For other calendars, use actual slot
-          const slotToCheck =
-            calendarId === appointmentCalendarId
-              ? { start: bufferedStart, end: bufferedEnd }
-              : slot
+      // Check holiday calendars in parallel (fetch events directly since they're transparent)
+      if (holidayCalendarIds.length > 0) {
+        const holidayResults = await Promise.all(
+          holidayCalendarIds.map((calendarId) =>
+            getHolidayCalendarEvents(calendar, calendarId, bufferedStart, bufferedEnd, timezone)
+          )
+        )
 
-          if (rangesOverlap(slotToCheck, busySlot)) {
+        for (const busySlot of holidayResults.flat()) {
+          // Holiday calendars always use the actual slot (not buffered)
+          if (rangesOverlap(slot, busySlot)) {
             return false
           }
         }
@@ -510,5 +581,3 @@ function createCalendarAdapterFromGetter(
     },
   }
 }
-
-export { SlotUnavailableError }

@@ -6,8 +6,6 @@ import type { ToolContext } from './context'
 import { createListAppointmentsTool } from './listAppointments'
 import { createRescheduleAppointmentTool } from './rescheduleAppointment'
 
-export type { ToolContext } from './context'
-
 export function createTools(context: ToolContext): Tool[] {
   return [
     createCheckAvailabilityTool(context),

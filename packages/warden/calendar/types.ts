@@ -84,7 +84,8 @@ export interface CalendarAdapter {
     busyCalendarIds: string[],
     forceBusyCalendarIds: string[],
     appointmentCalendarId: string,
-    bufferMinutes: number
+    bufferMinutes: number,
+    timezone: string
   ): Promise<boolean>
 
   /**
