@@ -124,50 +124,52 @@ export function CalendarHeading({
     currentView === 'week' ? formatWeekRange(referenceDate) : `${MONTH_NAMES[month]} ${year}`
 
   return (
-    <div className='flex items-center p-6 justify-between'>
-      <div className='flex items-center gap-4'>
-        <button
-          type='button'
-          onClick={handleToday}
-          className='px-3 py-1.5 rounded-lg border border-neutral-700 bg-neutral-800 hover:bg-neutral-700 text-sm font-medium text-neutral-300 transition-colors'
-        >
-          Hoje
-        </button>
-        <div className='flex gap-1'>
+    <div className='flex flex-col md:flex-row md:items-center p-4 md:p-6 justify-between gap-4'>
+      <div className='flex items-center gap-4 justify-between w-full md:w-auto'>
+        <div className='flex items-center gap-4'>
           <button
             type='button'
-            className='w-8 h-8 rounded-full flex items-center justify-center transition-all hover:border-neutral-700 hover:bg-neutral-800 text-neutral-400'
-            onClick={handlePrev}
+            onClick={handleToday}
+            className='px-3 py-1.5 rounded-lg border border-neutral-700 bg-neutral-800 hover:bg-neutral-700 text-sm font-medium text-neutral-300 transition-colors'
           >
-            <svg
-              className='w-6 h-6'
-              viewBox='0 0 24 24'
-              fill='none'
-              stroke='currentColor'
-              strokeWidth={2}
-            >
-              <path d='M15 18l-6-6 6-6' />
-            </svg>
+            Hoje
           </button>
-          <button
-            type='button'
-            className='w-8 h-8 rounded-full flex items-center justify-center transition-all hover:border-neutral-700 hover:bg-neutral-800 text-neutral-400'
-            onClick={handleNext}
-          >
-            <svg
-              className='w-6 h-6'
-              viewBox='0 0 24 24'
-              fill='none'
-              stroke='currentColor'
-              strokeWidth={2}
+          <div className='flex gap-1'>
+            <button
+              type='button'
+              className='w-8 h-8 rounded-full flex items-center justify-center transition-all hover:border-neutral-700 hover:bg-neutral-800 text-neutral-400'
+              onClick={handlePrev}
             >
-              <path d='M9 18l6-6-6-6' />
-            </svg>
-          </button>
+              <svg
+                className='w-6 h-6'
+                viewBox='0 0 24 24'
+                fill='none'
+                stroke='currentColor'
+                strokeWidth={2}
+              >
+                <path d='M15 18l-6-6 6-6' />
+              </svg>
+            </button>
+            <button
+              type='button'
+              className='w-8 h-8 rounded-full flex items-center justify-center transition-all hover:border-neutral-700 hover:bg-neutral-800 text-neutral-400'
+              onClick={handleNext}
+            >
+              <svg
+                className='w-6 h-6'
+                viewBox='0 0 24 24'
+                fill='none'
+                stroke='currentColor'
+                strokeWidth={2}
+              >
+                <path d='M9 18l6-6-6-6' />
+              </svg>
+            </button>
+          </div>
         </div>
-        <h2 className='text-xl text-neutral-100 font-bold'>{displayText}</h2>
+        <h2 className='text-lg md:text-xl text-neutral-100 font-bold'>{displayText}</h2>
       </div>
-      <div className='flex items-center gap-2'>
+      <div className='flex items-center gap-2 overflow-x-auto pb-2 md:pb-0'>
         <ViewSwitcher
           currentView={currentView}
           onViewChange={onViewChange}
@@ -175,7 +177,7 @@ export function CalendarHeading({
         <button
           type='button'
           onClick={onCreateTimeOff}
-          className='flex items-center justify-center gap-2 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-lg text-sm font-medium transition-colors'
+          className='flex items-center justify-center gap-2 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-lg text-sm font-medium transition-colors whitespace-nowrap'
         >
           <TimeOffIcon />
           Adicionar Folga

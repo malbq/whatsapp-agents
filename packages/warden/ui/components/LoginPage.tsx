@@ -7,8 +7,9 @@ export function LoginPage() {
   return (
     <div className='min-h-dvh flex items-center justify-center bg-neutral-950 px-4'>
       <div className='max-w-[400px] w-full'>
-        <div className='bg-neutral-900 rounded-2xl shadow-sm border border-neutral-800 p-8'>
+        <div className='bg-neutral-900 rounded-2xl shadow-sm border border-neutral-800 p-6 md:p-8'>
           <h1 className='text-2xl font-bold text-center text-neutral-100'>Warden</h1>
+
           <p className='text-neutral-400 mt-2 text-center text-sm'>
             Faca login para acessar o dashboard
           </p>

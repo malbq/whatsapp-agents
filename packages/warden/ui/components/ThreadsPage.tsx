@@ -10,9 +10,9 @@ export function ThreadsPage() {
   const { threads } = useLoaderData({ from: '/_app/threads' })
 
   return (
-    <div className='p-6'>
+    <div className='p-4 md:p-6'>
       <div className='flex items-center justify-between mb-6'>
-        <h1 className='text-2xl font-bold text-neutral-100'>Conversas</h1>
+        <h1 className='text-xl md:text-2xl font-bold text-neutral-100'>Conversas</h1>
         <span className='bg-neutral-900 px-3 py-1 rounded-full text-xs font-medium text-neutral-400 border border-neutral-800'>
           {threads.length} {threads.length === 1 ? 'conversa' : 'conversas'}
         </span>
@@ -48,15 +48,15 @@ export function ThreadsPage() {
               className='block bg-neutral-900 border border-neutral-800 rounded-xl p-4 hover:bg-neutral-800/50 hover:border-neutral-700 transition-colors no-underline'
             >
               <div className='flex items-center gap-3'>
-                <div className='w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold text-sm'>
+                <div className='w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold text-sm shrink-0'>
                   {t.userName.charAt(0).toUpperCase()}
                 </div>
-                <div className='flex-1'>
-                  <div className='font-semibold text-neutral-100'>{t.userName}</div>
-                  <div className='text-sm text-neutral-500 font-mono'>{t.externalId}</div>
+                <div className='flex-1 min-w-0'>
+                  <div className='font-semibold text-neutral-100 truncate'>{t.userName}</div>
+                  <div className='text-sm text-neutral-500 font-mono truncate'>{t.externalId}</div>
                 </div>
                 <svg
-                  className='w-5 h-5 text-neutral-500'
+                  className='w-5 h-5 text-neutral-500 shrink-0'
                   fill='none'
                   viewBox='0 0 24 24'
                   stroke='currentColor'

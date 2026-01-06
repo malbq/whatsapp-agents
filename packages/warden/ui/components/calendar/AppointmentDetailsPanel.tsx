@@ -104,7 +104,7 @@ export function AppointmentDetailsPanel({ event, onClose, className }: Appointme
   const bgColor = event.backgroundColor || '#4285f4'
 
   return (
-    <div className={`bg-neutral-900 border-l border-neutral-800 h-full flex flex-col ${className ?? ''}`}>
+    <div className={`bg-neutral-900 border-l border-neutral-800 h-full flex flex-col shadow-xl lg:shadow-none ${className ?? ''}`}>
       {/* Header */}
       <div className='flex items-start justify-between p-4 border-b border-neutral-800'>
         <div className='flex-1 min-w-0'>

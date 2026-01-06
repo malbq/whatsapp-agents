@@ -33,8 +33,10 @@ export function EventPill({ event, isSelected, onSelect, className = '', style }
       }}
       title={event.summary}
     >
-      <span className='opacity-60 mr-1 font-normal'>{formatEventTime(event)}</span>
-      <span className='font-semibold'>{event.summary}</span>
+      <div className='flex items-center gap-1 overflow-hidden'>
+        <span className='opacity-60 font-normal whitespace-nowrap'>{formatEventTime(event)}</span>
+        <span className='font-semibold truncate'>{event.summary}</span>
+      </div>
     </button>
   )
 }

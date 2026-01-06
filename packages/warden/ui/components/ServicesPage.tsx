@@ -36,6 +36,42 @@ function formatDuration(minutes: number): string {
   return `${hours}h ${mins}min`
 }
 
+function EditIcon() {
+  return (
+    <svg
+      className='w-5 h-5'
+      fill='none'
+      viewBox='0 0 24 24'
+      stroke='currentColor'
+    >
+      <path
+        strokeLinecap='round'
+        strokeLinejoin='round'
+        strokeWidth={2}
+        d='M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'
+      />
+    </svg>
+  )
+}
+
+function TrashIcon() {
+  return (
+    <svg
+      className='w-5 h-5'
+      fill='none'
+      viewBox='0 0 24 24'
+      stroke='currentColor'
+    >
+      <path
+        strokeLinecap='round'
+        strokeLinejoin='round'
+        strokeWidth={2}
+        d='M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16'
+      />
+    </svg>
+  )
+}
+
 export function ServicesPage() {
   const data = useLoaderData({ from: '/_app/services' }) as ServicesData
   const router = useRouter()
@@ -132,17 +168,18 @@ export function ServicesPage() {
   }
 
   return (
-    <div className='p-6 space-y-6'>
+    <div className='p-4 md:p-6 space-y-6'>
       <div className='flex items-center justify-between'>
         <div>
-          <h1 className='text-2xl font-bold text-neutral-100 mb-2'>Serviços</h1>
-          <p className='text-neutral-400'>Gerencie os serviços oferecidos e suas durações.</p>
+          <h1 className='text-xl md:text-2xl font-bold text-neutral-100 mb-2'>Serviços</h1>
+          <p className='text-sm md:text-base text-neutral-400'>Gerencie os serviços oferecidos e suas durações.</p>
         </div>
         <button
           onClick={openCreateModal}
           className='px-4 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors'
         >
-          + Novo Serviço
+          <span className='hidden sm:inline'>+ Novo Serviço</span>
+          <span className='sm:hidden'>+</span>
         </button>
       </div>
 
@@ -164,51 +201,63 @@ export function ServicesPage() {
         </div>
       ) : (
         <div className='bg-neutral-900/50 border border-neutral-800 rounded-xl overflow-hidden'>
-          <table className='w-full'>
-            <thead>
-              <tr className='border-b border-neutral-800'>
-                <th className='text-left px-6 py-4 text-sm font-medium text-neutral-400'>Nome</th>
-                <th className='text-left px-6 py-4 text-sm font-medium text-neutral-400'>
-                  Descrição
-                </th>
-                <th className='text-left px-6 py-4 text-sm font-medium text-neutral-400'>
-                  Duração
-                </th>
-                <th className='text-right px-6 py-4 text-sm font-medium text-neutral-400'>Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {services.map((service) => (
-                <tr
-                  key={service.id}
-                  className='border-b border-neutral-800/50 last:border-b-0 hover:bg-neutral-800/30'
-                >
-                  <td className='px-6 py-4 text-neutral-100 font-medium'>{service.name}</td>
-                  <td className='px-6 py-4 text-neutral-400 text-sm'>
-                    {service.description || <span className='italic'>-</span>}
-                  </td>
-                  <td className='px-6 py-4 text-neutral-300'>
-                    {formatDuration(service.durationMinutes)}
-                  </td>
-                  <td className='px-6 py-4 text-right'>
-                    <button
-                      onClick={() => openEditModal(service)}
-                      className='text-sm text-primary hover:text-primary/80 mr-4'
-                    >
-                      Editar
-                    </button>
-                    <button
-                      onClick={() => handleDelete(service)}
-                      disabled={deleting === service.id}
-                      className='text-sm text-red-400 hover:text-red-300 disabled:opacity-50'
-                    >
-                      {deleting === service.id ? 'Excluindo...' : 'Excluir'}
-                    </button>
-                  </td>
+          <div className='overflow-x-auto'>
+            <table className='w-full'>
+              <thead>
+                <tr className='border-b border-neutral-800'>
+                  <th className='text-left px-6 py-4 text-sm font-medium text-neutral-400'>Nome</th>
+                  <th className='text-left px-6 py-4 text-sm font-medium text-neutral-400 hidden md:table-cell'>
+                    Descrição
+                  </th>
+                  <th className='text-left px-6 py-4 text-sm font-medium text-neutral-400'>
+                    Duração
+                  </th>
+                  <th className='text-right px-6 py-4 text-sm font-medium text-neutral-400'>Ações</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {services.map((service) => (
+                  <tr
+                    key={service.id}
+                    className='border-b border-neutral-800/50 last:border-b-0 hover:bg-neutral-800/30'
+                  >
+                    <td className='px-6 py-4 text-neutral-100 font-medium whitespace-nowrap'>{service.name}</td>
+                    <td className='px-6 py-4 text-neutral-400 text-sm hidden md:table-cell'>
+                      {service.description || <span className='italic'>-</span>}
+                    </td>
+                    <td className='px-6 py-4 text-neutral-300 whitespace-nowrap'>
+                      {formatDuration(service.durationMinutes)}
+                    </td>
+                    <td className='px-6 py-4 text-right whitespace-nowrap'>
+                      <div className='flex items-center justify-end gap-2'>
+                        <button
+                          onClick={() => openEditModal(service)}
+                          className='p-2 text-primary hover:text-primary/80 hover:bg-primary/10 rounded-lg transition-colors'
+                          title='Editar'
+                        >
+                          <span className='sr-only'>Editar</span>
+                          <EditIcon />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(service)}
+                          disabled={deleting === service.id}
+                          className='p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg disabled:opacity-50 transition-colors'
+                          title='Excluir'
+                        >
+                          <span className='sr-only'>Excluir</span>
+                          {deleting === service.id ? (
+                            <div className='w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin' />
+                          ) : (
+                            <TrashIcon />
+                          )}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

@@ -25,6 +25,24 @@ export interface SettingsData {
 
 type ButtonState = 'idle' | 'saving' | 'success' | 'error'
 
+function TrashIcon() {
+  return (
+    <svg
+      className='w-4 h-4'
+      fill='none'
+      viewBox='0 0 24 24'
+      stroke='currentColor'
+    >
+      <path
+        strokeLinecap='round'
+        strokeLinejoin='round'
+        strokeWidth={2}
+        d='M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16'
+      />
+    </svg>
+  )
+}
+
 export function SettingsPage() {
   const data = useLoaderData({ from: '/_app/settings' }) as SettingsData
   const router = useRouter()
@@ -130,7 +148,7 @@ export function SettingsPage() {
   }))
 
   return (
-    <div className='p-6 space-y-6'>
+    <div className='p-4 md:p-6 space-y-6'>
       {errorMessage && (
         <div className='p-4 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20'>
           {errorMessage}
@@ -149,7 +167,7 @@ export function SettingsPage() {
             {workingHoursByDay.map(({ name, dayOfWeek, entries }) => (
               <div
                 key={dayOfWeek}
-                className='p-4'
+                className='p-3 md:p-4'
               >
                 <div className='flex items-center justify-between'>
                   <h3 className='font-medium text-neutral-200'>{name}</h3>
@@ -157,7 +175,8 @@ export function SettingsPage() {
                     onClick={() => handleAddWorkingHours(dayOfWeek)}
                     className='text-xs px-3 py-1 bg-neutral-800 text-neutral-300 rounded-full hover:bg-neutral-700 transition-colors'
                   >
-                    + Adicionar intervalo
+                    <span className="hidden sm:inline">+ Adicionar intervalo</span>
+                    <span className="sm:hidden">+ Add</span>
                   </button>
                 </div>
 
@@ -166,7 +185,7 @@ export function SettingsPage() {
                     {entries.map((entry) => (
                       <div
                         key={entry.index}
-                        className='flex items-center gap-3'
+                        className='flex flex-wrap sm:flex-nowrap items-center gap-2'
                       >
                         <input
                           type='time'
@@ -174,22 +193,24 @@ export function SettingsPage() {
                           onChange={(e) =>
                             handleWorkingHoursChange(entry.index, 'startTime', e.target.value)
                           }
-                          className='time-input w-32 px-3 py-1.5 bg-neutral-800 border border-neutral-700 rounded text-neutral-100 text-sm focus:outline-none focus:border-primary'
+                          className='time-input flex-1 sm:flex-none w-auto sm:w-32 px-2 md:px-3 py-1.5 bg-neutral-800 border border-neutral-700 rounded text-neutral-100 text-sm focus:outline-none focus:border-primary'
                         />
-                        <span className='text-neutral-500'>até</span>
+                        <span className='text-neutral-500 text-xs sm:text-base'>até</span>
                         <input
                           type='time'
                           value={entry.endTime}
                           onChange={(e) =>
                             handleWorkingHoursChange(entry.index, 'endTime', e.target.value)
                           }
-                          className='time-input w-32 px-3 py-1.5 bg-neutral-800 border border-neutral-700 rounded text-neutral-100 text-sm focus:outline-none focus:border-primary'
+                          className='time-input flex-1 sm:flex-none w-auto sm:w-32 px-2 md:px-3 py-1.5 bg-neutral-800 border border-neutral-700 rounded text-neutral-100 text-sm focus:outline-none focus:border-primary'
                         />
                         <button
                           onClick={() => handleRemoveWorkingHours(entry.index)}
-                          className='text-red-400 hover:text-red-300 text-sm'
+                          className='p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors shrink-0'
+                          title='Remover'
                         >
-                          Remover
+                          <span className='sr-only'>Remover</span>
+                          <TrashIcon />
                         </button>
                       </div>
                     ))}

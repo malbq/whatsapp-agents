@@ -147,13 +147,13 @@ export function CalendarPage() {
 
   // Dynamic grid columns based on whether details panel is shown
   const gridCols = selectedEvent
-    ? 'grid-cols-[280px_1fr_320px]'
-    : 'grid-cols-[280px_1fr]'
+    ? 'lg:grid-cols-[280px_1fr_320px]'
+    : 'lg:grid-cols-[280px_1fr]'
 
   return (
     <>
       <div
-        className={`grid ${gridCols} grid-rows-[auto_1fr] h-full transition-all ${
+        className={`grid grid-cols-1 ${gridCols} grid-rows-[auto_1fr] h-full transition-all ${
           isLoading ? 'opacity-50 pointer-events-none' : ''
         }`}
       >
@@ -163,7 +163,7 @@ export function CalendarPage() {
           onSetAppointmentCalendar={handleSetAppointmentCalendar}
           onToggleCalendarEnabled={handleToggleCalendarEnabled}
           onCreateCalendar={() => setIsModalOpen(true)}
-          className='row-span-2'
+          className='hidden lg:block row-span-2'
         />
         <CalendarHeading
           referenceDate={referenceDate}
@@ -176,7 +176,7 @@ export function CalendarPage() {
           <AppointmentDetailsPanel
             event={selectedEvent}
             onClose={handleCloseDetails}
-            className='row-span-2'
+            className='fixed inset-0 z-50 lg:static lg:z-auto row-span-2'
           />
         )}
         {currentView === 'month' ? (

@@ -260,7 +260,7 @@ function MessageBubble({ parsed }: { parsed: ParsedMessage }) {
   }
 
   return (
-    <div className={`max-w-[70%] rounded-xl p-3 ${bubbleStyles[parsed.bubbleClass]}`}>
+    <div className={`max-w-[85%] md:max-w-[70%] rounded-xl p-3 ${bubbleStyles[parsed.bubbleClass]}`}>
       <div className='flex justify-between mb-1 text-[10px] text-neutral-500'>
         <span className='font-semibold uppercase tracking-wider'>{parsed.label}</span>
       </div>
@@ -306,9 +306,9 @@ export function ChatPage() {
   const { thread } = useLoaderData({ from: '/_app/chat/$userId' })
 
   return (
-    <div className='flex flex-col'>
+    <div className='flex flex-col h-full'>
       {/* Header */}
-      <div className='bg-neutral-900 border-b border-neutral-800 px-4 py-3 flex items-center gap-4'>
+      <div className='bg-neutral-900 border-b border-neutral-800 px-4 py-3 flex items-center gap-4 shrink-0'>
         <Link
           to='/threads'
           className='text-neutral-400 hover:text-neutral-100 transition-colors'
@@ -327,13 +327,13 @@ export function ChatPage() {
             />
           </svg>
         </Link>
-        <div className='flex items-center gap-3'>
-          <div className='w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold text-sm'>
+        <div className='flex items-center gap-3 min-w-0 flex-1'>
+          <div className='w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold text-sm shrink-0'>
             {thread.userName.charAt(0).toUpperCase()}
           </div>
-          <div>
-            <div className='font-semibold text-neutral-100'>{thread.userName}</div>
-            <div className='text-xs text-neutral-500 font-mono'>{thread.externalId}</div>
+          <div className='min-w-0'>
+            <div className='font-semibold text-neutral-100 truncate'>{thread.userName}</div>
+            <div className='text-xs text-neutral-500 font-mono truncate'>{thread.externalId}</div>
           </div>
         </div>
       </div>

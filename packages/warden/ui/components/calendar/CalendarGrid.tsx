@@ -64,13 +64,13 @@ export function MonthGrid({
   return (
     <div
       className={
-        'grid grid-cols-7 grid-rows-[auto] auto-rows-fr mx-6 mb-6 gap-px rounded bg-neutral-800 border border-neutral-800'
+        'grid grid-cols-7 grid-rows-[auto] auto-rows-fr mx-2 md:mx-6 mb-2 md:mb-6 gap-px rounded bg-neutral-800 border border-neutral-800'
       }
     >
       {DAY_NAMES.map((name) => (
         <div
           key={name}
-          className='bg-neutral-900/80 p-2 text-center text-xs font-bold text-neutral-500 uppercase'
+          className='bg-neutral-900/80 p-1 md:p-2 text-center text-[10px] md:text-xs font-bold text-neutral-500 uppercase'
         >
           {name}
         </div>
@@ -84,12 +84,12 @@ export function MonthGrid({
         ) : (
           <div
             key={day}
-            className={`bg-neutral-900 p-2 relative group hover:bg-neutral-800 transition-colors ${
+            className={`bg-neutral-900 p-1 md:p-2 relative group hover:bg-neutral-800 transition-colors min-h-[80px] md:min-h-[120px] ${
               isToday(day) ? 'bg-primary/5' : ''
             }`}
           >
             <span
-              className={`inline-flex items-center justify-center w-7 h-7 text-sm font-semibold rounded-full mb-2 ${
+              className={`inline-flex items-center justify-center w-5 h-5 md:w-7 md:h-7 text-xs md:text-sm font-semibold rounded-full mb-1 md:mb-2 ${
                 isToday(day)
                   ? 'bg-primary text-white shadow-sm'
                   : 'text-neutral-300 group-hover:bg-neutral-700'
@@ -97,22 +97,23 @@ export function MonthGrid({
             >
               {day}
             </span>
-            <div className='flex flex-col gap-1'>
-              {eventsByDay
-                .get(day)
-                ?.slice(0, 4)
-                .map((event) => (
-                  <EventPill
-                    key={event.id}
-                    event={event}
-                    isSelected={event.id === selectedEventId}
-                    onSelect={onSelectEvent}
-                    className='w-full'
-                  />
-                ))}
-              {(eventsByDay.get(day)?.length ?? 0) > 4 && (
-                <div className='text-[10px] text-neutral-500 font-medium px-2 py-0.5'>
-                  +{eventsByDay.get(day)!.length - 4} mais
+              <div className='flex flex-col gap-1'>
+                {eventsByDay
+                  .get(day)
+                  ?.slice(0, 4)
+                  .map((event) => (
+                    <EventPill
+                      key={event.id}
+                      event={event}
+                      isSelected={event.id === selectedEventId}
+                      onSelect={onSelectEvent}
+                      className='w-full text-[10px] md:text-xs truncate'
+                    />
+                  ))}
+                {(eventsByDay.get(day)?.length ?? 0) > 4 && (
+                <div className='text-[10px] text-neutral-500 font-medium px-1 md:px-2 py-0.5'>
+                  <span className='md:hidden'>+{(eventsByDay.get(day)!.length - 4)}</span>
+                  <span className='hidden md:inline'>+{eventsByDay.get(day)!.length - 4} mais</span>
                 </div>
               )}
             </div>

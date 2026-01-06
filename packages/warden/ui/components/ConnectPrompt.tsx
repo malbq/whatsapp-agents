@@ -2,9 +2,9 @@ import { GoogleIcon } from './GoogleIcon'
 
 export function ConnectPrompt() {
   return (
-    <div className='flex justify-center items-center min-h-[60vh]'>
-      <div className='bg-neutral-900 rounded-2xl p-12 text-center shadow-sm border border-neutral-800 max-w-[480px]'>
-        <div className='w-20 h-20 bg-amber-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6 text-amber-500'>
+    <div className='flex justify-center items-center min-h-[60vh] p-4'>
+      <div className='bg-neutral-900 rounded-2xl p-8 md:p-12 text-center shadow-sm border border-neutral-800 w-full max-w-[480px]'>
+        <div className='w-16 h-16 md:w-20 md:h-20 bg-amber-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6 text-amber-500'>
           <svg
             className='w-10 h-10'
             viewBox='0 0 24 24'

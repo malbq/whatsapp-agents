@@ -147,111 +147,117 @@ export function WeekGrid({
   const firstHourRowIndex = hasAllDayEvents ? 3 : 2
 
   return (
-    <div
-      className={`grid mx-6 mb-6 rounded bg-neutral-800 border border-neutral-800 overflow-hidden
-        grid-cols-[auto_repeat(7,minmax(0,1fr))]
-        ${hasAllDayEvents ? 'grid-rows-[auto_auto]' : 'grid-rows-[auto]'}
-        auto-rows-fr`}
-    >
-      {/* Header row */}
-      <div className='row-start-1 col-start-1 p-2 bg-neutral-900/80 border-b border-neutral-800' />
-      {weekDates.map((date, idx) => (
-        <div
-          key={`header-${idx}`}
-          className={`row-start-1 col-start-${
-            idx + 2
-          } p-2 text-center border-l border-b border-neutral-800 bg-neutral-900/80`}
-        >
-          <div className='text-xs font-bold text-neutral-500 uppercase'>{DAY_NAMES[idx]}</div>
+    <div className='mx-2 md:mx-6 mb-2 md:mb-6 rounded bg-neutral-800 border border-neutral-800 overflow-x-auto isolate'>
+      <div
+        className={`grid min-w-[800px] md:min-w-0 h-full
+          grid-cols-[auto_repeat(7,minmax(0,1fr))]
+          ${hasAllDayEvents ? 'grid-rows-[auto_auto]' : 'grid-rows-[auto]'}
+          auto-rows-fr`}
+      >
+        {/* Header row */}
+        <div className='row-start-1 col-start-1 p-1 md:p-2 bg-neutral-900 border-b border-r border-neutral-800 sticky left-0 z-20' />
+        {weekDates.map((date, idx) => (
           <div
-            className={`text-lg font-semibold mt-1 ${
-              isToday(date)
-                ? 'bg-primary text-white w-8 h-8 rounded-full flex items-center justify-center mx-auto'
-                : 'text-neutral-300'
-            }`}
+            key={`header-${idx}`}
+            className='p-1 md:p-2 text-center border-l border-b border-neutral-800 bg-neutral-900/80'
+            style={{ gridRowStart: 1, gridColumnStart: idx + 2 }}
           >
-            {date.getDate()}
+            <div className='text-[10px] md:text-xs font-bold text-neutral-500 uppercase'>
+              {DAY_NAMES[idx]}
+            </div>
+            <div
+              className={`text-sm md:text-lg font-semibold mt-1 ${
+                isToday(date)
+                  ? 'bg-primary text-white w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center mx-auto'
+                  : 'text-neutral-300'
+              }`}
+            >
+              {date.getDate()}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
 
-      {/* All-day events row */}
-      {hasAllDayEvents && (
-        <>
-          <div className='row-start-2 col-start-1 bg-neutral-900/50 border-b border-neutral-800' />
-          {weekDates.map((date, idx) => {
-            const dateKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
-            const dayAllDayEvents = allDayEventsByDate.get(dateKey) || []
+        {/* All-day events row */}
+        {hasAllDayEvents && (
+          <>
+            <div className='row-start-2 col-start-1 bg-neutral-900 border-b border-r border-neutral-800 sticky left-0 z-20' />
+            {weekDates.map((date, idx) => {
+              const dateKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
+              const dayAllDayEvents = allDayEventsByDate.get(dateKey) || []
+              return (
+                <div
+                  key={`allday-${idx}`}
+                  className='p-1 border-l border-b border-neutral-800 min-h-8 flex flex-col gap-0.5 bg-neutral-900/50'
+                  style={{ gridRowStart: 2, gridColumnStart: idx + 2 }}
+                >
+                  {dayAllDayEvents.map((event) => (
+                    <EventPill
+                      key={event.id}
+                      event={event}
+                      isSelected={event.id === selectedEventId}
+                      onSelect={onSelectEvent}
+                      className='w-full'
+                    />
+                  ))}
+                </div>
+              )
+            })}
+          </>
+        )}
+
+        {/* Time grid - hour cells */}
+        {hours.map((hour, hourIdx) => {
+          const rowStart = firstHourRowIndex + hourIdx
+          return (
+            <Fragment key={`row-${hour}`}>
+              <div
+                className='border-b border-r border-neutral-800 p-1 text-right text-[10px] md:text-xs text-neutral-500 bg-neutral-900 sticky left-0 z-20'
+                style={{ gridRowStart: rowStart, gridColumnStart: 1 }}
+              >
+                {hour.toString().padStart(2, '0')}:00
+              </div>
+              {weekDates.map((_, dayIdx) => (
+                <div
+                  key={`cell-${hour}-${dayIdx}`}
+                  className='border-b border-l border-neutral-800 bg-neutral-900'
+                  style={{ gridRowStart: rowStart, gridColumnStart: dayIdx + 2 }}
+                />
+              ))}
+            </Fragment>
+          )
+        })}
+
+        {/* Events - rendered on top of cells using grid positioning */}
+        {weekDates.map((date, dayIdx) => {
+          const dateKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
+          const dayEvents = eventsByDate.get(dateKey) || []
+
+          return dayEvents.map((event) => {
+            const position = getEventGridPosition(event, minHour, maxHour, firstHourRowIndex)
+            if (!position) return null
+
             return (
               <div
-                key={`allday-${idx}`}
-                className={`row-start-2 col-start-${
-                  idx + 2
-                } p-1 border-l border-b border-neutral-800 min-h-8 flex flex-col gap-0.5 bg-neutral-900/50`}
+                key={event.id}
+                className='px-1 py-0.5 min-w-0 z-10 pointer-events-none'
+                style={{
+                  gridColumnStart: dayIdx + 2,
+                  gridRowStart: position.rowStart,
+                  gridRowEnd: position.rowEnd,
+                }}
               >
-                {dayAllDayEvents.map((event) => (
+                <div className='pointer-events-auto w-full h-full'>
                   <EventPill
-                    key={event.id}
                     event={event}
                     isSelected={event.id === selectedEventId}
                     onSelect={onSelectEvent}
-                    className='w-full'
                   />
-                ))}
+                </div>
               </div>
             )
-          })}
-        </>
-      )}
-
-      {/* Time grid - hour cells */}
-      {hours.map((hour, hourIdx) => {
-        const rowStart = firstHourRowIndex + hourIdx
-        return (
-          <Fragment key={`row-${hour}`}>
-            <div
-              className={`row-start-${rowStart} col-start-1 border-b border-neutral-800 p-1 text-right text-xs text-neutral-500`}
-            >
-              {hour.toString().padStart(2, '0')}:00
-            </div>
-            {weekDates.map((_, dayIdx) => (
-              <div
-                key={`cell-${hour}-${dayIdx}`}
-                className={`row-start-${rowStart} col-start-${
-                  dayIdx + 2
-                } border-b border-l border-neutral-800 bg-neutral-900 hover:bg-neutral-800/50 transition-colors`}
-              />
-            ))}
-          </Fragment>
-        )
-      })}
-
-      {/* Events - rendered on top of cells using grid positioning */}
-      {weekDates.map((date, dayIdx) => {
-        const dateKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
-        const dayEvents = eventsByDate.get(dateKey) || []
-
-        return dayEvents.map((event) => {
-          const position = getEventGridPosition(event, minHour, maxHour, firstHourRowIndex)
-          if (!position) return null
-
-          return (
-            <div
-              key={event.id}
-              className={`col-start-${dayIdx + 2} row-start-${position.rowStart} row-end-${
-                position.rowEnd
-              } px-1 py-0.5 min-w-0`}
-            >
-              <EventPill
-                event={event}
-                isSelected={event.id === selectedEventId}
-                onSelect={onSelectEvent}
-                className='w-full h-full'
-              />
-            </div>
-          )
-        })
-      })}
+          })
+        })}
+      </div>
     </div>
   )
 }
