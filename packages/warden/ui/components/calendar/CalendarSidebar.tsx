@@ -272,7 +272,7 @@ export function CalendarSidebar({
       <div
         className={`bg-neutral-900 border-r border-neutral-800 transition-transform duration-300 ease-in-out z-40
           lg:translate-x-0 lg:static lg:h-auto
-          fixed inset-y-0 left-0 w-80 h-full
+          fixed top-[57px] bottom-0 left-0 w-80 
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
           ${className}`}
       >
