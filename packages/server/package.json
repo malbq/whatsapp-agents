@@ -1,5 +1,5 @@
 {
-  "name": "@batman/server",
+  "name": "@wa/server",
   "module": "index.ts",
   "type": "module",
   "private": true,

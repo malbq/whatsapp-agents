@@ -1,4 +1,4 @@
-import { createWebhookApp, createWhatsappClient } from '@batman/whatsapp'
+import { createWebhookApp, createWhatsappClient } from '@wa/whatsapp'
 import { Hono } from 'hono'
 import { secureHeaders } from 'hono/secure-headers'
 import { ok } from 'node:assert'

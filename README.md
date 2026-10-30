@@ -1,4 +1,4 @@
-# Batman Monorepo
+# WhatsApp Agents
 
 This repository hosts multiple independently deployable AI agents.
 

@@ -90,12 +90,12 @@ Um assistente pessoal baseado em chat para WhatsApp. Armazena mensagens como mem
 
 ### Stack técnico
 
-- Framework web: HonoJS v4 (via pacote `@batman/server`)
+- Framework web: HonoJS v4 (via pacote `@wa/server`)
 - Abstração de LLM: Vercel AI SDK (`ai`) com múltiplos provedores (OpenAI Responses + Google Gemini)
 - Serviços externos: Meta Business API (WhatsApp), OpenAI Responses API, Google AI Studio
 - Embeddings: Cloudflare Workers AI (geração) + vetores em PostgreSQL (extensão `vector` / pgvector)
 - Armazenamento de arquivos: `unstorage` filesystem (`FilesystemStorage`); integração com Cloudflare R2 planejada para produção
-- Agendador: suporte a lembretes baseado em cron via pacote `@batman/core` (integração específica do Zapid ainda em evolução)
+- Agendador: suporte a lembretes baseado em cron via pacote `@wa/core` (integração específica do Zapid ainda em evolução)
 
 ### Convenções
 
@@ -127,7 +127,7 @@ Zapid segue um pipeline baseado em **Context** (estado efêmero por requisição
 
 Características:
 
-- Raciocínio orientado a ferramentas (via Vercel AI SDK + `@batman/core/tools` e ferramentas locais):
+- Raciocínio orientado a ferramentas (via Vercel AI SDK + `@wa/core/tools` e ferramentas locais):
   - `search_conversation_history`
   - `search_files`
   - `send_text`
@@ -151,15 +151,15 @@ Características:
   - Exemplos: `persistUser.ts`, `responseGeneration.ts`, `storeMessageExchange.ts`, `embedMessages.ts`
 - `tools/`: ferramentas de primeira classe chamadas pelo modelo
   - Específicas do agente: `googlePlaces.ts`, `updateUserProfile.ts`
-  - Genéricas (busca, histórico, envio de texto/reação, web): expostas por `@batman/core/tools`
+  - Genéricas (busca, histórico, envio de texto/reação, web): expostas por `@wa/core/tools`
 - `context.ts`: define o tipo `Context` e o armazenamento por requisição (`runContext` / `getContext`)
-- `db.ts` / `dbSchema.ts`: reuso do schema base de `@batman/core` + tabelas específicas (`user_profile_version`)
+- `db.ts` / `dbSchema.ts`: reuso do schema base de `@wa/core` + tabelas específicas (`user_profile_version`)
 - `types.ts` / `zapid.d.ts`: tipos auxiliares do agente
 
 ## Banco de Dados
 
 - PostgreSQL com suporte nativo a vetores (extensão `vector` / pgvector)
-- Tabelas base herdadas de `@batman/core`:
+- Tabelas base herdadas de `@wa/core`:
   - `user`, `message`, `snippet`, `resource`, `reminder`, `raw_incoming_message`
 - Tabelas específicas do Zapid:
   - `user_profile_version` (histórico de versões de perfil por usuário/mensagem)
@@ -171,10 +171,10 @@ Características:
 2. Conecte no banco e crie o database: `CREATE DATABASE zapid;`.
 3. Habilite a extensão pgvector: `CREATE EXTENSION IF NOT EXISTS vector;`.
 4. Rode as migrações:
-   - `bun run --filter '@batman/agent-zapid' db:clean`
-   - `bun run --filter '@batman/agent-zapid' db:generate`
-   - `bun run --filter '@batman/agent-zapid' db:migrate`
-   - `bun run --filter '@batman/agent-zapid' db:seed`
+   - `bun run --filter '@wa/agent-zapid' db:clean`
+   - `bun run --filter '@wa/agent-zapid' db:generate`
+   - `bun run --filter '@wa/agent-zapid' db:migrate`
+   - `bun run --filter '@wa/agent-zapid' db:seed`
 
 ## Dicas de Testes
 

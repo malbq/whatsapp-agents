@@ -1,17 +1,17 @@
 import { openai } from '@ai-sdk/openai'
-import { generateWhatsappMessage } from '@batman/core/ai/generateWhatsappMessage'
-import { ResponseGenerationError } from '@batman/core/errors'
-import type { DB } from '@batman/core/infra/db'
+import { generateWhatsappMessage } from '@wa/core/ai/generateWhatsappMessage'
+import { ResponseGenerationError } from '@wa/core/errors'
+import type { DB } from '@wa/core/infra/db'
 import {
   createSearchConversationHistoryTool,
   createSearchFilesTool,
   createSendReactionTool,
   createWebSearchTool,
   webFetchTool,
-} from '@batman/core/tools'
-import { sendWhatsappMessage } from '@batman/core/utils/sendWhatsappMessage'
-import { toDbMessage } from '@batman/core/utils/toDbMessage'
-import { toSystemModelMessage } from '@batman/core/utils/toModelMessage'
+} from '@wa/core/tools'
+import { sendWhatsappMessage } from '@wa/core/utils/sendWhatsappMessage'
+import { toDbMessage } from '@wa/core/utils/toDbMessage'
+import { toSystemModelMessage } from '@wa/core/utils/toModelMessage'
 import { stepCountIs, type ModelMessage, type ToolSet } from 'ai'
 import { ok } from 'node:assert'
 import { getContext } from '../context'

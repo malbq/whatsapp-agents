@@ -6,13 +6,13 @@
       "name": "zapid",
     },
     "packages/cmd": {
-      "name": "@batman/agent-cmd",
+      "name": "@wa/agent-cmd",
       "version": "0.0.1",
       "dependencies": {
         "@ai-sdk/openai": "catalog:",
-        "@batman/core": "workspace:*",
-        "@batman/server": "workspace:*",
-        "@batman/whatsapp": "workspace:*",
+        "@wa/core": "workspace:*",
+        "@wa/server": "workspace:*",
+        "@wa/whatsapp": "workspace:*",
         "ai": "catalog:",
         "hono": "catalog:",
         "zod": "catalog:",
@@ -25,13 +25,13 @@
       },
     },
     "packages/core": {
-      "name": "@batman/core",
+      "name": "@wa/core",
       "dependencies": {
         "@ai-sdk/google": "catalog:",
         "@ai-sdk/openai": "catalog:",
         "@ai-sdk/provider-utils": "catalog:",
         "@ai-sdk/xai": "catalog:",
-        "@batman/whatsapp": "workspace:*",
+        "@wa/whatsapp": "workspace:*",
         "ai": "catalog:",
         "compromise": "catalog:",
         "drizzle-orm": "catalog:",
@@ -52,7 +52,7 @@
       },
     },
     "packages/server": {
-      "name": "@batman/server",
+      "name": "@wa/server",
       "dependencies": {
         "hono": "catalog:",
       },
@@ -63,13 +63,13 @@
       },
     },
     "packages/warden": {
-      "name": "@batman/agent-warden",
+      "name": "@wa/agent-warden",
       "version": "0.0.1",
       "dependencies": {
         "@ai-sdk/openai": "catalog:",
-        "@batman/core": "workspace:*",
-        "@batman/whatsapp": "workspace:*",
         "@tanstack/react-router": "^1.170.46",
+        "@wa/core": "workspace:*",
+        "@wa/whatsapp": "workspace:*",
         "ai": "catalog:",
         "drizzle-orm": "catalog:",
         "googleapis": "^189.0.0",
@@ -91,7 +91,7 @@
       },
     },
     "packages/whatsapp": {
-      "name": "@batman/whatsapp",
+      "name": "@wa/whatsapp",
       "dependencies": {
         "hono": "catalog:",
         "zod": "catalog:",
@@ -103,14 +103,14 @@
       },
     },
     "packages/zapid": {
-      "name": "@batman/agent-zapid",
+      "name": "@wa/agent-zapid",
       "version": "0.0.1",
       "dependencies": {
         "@ai-sdk/openai": "catalog:",
-        "@batman/core": "workspace:*",
-        "@batman/server": "workspace:*",
-        "@batman/whatsapp": "workspace:*",
         "@sentry/bun": "catalog:",
+        "@wa/core": "workspace:*",
+        "@wa/server": "workspace:*",
+        "@wa/whatsapp": "workspace:*",
         "ai": "catalog:",
         "drizzle-orm": "catalog:",
         "hono": "catalog:",
@@ -159,18 +159,6 @@
     "@ai-sdk/provider-utils": ["@ai-sdk/provider-utils@5.0.72", "", { "dependencies": { "@ai-sdk/provider": "4.0.35", "@standard-schema/spec": "^1.1.0", "@workflow/serde": "4.1.0", "eventsource-parser": "^3.0.8", "undici": "^7.29.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-M6QAztI84jWumQSvKcGOL91DxhChsWxn3D3gYtV0/7E1TPQg9BmLdIerOolUC/jghQbMlQrHyzp0hqdIhUZ2Rw=="],
 
     "@ai-sdk/xai": ["@ai-sdk/xai@5.0.34", "", { "dependencies": { "@ai-sdk/provider": "4.0.35", "@ai-sdk/provider-utils": "5.0.72" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-Npxi7As+RHN1rAs1dxJsjFQ04C3Viuf0R/L15UQEqj6P49bO1EqeiMBmycb85LOy0P7S9uFEfeRIxX9hIj3SKQ=="],
-
-    "@batman/agent-cmd": ["@batman/agent-cmd@workspace:packages/cmd"],
-
-    "@batman/agent-warden": ["@batman/agent-warden@workspace:packages/warden"],
-
-    "@batman/agent-zapid": ["@batman/agent-zapid@workspace:packages/zapid"],
-
-    "@batman/core": ["@batman/core@workspace:packages/core"],
-
-    "@batman/server": ["@batman/server@workspace:packages/server"],
-
-    "@batman/whatsapp": ["@batman/whatsapp@workspace:packages/whatsapp"],
 
     "@drizzle-team/brocli": ["@drizzle-team/brocli@0.10.2", "", {}, "sha512-z33Il7l5dKjUgGULTqBsQBQwckHh5AbIuxhdsIxDDiZAzBOrZO6q9ogcWC65kU382AfynTfgNumVcNIjuIua6w=="],
 
@@ -417,6 +405,18 @@
     "@typescript/typescript-win32-x64": ["@typescript/typescript-win32-x64@7.0.2", "", { "os": "win32", "cpu": "x64" }, "sha512-0BQ3HkAHHlKLSp1qRvf3SUhGpGsDuhB/jgFw75guyqbxJqEaS0Cw/VFO8i2nHglJUzQCRtMMR/IBAKE3ETMC4g=="],
 
     "@vercel/oidc": ["@vercel/oidc@3.2.0", "", {}, "sha512-UycprH3T6n3jH0k44NHMa7pnFHGu/N05MjojYr+Mc6I7obkoLIJujSWwin1pCvdy/eOxrI/l3uDLQsmcrOb4ug=="],
+
+    "@wa/agent-cmd": ["@wa/agent-cmd@workspace:packages/cmd"],
+
+    "@wa/agent-warden": ["@wa/agent-warden@workspace:packages/warden"],
+
+    "@wa/agent-zapid": ["@wa/agent-zapid@workspace:packages/zapid"],
+
+    "@wa/core": ["@wa/core@workspace:packages/core"],
+
+    "@wa/server": ["@wa/server@workspace:packages/server"],
+
+    "@wa/whatsapp": ["@wa/whatsapp@workspace:packages/whatsapp"],
 
     "@workflow/serde": ["@workflow/serde@4.1.0", "", {}, "sha512-pav4F2BoirECWR7Nf1TKt+2eETcBj7jj4cBefQ8VXQCA6NPkaKeLfj/zMgi+3zYV5ZIBT4GuUiphsj0/b9hPQQ=="],
 

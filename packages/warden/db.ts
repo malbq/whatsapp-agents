@@ -1,5 +1,5 @@
-import type { DB } from '@batman/core/infra/db'
-import { Postgres } from '@batman/core/infra/dbPostgres'
+import type { DB } from '@wa/core/infra/db'
+import { Postgres } from '@wa/core/infra/dbPostgres'
 import { SQL } from 'bun'
 import { eq } from 'drizzle-orm'
 import { drizzle, type BunSQLDatabase } from 'drizzle-orm/bun-sql'

@@ -1,4 +1,4 @@
-import type { DB } from '@batman/core/infra/db'
+import type { DB } from '@wa/core/infra/db'
 import type { Context } from 'hono'
 
 export function createClearMessagesRoute(db: DB.Repository) {

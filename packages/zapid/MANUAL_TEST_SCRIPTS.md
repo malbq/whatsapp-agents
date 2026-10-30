@@ -441,7 +441,7 @@
 
 ## WhatsApp Output Types Reference
 
-From `@batman/whatsapp/schema.ts`:
+From `@wa/whatsapp/schema.ts`:
 
 | Type                  | Description                       | When Used                                     |
 | --------------------- | --------------------------------- | --------------------------------------------- |

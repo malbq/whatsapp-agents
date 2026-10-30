@@ -1,4 +1,4 @@
-# Core Package (@batman/core)
+# Core Package (@wa/core)
 
 Abstract building blocks for agents: database, storage, AI utilities, and first-class tools. Agents compose these primitives to implement their own pipelines and business logic.
 
@@ -17,20 +17,20 @@ It does not expose any HTTP or WhatsApp-specific code. Agents own their pipeline
 
 This package is ESM-only and exposes module subpaths for clear boundaries:
 
-- `@batman/core/ai/*` — AI helpers
+- `@wa/core/ai/*` — AI helpers
   - `generateEmbeddings` — batch embedding with chunking
   - `transcribeAudio`, `transcribeDocument`, `analyzeImage`
   - `generateWhatsappMessage`
-- `@batman/core/infra/*` — Infra primitives
+- `@wa/core/infra/*` — Infra primitives
   - `db`, `dbPostgres` — DB interfaces and PostgreSQL implementation
   - `storage`, `storageFilesystem` — object storage interfaces and filesystem adapter (dev)
   - `scheduler` — scheduler interfaces
   - `webSearch`, `webSearchBrave` — web search interfaces and Brave implementation
-- `@batman/core/tools` — First-class tools (for model tool-calling)
+- `@wa/core/tools` — First-class tools (for model tool-calling)
   - `webSearch`, `webFetch`, `sendText`, `sendReaction`, `searchConversationHistory`, `searchFiles`
-- `@batman/core/utils/*` — Utilities
+- `@wa/core/utils/*` — Utilities
   - `cloudflareFetch`, `sanitizeFilename`, `htmlToText`, `priorities`, `parsePdf`, etc.
-- `@batman/core/errors` — Error handling utilities
+- `@wa/core/errors` — Error handling utilities
 
 Types are exported alongside each module (see source files for details). Prefer unknown over any and validate inputs with zod where applicable.
 
@@ -67,7 +67,7 @@ Typical env used by submodules (agents must provide them):
 - Generate embeddings for texts:
 
 ```ts
-import { generateEmbeddings } from '@batman/core/ai/generateEmbeddings'
+import { generateEmbeddings } from '@wa/core/ai/generateEmbeddings'
 
 const groups = await generateEmbeddings(['hello world'])
 // groups is Array<Array<{ content, embedding }>> matching input order
@@ -76,7 +76,7 @@ const groups = await generateEmbeddings(['hello world'])
 - Web search tool in an agent:
 
 ```ts
-import { createWebSearchTool } from '@batman/core/tools'
+import { createWebSearchTool } from '@wa/core/tools'
 
 const tool = createWebSearchTool({ webSearch })
 ```
@@ -84,7 +84,7 @@ const tool = createWebSearchTool({ webSearch })
 - Persist a message (PostgreSQL implementation example):
 
 ```ts
-import { Postgres } from '@batman/core/infra/dbPostgres'
+import { Postgres } from '@wa/core/infra/dbPostgres'
 import { drizzle } from 'drizzle-orm/bun-sql'
 
 const client = drizzle(process.env.DATABASE_URL!)

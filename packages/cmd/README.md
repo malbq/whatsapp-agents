@@ -15,8 +15,8 @@ This agent:
 
 Command agent follows the established agent architecture pattern:
 
-- Composition root: `index.ts` wires together `@batman/server` and `@batman/whatsapp`
-- Webhook integration: uses `createWebhookApp()` from `@batman/whatsapp`
+- Composition root: `index.ts` wires together `@wa/server` and `@wa/whatsapp`
+- Webhook integration: uses `createWebhookApp()` from `@wa/whatsapp`
 - Command routing: simple pattern matching on message text
 - No persistence: stateless command handler
 
@@ -60,7 +60,7 @@ Inside this package:
 
 ## Dependencies
 
-- `@batman/server` - Server bootstrap and middleware
-- `@batman/whatsapp` - WhatsApp Business API client
+- `@wa/server` - Server bootstrap and middleware
+- `@wa/whatsapp` - WhatsApp Business API client
 
-This agent does not use `@batman/core` as it does not require persistence or AI capabilities.
+This agent does not use `@wa/core` as it does not require persistence or AI capabilities.

@@ -44,8 +44,8 @@ Use Bun's test runner from the root. You can scope to names or files:
 - Start from an existing agent:
   - See `packages/warden` for a minimal example.
   - See `packages/zapid` for a full, complex pipeline.
-- Compose `@batman/server` and `@batman/whatsapp` in your agent's composition root (`index.ts`).
-- Persist and embed messages through `@batman/core`.
+- Compose `@wa/server` and `@wa/whatsapp` in your agent's composition root (`index.ts`).
+- Persist and embed messages through `@wa/core`.
 - **Strict Isolation**: Keep agent logic contained within the agent package. Systems, tools, prompts, and types must live inside the agent folder. Do not leak agent business logic into `packages/core`.
 
 ## Conventions (repo-wide)

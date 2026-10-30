@@ -37,5 +37,5 @@ RUN mkdir -p storage && chown -R zapid:zapid storage
 USER zapid
 
 # Wait for Postgres and apply migrations, then start the app
-CMD ["sh", "-c", "wait-for-it postgres:5432 --timeout=30 -- bun run --filter @batman/core db:push && exec bun run packages/agent/zapid/server.ts"]
+CMD ["sh", "-c", "wait-for-it postgres:5432 --timeout=30 -- bun run --filter @wa/core db:push && exec bun run packages/agent/zapid/server.ts"]
 

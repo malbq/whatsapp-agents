@@ -1,5 +1,5 @@
 {
-  "name": "@batman/core",
+  "name": "@wa/core",
   "module": "index.ts",
   "type": "module",
   "private": true,
@@ -19,7 +19,7 @@
     "@ai-sdk/openai": "catalog:",
     "@ai-sdk/provider-utils": "catalog:",
     "@ai-sdk/xai": "catalog:",
-    "@batman/whatsapp": "workspace:*",
+    "@wa/whatsapp": "workspace:*",
     "ai": "catalog:",
     "compromise": "catalog:",
     "drizzle-orm": "catalog:",

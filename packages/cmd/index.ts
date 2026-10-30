@@ -1,5 +1,5 @@
-import { createServer } from '@batman/server'
-import { createWebhookApp, createWhatsappClient } from '@batman/whatsapp'
+import { createServer } from '@wa/server'
+import { createWebhookApp, createWhatsappClient } from '@wa/whatsapp'
 import { ok } from 'node:assert'
 import { extractCommand, helpText } from './lib/command'
 import { generate } from './lib/generate'

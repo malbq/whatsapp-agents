@@ -1,4 +1,4 @@
-import { PostgresSchema } from '@batman/core/infra/dbSchema'
+import { PostgresSchema } from '@wa/core/infra/dbSchema'
 import { boolean, index, integer, pgTable as table, text, timestamp } from 'drizzle-orm/pg-core'
 
 export const {

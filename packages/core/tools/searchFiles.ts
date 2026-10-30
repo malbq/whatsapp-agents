@@ -1,4 +1,4 @@
-import type { ToolExecutionError } from '@batman/core/errors'
+import type { ToolExecutionError } from '@wa/core/errors'
 import { tool } from 'ai'
 import { ok } from 'node:assert'
 import { z } from 'zod'

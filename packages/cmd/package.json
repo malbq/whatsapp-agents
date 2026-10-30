@@ -1,5 +1,5 @@
 {
-  "name": "@batman/agent-cmd",
+  "name": "@wa/agent-cmd",
   "version": "0.0.1",
   "module": "index.ts",
   "type": "module",
@@ -11,9 +11,9 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "catalog:",
-    "@batman/core": "workspace:*",
-    "@batman/server": "workspace:*",
-    "@batman/whatsapp": "workspace:*",
+    "@wa/core": "workspace:*",
+    "@wa/server": "workspace:*",
+    "@wa/whatsapp": "workspace:*",
     "ai": "catalog:",
     "hono": "catalog:",
     "zod": "catalog:"

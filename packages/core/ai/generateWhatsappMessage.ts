@@ -6,7 +6,7 @@ import {
   outgoingDocumentMessageSchema,
   outgoingImageMessageSchema,
   textMessageSchema,
-} from '@batman/whatsapp'
+} from '@wa/whatsapp'
 import type { Context } from '@ai-sdk/provider-utils'
 import {
   generateText as aiGenerateText,

@@ -1,4 +1,4 @@
-import type { OutgoingMessage } from '@batman/whatsapp'
+import type { OutgoingMessage } from '@wa/whatsapp'
 import type {
   AssistantModelMessage,
   LanguageModelUsage,

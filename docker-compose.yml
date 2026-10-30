@@ -1,18 +1,18 @@
 services:
   postgres:
     image: pgvector/pgvector:pg16
-    container_name: batman-postgres
+    container_name: wa-postgres
     restart: on-failure:5
     environment:
-      - POSTGRES_DB=batman
-      - POSTGRES_USER=batman
-      - POSTGRES_PASSWORD=batman
+      - POSTGRES_DB=wa
+      - POSTGRES_USER=wa
+      - POSTGRES_PASSWORD=wa
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U batman -d batman"]
+      test: ["CMD-SHELL", "pg_isready -U wa -d wa"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -28,7 +28,7 @@ services:
       - .env
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://batman:batman@postgres:5432/batman
+      - DATABASE_URL=postgresql://wa:wa@postgres:5432/wa
     volumes:
       - /var/lib/zapid:/opt/zapid/storage
     ports:

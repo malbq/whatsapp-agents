@@ -1,5 +1,5 @@
 {
-  "name": "@batman/agent-zapid",
+  "name": "@wa/agent-zapid",
   "version": "0.0.1",
   "module": "index.ts",
   "type": "module",
@@ -19,9 +19,9 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "catalog:",
-    "@batman/core": "workspace:*",
-    "@batman/server": "workspace:*",
-    "@batman/whatsapp": "workspace:*",
+    "@wa/core": "workspace:*",
+    "@wa/server": "workspace:*",
+    "@wa/whatsapp": "workspace:*",
     "@sentry/bun": "catalog:",
     "ai": "catalog:",
     "drizzle-orm": "catalog:",

@@ -1,4 +1,4 @@
-import type { Chat } from '@batman/whatsapp'
+import type { Chat } from '@wa/whatsapp'
 import { ok } from 'node:assert'
 import type { GeneratedWhatsappMessage } from '../ai/generateWhatsappMessage'
 import type { DB } from '../infra/db'

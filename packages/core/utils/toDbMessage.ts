@@ -1,4 +1,4 @@
-import type { MessageNotification } from '@batman/whatsapp'
+import type { MessageNotification } from '@wa/whatsapp'
 import type {
   AssistantModelMessage,
   LanguageModelUsage,

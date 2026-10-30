@@ -1,5 +1,5 @@
 {
-  "name": "@batman/agent-warden",
+  "name": "@wa/agent-warden",
   "version": "0.0.1",
   "module": "index.ts",
   "type": "module",
@@ -13,8 +13,8 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "catalog:",
-    "@batman/core": "workspace:*",
-    "@batman/whatsapp": "workspace:*",
+    "@wa/core": "workspace:*",
+    "@wa/whatsapp": "workspace:*",
     "ai": "catalog:",
     "drizzle-orm": "catalog:",
     "googleapis": "^189.0.0",

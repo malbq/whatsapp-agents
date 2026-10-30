@@ -1,4 +1,4 @@
-import { PostgresSchema } from '@batman/core/infra/dbSchema'
+import { PostgresSchema } from '@wa/core/infra/dbSchema'
 import { relations, sql } from 'drizzle-orm'
 import {
   boolean,

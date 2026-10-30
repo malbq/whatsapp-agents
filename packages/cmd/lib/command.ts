@@ -1,4 +1,4 @@
-import type { Chat, IncomingMessage } from '@batman/whatsapp'
+import type { Chat, IncomingMessage } from '@wa/whatsapp'
 
 const commands = ['help', 'text', 'contact', 'location', 'options'] as const
 export type Command = (typeof commands)[number]
@@ -42,7 +42,7 @@ export async function sendCommandMessage(
       return chat.sendInteractiveList(userId, {
         header: 'Choose an option',
         body: 'Please select one of the following options:',
-        footer: 'Powered by `batman`',
+        footer: 'Powered by `whatsapp-agents`',
         openListButton: 'Select Option',
         sections: [
           {
@@ -77,7 +77,7 @@ export async function sendCommandMessage(
       return chat.sendInteractiveButton(userId, {
         header: 'Quick Actions',
         body: 'Choose one of the following options:',
-        footer: 'Powered by `batman`',
+        footer: 'Powered by `whatsapp-agents`',
         buttons: ['Yes', 'No', 'Maybe'],
       })
     case '/cta':

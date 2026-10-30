@@ -2,7 +2,7 @@ import { openai } from '@ai-sdk/openai'
 import {
   generateWhatsappMessage,
   type GeneratedWhatsappMessage,
-} from '@batman/core/ai/generateWhatsappMessage'
+} from '@wa/core/ai/generateWhatsappMessage'
 import { stepCountIs } from 'ai'
 
 const model = openai.responses('gpt-5-mini-2025-08-07')

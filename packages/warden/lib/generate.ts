@@ -2,7 +2,7 @@ import { openai } from '@ai-sdk/openai'
 import {
   generateWhatsappMessage,
   type GeneratedResponse,
-} from '@batman/core/ai/generateWhatsappMessage'
+} from '@wa/core/ai/generateWhatsappMessage'
 import { stepCountIs, type ModelMessage, type Tool } from 'ai'
 import type { WardenDB } from '../db'
 import { createSystemPrompt } from '../prompts/system'

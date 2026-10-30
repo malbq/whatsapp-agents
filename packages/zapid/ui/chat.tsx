@@ -1,5 +1,5 @@
-import type { DB } from '@batman/core/infra/db'
-import type { Storage } from '@batman/core/infra/storage'
+import type { DB } from '@wa/core/infra/db'
+import type { Storage } from '@wa/core/infra/storage'
 import { desc, eq, inArray } from 'drizzle-orm'
 import type { Context } from 'hono'
 import { raw } from 'hono/html'

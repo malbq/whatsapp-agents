@@ -1,6 +1,6 @@
-import { generateEmbeddings } from '@batman/core/ai/generateEmbeddings'
-import type { DB } from '@batman/core/infra/db'
-import type { OutgoingMessage } from '@batman/whatsapp'
+import { generateEmbeddings } from '@wa/core/ai/generateEmbeddings'
+import type { DB } from '@wa/core/infra/db'
+import type { OutgoingMessage } from '@wa/whatsapp'
 import { getContext } from '../context'
 
 export async function embedOutboundMessages() {

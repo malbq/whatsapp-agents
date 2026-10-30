@@ -1,4 +1,4 @@
-import { toDbTokenUsage } from '@batman/core/utils/toDbUsage'
+import { toDbTokenUsage } from '@wa/core/utils/toDbUsage'
 import type { ToolModelMessage } from 'ai'
 import { ok } from 'node:assert'
 import { getContext } from '../context'

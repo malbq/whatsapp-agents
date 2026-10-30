@@ -1,4 +1,4 @@
-# Server Package (@batman/server)
+# Server Package (@wa/server)
 
 Abstract server creator for creating Hono/Bun web servers.
 
@@ -16,7 +16,7 @@ This package provides:
 ### Basic Server
 
 ```typescript
-import { createServer } from '@batman/server'
+import { createServer } from '@wa/server'
 
 const server = createServer({
   port: 8080,
@@ -33,7 +33,7 @@ server.serve()
 You can access the underlying Hono instance via `server.app` to add middleware or routes before starting the server.
 
 ```typescript
-import { createServer } from '@batman/server'
+import { createServer } from '@wa/server'
 
 const server = createServer({
   port: 8080,
@@ -78,4 +78,4 @@ This package is designed to be abstract and simple:
 - No database or storage dependencies
 - Single-step creation pattern
 
-Agents compose this package with `@batman/whatsapp` and `@batman/core` to build complete applications.
+Agents compose this package with `@wa/whatsapp` and `@wa/core` to build complete applications.

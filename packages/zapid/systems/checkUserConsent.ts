@@ -1,4 +1,4 @@
-import type { IncomingMessage } from '@batman/whatsapp'
+import type { IncomingMessage } from '@wa/whatsapp'
 import { ok } from 'node:assert'
 import { getContext } from '../context'
 

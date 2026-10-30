@@ -72,10 +72,10 @@ Warden is:
 
 Warden follows the established agent architecture pattern:
 
-- **Composition root**: `index.ts` wires together `@batman/core`, `@batman/server`, and `@batman/whatsapp`
-- **Webhook integration**: Uses `createWebhookApp()` from `@batman/whatsapp` with `app.route()`
-- **Message processing**: Handles `Message` types from `@batman/whatsapp` directly
-- **Core persistence**: Uses `@batman/core` DB/storage for message and knowledge base persistence
+- **Composition root**: `index.ts` wires together `@wa/core`, `@wa/server`, and `@wa/whatsapp`
+- **Webhook integration**: Uses `createWebhookApp()` from `@wa/whatsapp` with `app.route()`
+- **Message processing**: Handles `Message` types from `@wa/whatsapp` directly
+- **Core persistence**: Uses `@wa/core` DB/storage for message and knowledge base persistence
 - **Calendar integration**: Pluggable adapters for Google Calendar and Cal.com
 - **Scheduler**: Internal scheduler for WhatsApp appointment reminders
 

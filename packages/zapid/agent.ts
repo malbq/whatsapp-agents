@@ -34,9 +34,9 @@ Error segmentation
   - Response flow: on failure, log and send a polite fallback; continue.
   - Post-tasks: best-effort; failures are logged and do not affect the user.
 */
-import { toDbMessage } from '@batman/core/utils/toDbMessage'
-import { toAssistantModelMessage } from '@batman/core/utils/toModelMessage'
-import type { TextMessage } from '@batman/whatsapp'
+import { toDbMessage } from '@wa/core/utils/toDbMessage'
+import { toAssistantModelMessage } from '@wa/core/utils/toModelMessage'
+import type { TextMessage } from '@wa/whatsapp'
 import { ok } from 'node:assert'
 import { getContext, isAbortError } from './context'
 import { embedOutboundMessages } from './systems/embedOutboundMessages'
