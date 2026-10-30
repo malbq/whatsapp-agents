@@ -71,7 +71,7 @@ export async function responseGeneration() {
   })
   const response = await generateWhatsappMessage({
     model,
-    system,
+    instructions: system,
     messages: agentContext,
     abortSignal: context.abortSignal,
     tools: createToolSet({

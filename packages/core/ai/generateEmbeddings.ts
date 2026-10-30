@@ -38,7 +38,7 @@ export const generateEmbeddings: GenerateEmbeddings = async (texts) => {
   const result = await embedMany({
     model: embeddingModel,
     values: allChunks,
-    experimental_telemetry: {
+    telemetry: {
       functionId: 'generateEmbeddings',
       isEnabled: true,
     },

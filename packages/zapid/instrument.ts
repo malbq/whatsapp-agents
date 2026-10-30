@@ -11,7 +11,6 @@ import pkg from './package.json'
 if (import.meta.env.SENTRY_DSN && import.meta.env.NODE_ENV !== 'development') {
   Sentry.init({
     dsn: import.meta.env.SENTRY_DSN,
-    enableLogs: true,
     tracesSampleRate: 1.0,
     environment: import.meta.env.NODE_ENV,
     release: pkg.version,

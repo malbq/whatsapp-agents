@@ -1,5 +1,5 @@
-import type { Context, Next } from 'hono'
 import { getCookie } from 'hono/cookie'
+import { createMiddleware } from 'hono/factory'
 import { getSession, SESSION_COOKIE, type Session } from '../routes/auth'
 
 declare module 'hono' {
@@ -8,7 +8,7 @@ declare module 'hono' {
   }
 }
 
-export async function requireAuth(c: Context, next: Next) {
+export const requireAuth = createMiddleware(async (c, next) => {
   const cookie = getCookie(c, SESSION_COOKIE)
   const session = await getSession(cookie)
 
@@ -18,9 +18,9 @@ export async function requireAuth(c: Context, next: Next) {
 
   c.set('session', session)
   return next()
-}
+})
 
-export async function requireAuthApi(c: Context, next: Next) {
+export const requireAuthApi = createMiddleware(async (c, next) => {
   const cookie = getCookie(c, SESSION_COOKIE)
   const session = await getSession(cookie)
 
@@ -30,4 +30,4 @@ export async function requireAuthApi(c: Context, next: Next) {
 
   c.set('session', session)
   return next()
-}
+})

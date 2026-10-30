@@ -7,6 +7,7 @@ import {
   outgoingImageMessageSchema,
   textMessageSchema,
 } from '@batman/whatsapp'
+import type { Context } from '@ai-sdk/provider-utils'
 import {
   generateText as aiGenerateText,
   NoObjectGeneratedError,
@@ -48,14 +49,16 @@ export interface GeneratedResponse {
   messages: MessageWithDetails[]
 }
 
+type WhatsappOutput = Output.Output<GeneratedWhatsappResponse>
+
 type GenerateOptions<TOOLS extends ToolSet> = Parameters<
-  typeof aiGenerateText<TOOLS, Output.Output<GeneratedWhatsappResponse>>
+  typeof aiGenerateText<TOOLS, Context, WhatsappOutput>
 >[0]
 
 type GenerateWaOptions<TOOLS extends ToolSet> = Omit<
   GenerateOptions<TOOLS>,
-  'output' | 'experimental_output'
->
+  'output' | 'system' | 'instructions' | 'onStepEnd' | 'onStepFinish' | 'telemetry'
+> & { instructions?: string }
 
 const formattingGuidelines = `Formatting options for text messages and for interactive messages body:
 - Italic: _text_
@@ -71,18 +74,18 @@ These are the only formatting options you can use.
 Do not format text with anything else, like markdown, XML, or typographic emphasis.`
 
 export async function generateWhatsappMessage<TOOLS extends ToolSet>({
-  system,
+  instructions,
   ...options
 }: GenerateWaOptions<TOOLS>): Promise<GeneratedResponse> {
   const messages: MessageWithDetails[] = []
 
-  const result = await aiGenerateText<TOOLS, Output.Output<GeneratedWhatsappResponse>>({
+  const result = await aiGenerateText<TOOLS, Context, WhatsappOutput>({
     ...options,
-    system: `${system ?? ''}\n${formattingGuidelines}`.trim(),
+    instructions: `${instructions ?? ''}\n${formattingGuidelines}`.trim(),
     output: Output.object({
       schema: whatsappResponseSchema,
     }),
-    onStepFinish: (stepResult) => {
+    onStepEnd: (stepResult) => {
       if (stepResult.response.messages.at(-1)?.role === 'tool') {
         stepResult.response.messages.slice(-2).forEach((message) => {
           messages.push({
@@ -99,7 +102,7 @@ export async function generateWhatsappMessage<TOOLS extends ToolSet>({
         finishReason: stepResult.finishReason,
       })
     },
-    experimental_telemetry: {
+    telemetry: {
       functionId: 'generateWhatsappMessage',
       isEnabled: true,
     },

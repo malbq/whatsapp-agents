@@ -39,7 +39,7 @@ export const analyzeImage: AnalyzeImage = async ({
   const result = await generateText({
     model: imageAnalysisModel,
     temperature: IMAGE_ANALYSIS_TEMP,
-    system: instructions,
+    instructions,
     messages: [
       {
         role: 'user',
@@ -49,7 +49,7 @@ export const analyzeImage: AnalyzeImage = async ({
         ],
       },
     ],
-    experimental_telemetry: {
+    telemetry: {
       functionId: 'analyzeImage',
       isEnabled: true,
     },

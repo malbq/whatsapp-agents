@@ -1,6 +1,7 @@
 import { tool } from 'ai'
 import { z } from 'zod'
-import { parseDate, type ToolContext } from './context'
+import { parseDate } from '../lib/dateUtils'
+import type { ToolContext } from './context'
 
 export const createRescheduleAppointmentTool = (ctx: ToolContext) =>
   tool({

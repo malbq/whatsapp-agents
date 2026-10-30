@@ -28,12 +28,12 @@ const webhookApp = createWebhookApp(
       const command = extractCommand(message)
       console.log('command extracted', command)
       if (!command) {
-        chat.acknowledgeMessage(message.messageId)
+        chat.acknowledgeMessage(message.messageWaId)
         return
       }
 
       try {
-        chat.sendTypingIndicator(message.messageId)
+        chat.sendTypingIndicator(message.messageWaId)
         if (command === '/help') {
           await chat.sendText(userWaId, { text: helpText })
           return

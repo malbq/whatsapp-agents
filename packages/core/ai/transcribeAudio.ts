@@ -31,9 +31,9 @@ export const transcribeAudio: TranscribeAudio = async ({
   const result = await generateText({
     model: transcriptionModel,
     temperature: TRANSCRIPTION_GEN_TEMP,
-    system: instructions,
+    instructions,
     messages: [{ role: 'user', content: [{ type: 'file', data: audio, mediaType: mimeType }] }],
-    experimental_telemetry: {
+    telemetry: {
       functionId: 'transcribeAudio',
       isEnabled: true,
     },

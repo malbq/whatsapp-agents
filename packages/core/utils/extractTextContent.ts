@@ -1,13 +1,6 @@
-import type { ReasoningPart } from '@ai-sdk/provider-utils'
-import type {
-  FilePart,
-  ImagePart,
-  ModelMessage,
-  TextPart,
-  ToolApprovalRequest,
-  ToolCallPart,
-  ToolResultPart,
-} from 'ai'
+import type { ModelMessage, TextPart } from 'ai'
+
+type ContentPart = Exclude<ModelMessage['content'], string>[number]
 
 export function extractText(message: ModelMessage) {
   switch (message.role) {
@@ -28,19 +21,9 @@ export function extractText(message: ModelMessage) {
   return undefined
 }
 
-export function joinText(
-  content: Array<
-    | TextPart
-    | ImagePart
-    | FilePart
-    | ReasoningPart
-    | ToolCallPart
-    | ToolResultPart
-    | ToolApprovalRequest
-  >
-) {
+export function joinText(content: ContentPart[]) {
   return content
-    .filter((p) => p.type === 'text')
+    .filter((p): p is TextPart => p.type === 'text')
     .map((p) => p.text)
     .filter(Boolean)
     .join(' ')

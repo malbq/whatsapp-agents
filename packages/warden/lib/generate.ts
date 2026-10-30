@@ -26,7 +26,7 @@ export async function generate({
   const businessInfo = await db.getBusinessInfo()
   const result = await generateWhatsappMessage({
     model,
-    system: createSystemPrompt(businessInfo),
+    instructions: createSystemPrompt(businessInfo),
     messages,
     tools: Object.fromEntries(tools.map((tool) => [tool.title, tool])),
     stopWhen: stepCountIs(MAX_STEPS),

@@ -43,7 +43,7 @@ export const transcribeDocument: TranscribeDocument = async ({
   const result = await generateText({
     model: documentTranscriptionModel,
     temperature: 0,
-    system: instructions,
+    instructions,
     messages: [
       {
         role: 'user',
@@ -57,7 +57,7 @@ export const transcribeDocument: TranscribeDocument = async ({
         ],
       },
     ],
-    experimental_telemetry: {
+    telemetry: {
       functionId: 'transcribeDocument',
       isEnabled: true,
     },
