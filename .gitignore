@@ -1,14 +1,13 @@
 .env
 .env.*
 *.env
-!example.env
+!.env.example
 
 # Credentials files (contain secrets)
 credentials.json
 **/credentials.json
 node_modules/
 storage/
-poc/
 
 # Compiled executables
 packages/zapid/bin/zapid

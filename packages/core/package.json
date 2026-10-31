@@ -18,7 +18,6 @@
     "@ai-sdk/google": "catalog:",
     "@ai-sdk/openai": "catalog:",
     "@ai-sdk/provider-utils": "catalog:",
-    "@ai-sdk/xai": "catalog:",
     "@wa/whatsapp": "workspace:*",
     "ai": "catalog:",
     "compromise": "catalog:",
@@ -27,7 +26,6 @@
     "postgres": "catalog:",
     "retext": "catalog:",
     "retext-readability": "catalog:",
-    "retext-smartypants": "catalog:",
     "unpdf": "catalog:",
     "unstorage": "catalog:",
     "zod": "catalog:"

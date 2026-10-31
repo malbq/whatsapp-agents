@@ -43,7 +43,7 @@ async function createTestDatabase(): Promise<string> {
   const testDbName = `zapid_test_${Date.now()}`
 
   const createResult =
-    await Bun.$`docker exec postgres-18 psql -U postgres -c "CREATE DATABASE ${testDbName}"`.text()
+    await Bun.$`docker exec wa-postgres psql -U postgres -c "CREATE DATABASE ${testDbName}"`.text()
 
   if (!createResult.includes('CREATE DATABASE')) {
     throw new Error(`Failed to create test database: ${createResult}`)
@@ -51,7 +51,7 @@ async function createTestDatabase(): Promise<string> {
 
   console.log(styleText('dim', `⚙ Created database: ${testDbName}`))
 
-  await Bun.$`docker exec postgres-18 psql -U postgres -d ${testDbName} -c "CREATE EXTENSION IF NOT EXISTS vector"`.quiet()
+  await Bun.$`docker exec wa-postgres psql -U postgres -d ${testDbName} -c "CREATE EXTENSION IF NOT EXISTS vector"`.quiet()
 
   const databaseUrl = `postgresql://postgres:postgres@localhost:5432/${testDbName}`
   import.meta.env.DATABASE_URL = databaseUrl
@@ -66,10 +66,10 @@ async function createTestDatabase(): Promise<string> {
 }
 
 async function dropTestDatabase(testDbName: string): Promise<void> {
-  await Bun.$`docker exec postgres-18 psql -U postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${testDbName}'"`.quiet()
+  await Bun.$`docker exec wa-postgres psql -U postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${testDbName}'"`.quiet()
 
   const dropResult =
-    await Bun.$`docker exec postgres-18 psql -U postgres -c "DROP DATABASE IF EXISTS ${testDbName}"`.text()
+    await Bun.$`docker exec wa-postgres psql -U postgres -c "DROP DATABASE IF EXISTS ${testDbName}"`.text()
 
   if (!dropResult.includes('DROP DATABASE')) {
     console.warn(styleText('dim', `⚠ Failed to drop test database: ${dropResult}`))
