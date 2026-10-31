@@ -4,40 +4,11 @@ Warden is a white-label WhatsApp business attendant that handles customer inquir
 
 ## Initial Setup
 
-1. Run `./scripts/postgres.sh` (from the monorepo root) to start the PostgreSQL container.
+1. Run `docker compose up -d` (from the monorepo root) to start the PostgreSQL container.
 2. Connect to the database and create the database: `CREATE DATABASE warden;`.
 3. Enable extensions: `CREATE EXTENSION IF NOT EXISTS vector; CREATE EXTENSION IF NOT EXISTS unaccent;`.
-4. Run migrations:
-   - `bun run db:generate`
-   - `bun run db:migrate`
-5. Set the required environment variables:
-
-```bash
-DATABASE_URL=postgres://user:password@localhost:5432/warden
-
-META_WEBHOOK_VERIFY_TOKEN=<your verify token>
-META_API_TOKEN=<your api token>
-META_APP_SECRET=<your app secret>
-WA_BUSINESS_PHONE_ID=<your phone id>
-
-# For embeddings
-CF_ACCOUNT_ID=<your account id>
-CF_API_TOKEN=<your api token>
-
-OPENAI_API_KEY=<your api key>
-
-# Google OAuth2 (used for both dashboard auth and calendar connection)
-GOOGLE_CLIENT_ID=<your client id>
-GOOGLE_CLIENT_SECRET=<your client secret>
-
-# Dashboard Authentication
-DASHBOARD_SESSION_SECRET=<random 32+ character string>
-DASHBOARD_REDIRECT_URI=http://localhost:8080/auth/callback
-CALENDAR_REDIRECT_URI=http://localhost:8080/calendar/callback
-
-# Optional
-APPOINTMENT_DURATION_MINUTES=30  # defaults to 30
-```
+4. Copy `.env.example` to `.env` and fill in the values.
+5. Run migrations: `bun run db:migrate`.
 
 ### Obtaining Google OAuth Credentials
 
@@ -45,7 +16,7 @@ APPOINTMENT_DURATION_MINUTES=30  # defaults to 30
 2. Create a new OAuth 2.0 Client ID (Web application type)
 3. Add these redirect URIs:
    - `http://localhost:8080/auth/callback` (dashboard login)
-   - `http://localhost:8080/calendar/callback` (calendar connection)
+   - `http://localhost:8080/api/calendar/callback` (calendar connection)
 4. Enable the Google Calendar API in your project
 5. Copy the Client ID and Client Secret to your environment variables
 

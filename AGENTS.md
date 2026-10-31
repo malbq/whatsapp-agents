@@ -38,6 +38,8 @@ Use Bun's test runner from the root. You can scope to names or files:
 - Run one test file: `bun test ./test/xyz.test.ts`
 - Run by name: `bun test -t "name substring"`
 - Always use environment variable `AGENT=1` to run tests: `AGENT=1 bun test`
+- The default suite must stay offline: no network, no API keys. Mock `fetch` or inject dependencies.
+- Tests that need real services go in `*.integration.test.ts` (ignored by default, see `bunfig.toml`) and run via a package `test:integration` script.
 
 ## Developing agents
 

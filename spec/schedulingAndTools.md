@@ -254,11 +254,3 @@ Late delivery (optional)
 2. Implement Scheduler service (cron runner) with WA business/user context injection.
 3. Add list_reminders tool.
 4. Add tests as described.
-
-## References
-
-- TODO.md: Scheduler System and Tool Integration
-- spec/systemPatterns.md (Scheduler node in diagram)
-- src/prompts/functions/create_reminder.json
-- src/prompts/functions/cancel_reminder.json
-- src/infra/dbLibSql.ts (patterns for DB methods and thresholds)

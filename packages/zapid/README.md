@@ -167,7 +167,7 @@ Características:
 
 ### Setup Inicial
 
-1. Execute `./scripts/postgres.sh` (na raiz do monorepo) para iniciar o container PostgreSQL.
+1. Execute `docker compose up -d` (na raiz do monorepo) para iniciar o container PostgreSQL.
 2. Conecte no banco e crie o database: `CREATE DATABASE zapid;`.
 3. Habilite a extensão pgvector: `CREATE EXTENSION IF NOT EXISTS vector;`.
 4. Rode as migrações:
