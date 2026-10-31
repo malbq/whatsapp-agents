@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { createHmac } from 'node:crypto'
+import { createHmac, timingSafeEqual } from 'node:crypto'
 import type { Chat, MessageNotification, StatusUpdateNotification } from './types'
 
 export interface WebhookConfig {
@@ -43,31 +43,29 @@ export function createWebhookApp(
 
     if (!validateWebhookSignature(body, headerSignature, config.appSecret)) {
       console.warn('Webhook signature validation failed')
-      return c.status(401)
+      return c.body(null, 401)
     }
 
     const notification = await chat.parseNotification(JSON.parse(body))
 
-    if (!notification) {
-      handlers.onUnknownNotification?.(body)
-      return c.body('', 200)
+    // Acknowledge immediately; Meta retries webhooks that take too long to answer
+    if (notification && 'message' in notification) {
+      runInBackground(() => handlers.onMessage(notification, body))
+    } else if (notification && 'statusUpdate' in notification) {
+      runInBackground(() => handlers.onStatusUpdate?.(notification, body))
+    } else {
+      runInBackground(() => handlers.onUnknownNotification?.(body))
     }
-
-    if ('statusUpdate' in notification) {
-      handlers.onStatusUpdate?.(notification, body)
-      return c.body('', 200)
-    }
-
-    if ('message' in notification) {
-      handlers.onMessage(notification, body)
-      return c.body('', 200)
-    }
-
-    handlers.onUnknownNotification?.(body)
     return c.body('', 200)
   })
 
   return app
+}
+
+function runInBackground(handler: () => Promise<void> | void): void {
+  Promise.resolve()
+    .then(handler)
+    .catch((error: unknown) => console.error('Webhook handler failed', { error }))
 }
 
 function validateWebhookSignature(
@@ -77,6 +75,7 @@ function validateWebhookSignature(
 ): boolean {
   if (!signature) return false
   const headerSignature = signature.startsWith('sha256=') ? signature.slice(7) : signature
-  const computedSignature = createHmac('sha256', appSecret).update(body).digest('hex')
-  return computedSignature === headerSignature
+  const computed = createHmac('sha256', appSecret).update(body).digest()
+  const received = Buffer.from(headerSignature, 'hex')
+  return received.length === computed.length && timingSafeEqual(received, computed)
 }
