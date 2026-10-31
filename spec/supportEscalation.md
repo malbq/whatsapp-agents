@@ -15,19 +15,19 @@ sequenceDiagram
     participant T as Ticket System (HelpDesk)
     participant H as Human Agent
 
-    U->>A: "Preciso falar com alguém"
+    U->>A: "I need to talk to someone"
     A-->>U: Troubleshoot checklist
     Note right of A: if unresolved
-    A-->>U: "Posso abrir um chamado para você. Tudo bem?"
+    A-->>U: "I can open a support ticket for you. Is that OK?"
     U-->>A: ok
     A->>T: create_ticket(user_id, context_summary)
     T-->>H: notify agent
-    A-->>U: "Seu protocolo é 1234. Uma pessoa falará com<br>você neste outro número: +55 11 99999-0000"
+    A-->>U: "Your ticket number is 1234. A person will contact<br>you at this other number: +55 11 99999-0000"
 ```
 
 ## Implementation Notes
 
-- **Trigger Intents** – Natural-language classifier looks for escalation keywords ("falar com alguém", "suporte", "reclamação").
+- **Trigger Intents** – Natural-language classifier looks for escalation keywords ("talk to someone", "support", "complaint").
 - **Ticket Payload** – Send user id, last 20 messages, segment summary, and device meta.
 - **Fallback Phone** – A dedicated WhatsApp Business number staffed by agents; messages there are NOT processed by the AI.
 

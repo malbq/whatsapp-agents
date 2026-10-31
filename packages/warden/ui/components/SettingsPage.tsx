@@ -1,7 +1,7 @@
 import { useLoaderData, useRouter } from '@tanstack/react-router'
 import { useCallback, useState } from 'react'
 
-const DAY_NAMES = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
 export interface AvailabilitySettings {
   bufferMinutes: number
@@ -87,7 +87,7 @@ export function SettingsPage() {
       showTemporaryState(setSettingsButtonState, 'success')
     } else {
       const data = await res.json()
-      setErrorMessage(data.error || 'Erro ao salvar configurações')
+      setErrorMessage(data.error || 'Error saving settings')
       showTemporaryState(setSettingsButtonState, 'error')
     }
   }
@@ -133,7 +133,7 @@ export function SettingsPage() {
       router.invalidate()
     } else {
       const data = await res.json()
-      setErrorMessage(data.error || 'Erro ao salvar horários')
+      setErrorMessage(data.error || 'Error saving working hours')
       showTemporaryState(setHoursButtonState, 'error')
     }
   }
@@ -157,10 +157,10 @@ export function SettingsPage() {
 
       <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
         <div>
-          <h2 className='text-lg font-semibold text-neutral-100'>Horários de Trabalho</h2>
+          <h2 className='text-lg font-semibold text-neutral-100'>Working Hours</h2>
           <p className='text-sm text-neutral-400 mb-6'>
-            Configure os intervalos de disponibilidade para cada dia da semana. Você pode adicionar
-            múltiplos intervalos por dia (ex: manhã e tarde).
+            Set availability intervals for each day of the week. You can add
+            multiple intervals per day (e.g. morning and afternoon).
           </p>
 
           <div className='border border-neutral-800 rounded-lg divide-y divide-neutral-800 bg-neutral-900/30'>
@@ -175,7 +175,7 @@ export function SettingsPage() {
                     onClick={() => handleAddWorkingHours(dayOfWeek)}
                     className='text-xs px-3 py-1 bg-neutral-800 text-neutral-300 rounded-full hover:bg-neutral-700 transition-colors'
                   >
-                    <span className="hidden sm:inline">+ Adicionar intervalo</span>
+                    <span className="hidden sm:inline">+ Add interval</span>
                     <span className="sm:hidden">+ Add</span>
                   </button>
                 </div>
@@ -195,7 +195,7 @@ export function SettingsPage() {
                           }
                           className='time-input flex-1 sm:flex-none w-auto sm:w-32 px-2 md:px-3 py-1.5 bg-neutral-800 border border-neutral-700 rounded text-neutral-100 text-sm focus:outline-none focus:border-primary'
                         />
-                        <span className='text-neutral-500 text-xs sm:text-base'>até</span>
+                        <span className='text-neutral-500 text-xs sm:text-base'>to</span>
                         <input
                           type='time'
                           value={entry.endTime}
@@ -207,9 +207,9 @@ export function SettingsPage() {
                         <button
                           onClick={() => handleRemoveWorkingHours(entry.index)}
                           className='p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors shrink-0'
-                          title='Remover'
+                          title='Remove'
                         >
-                          <span className='sr-only'>Remover</span>
+                          <span className='sr-only'>Remove</span>
                           <TrashIcon />
                         </button>
                       </div>
@@ -233,22 +233,22 @@ export function SettingsPage() {
               }`}
             >
               {hoursButtonState === 'saving'
-                ? 'Salvando...'
+                ? 'Saving...'
                 : hoursButtonState === 'success'
-                ? 'Salvo!'
+                ? 'Saved!'
                 : hoursButtonState === 'error'
-                ? 'Erro'
-                : 'Salvar Horários'}
+                ? 'Error'
+                : 'Save Working Hours'}
             </button>
           </div>
         </div>
         <div>
-          <h2 className='text-lg font-semibold text-neutral-100 mb-4'>Configurações Gerais</h2>
+          <h2 className='text-lg font-semibold text-neutral-100 mb-4'>General Settings</h2>
 
           <div className='space-y-5'>
             <div>
               <label className='block text-sm font-medium text-neutral-300 mb-2'>
-                Quantos dias mostrar à frente
+                How many days ahead to show
               </label>
               <input
                 type='number'
@@ -263,7 +263,7 @@ export function SettingsPage() {
             </div>
             <div>
               <label className='block text-sm font-medium text-neutral-300 mb-2'>
-                Antecedência mínima para novos agendamentos (minutos)
+                Minimum notice for new appointments (minutes)
               </label>
               <input
                 type='number'
@@ -279,7 +279,7 @@ export function SettingsPage() {
 
             <div>
               <label className='block text-sm font-medium text-neutral-300 mb-2'>
-                Antecedência mínima para reagendamento (minutos)
+                Minimum notice for rescheduling (minutes)
               </label>
               <input
                 type='number'
@@ -295,7 +295,7 @@ export function SettingsPage() {
 
             <div>
               <label className='block text-sm font-medium text-neutral-300 mb-2'>
-                Intervalo entre horários disponíveis (minutos)
+                Interval between available times (minutes)
               </label>
               <select
                 value={settings.granularityMinutes}
@@ -304,16 +304,16 @@ export function SettingsPage() {
                 }
                 className='w-full px-4 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:border-primary'
               >
-                <option value={15}>15 minutos</option>
-                <option value={30}>30 minutos</option>
-                <option value={60}>60 minutos</option>
-                <option value={120}>120 minutos</option>
+                <option value={15}>15 minutes</option>
+                <option value={30}>30 minutes</option>
+                <option value={60}>60 minutes</option>
+                <option value={120}>120 minutes</option>
               </select>
             </div>
 
             <div>
               <label className='block text-sm font-medium text-neutral-300 mb-2'>
-                Tempo antes e depois de cada agendamento (minutos)
+                Buffer before and after each appointment (minutes)
               </label>
               <input
                 type='number'
@@ -341,12 +341,12 @@ export function SettingsPage() {
               }`}
             >
               {settingsButtonState === 'saving'
-                ? 'Salvando...'
+                ? 'Saving...'
                 : settingsButtonState === 'success'
-                ? 'Salvo!'
+                ? 'Saved!'
                 : settingsButtonState === 'error'
-                ? 'Erro'
-                : 'Salvar Configurações'}
+                ? 'Error'
+                : 'Save Settings'}
             </button>
           </div>
         </div>

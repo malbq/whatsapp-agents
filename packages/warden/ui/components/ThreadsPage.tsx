@@ -12,9 +12,9 @@ export function ThreadsPage() {
   return (
     <div className='p-4 md:p-6'>
       <div className='flex items-center justify-between mb-6'>
-        <h1 className='text-xl md:text-2xl font-bold text-neutral-100'>Conversas</h1>
+        <h1 className='text-xl md:text-2xl font-bold text-neutral-100'>Conversations</h1>
         <span className='bg-neutral-900 px-3 py-1 rounded-full text-xs font-medium text-neutral-400 border border-neutral-800'>
-          {threads.length} {threads.length === 1 ? 'conversa' : 'conversas'}
+          {threads.length} {threads.length === 1 ? 'conversation' : 'conversations'}
         </span>
       </div>
 
@@ -35,8 +35,8 @@ export function ThreadsPage() {
               />
             </svg>
           </div>
-          <h3 className='text-lg font-medium text-neutral-100 mb-1'>Nenhuma conversa</h3>
-          <p className='text-neutral-400 text-sm'>As mensagens recebidas aparecerao aqui.</p>
+          <h3 className='text-lg font-medium text-neutral-100 mb-1'>No conversations</h3>
+          <p className='text-neutral-400 text-sm'>Incoming messages will appear here.</p>
         </div>
       ) : (
         <div className='space-y-3'>

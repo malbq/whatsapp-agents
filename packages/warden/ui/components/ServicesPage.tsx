@@ -138,14 +138,14 @@ export function ServicesPage() {
       router.invalidate()
     } else {
       const errorData = (await res.json()) as { error?: string }
-      setMessage({ type: 'error', text: errorData.error || 'Erro ao salvar' })
+      setMessage({ type: 'error', text: errorData.error || 'Error saving' })
     }
 
     setSaving(false)
   }
 
   const handleDelete = async (service: Service) => {
-    if (!confirm(`Tem certeza que deseja excluir "${service.name}"?`)) {
+    if (!confirm(`Are you sure you want to delete "${service.name}"?`)) {
       return
     }
 
@@ -161,7 +161,7 @@ export function ServicesPage() {
       router.invalidate()
     } else {
       const errorData = (await res.json()) as { error?: string }
-      setMessage({ type: 'error', text: errorData.error || 'Erro ao excluir' })
+      setMessage({ type: 'error', text: errorData.error || 'Error deleting' })
     }
 
     setDeleting(null)
@@ -171,14 +171,14 @@ export function ServicesPage() {
     <div className='p-4 md:p-6 space-y-6'>
       <div className='flex items-center justify-between'>
         <div>
-          <h1 className='text-xl md:text-2xl font-bold text-neutral-100 mb-2'>Serviços</h1>
-          <p className='text-sm md:text-base text-neutral-400'>Gerencie os serviços oferecidos e suas durações.</p>
+          <h1 className='text-xl md:text-2xl font-bold text-neutral-100 mb-2'>Services</h1>
+          <p className='text-sm md:text-base text-neutral-400'>Manage the services you offer and their durations.</p>
         </div>
         <button
           onClick={openCreateModal}
           className='px-4 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors'
         >
-          <span className='hidden sm:inline'>+ Novo Serviço</span>
+          <span className='hidden sm:inline'>+ New Service</span>
           <span className='sm:hidden'>+</span>
         </button>
       </div>
@@ -197,7 +197,7 @@ export function ServicesPage() {
 
       {services.length === 0 ? (
         <div className='bg-neutral-900/50 border border-neutral-800 rounded-xl p-12 text-center'>
-          <p className='text-neutral-400'>Nenhum serviço cadastrado.</p>
+          <p className='text-neutral-400'>No services registered.</p>
         </div>
       ) : (
         <div className='bg-neutral-900/50 border border-neutral-800 rounded-xl overflow-hidden'>
@@ -205,14 +205,14 @@ export function ServicesPage() {
             <table className='w-full'>
               <thead>
                 <tr className='border-b border-neutral-800'>
-                  <th className='text-left px-6 py-4 text-sm font-medium text-neutral-400'>Nome</th>
+                  <th className='text-left px-6 py-4 text-sm font-medium text-neutral-400'>Name</th>
                   <th className='text-left px-6 py-4 text-sm font-medium text-neutral-400 hidden md:table-cell'>
-                    Descrição
+                    Description
                   </th>
                   <th className='text-left px-6 py-4 text-sm font-medium text-neutral-400'>
-                    Duração
+                    Duration
                   </th>
-                  <th className='text-right px-6 py-4 text-sm font-medium text-neutral-400'>Ações</th>
+                  <th className='text-right px-6 py-4 text-sm font-medium text-neutral-400'>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -233,18 +233,18 @@ export function ServicesPage() {
                         <button
                           onClick={() => openEditModal(service)}
                           className='p-2 text-primary hover:text-primary/80 hover:bg-primary/10 rounded-lg transition-colors'
-                          title='Editar'
+                          title='Edit'
                         >
-                          <span className='sr-only'>Editar</span>
+                          <span className='sr-only'>Edit</span>
                           <EditIcon />
                         </button>
                         <button
                           onClick={() => handleDelete(service)}
                           disabled={deleting === service.id}
                           className='p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg disabled:opacity-50 transition-colors'
-                          title='Excluir'
+                          title='Delete'
                         >
-                          <span className='sr-only'>Excluir</span>
+                          <span className='sr-only'>Delete</span>
                           {deleting === service.id ? (
                             <div className='w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin' />
                           ) : (
@@ -266,7 +266,7 @@ export function ServicesPage() {
         <div className='fixed inset-0 bg-black/60 flex items-center justify-center z-50'>
           <div className='bg-neutral-900 border border-neutral-800 rounded-xl w-full max-w-md mx-4 p-6'>
             <h2 className='text-xl font-semibold text-neutral-100 mb-6'>
-              {editingService ? 'Editar Serviço' : 'Novo Serviço'}
+              {editingService ? 'Edit Service' : 'New Service'}
             </h2>
 
             <form
@@ -274,7 +274,7 @@ export function ServicesPage() {
               className='space-y-4'
             >
               <div>
-                <label className='block text-sm font-medium text-neutral-300 mb-2'>Nome *</label>
+                <label className='block text-sm font-medium text-neutral-300 mb-2'>Name *</label>
                 <input
                   type='text'
                   required
@@ -282,12 +282,12 @@ export function ServicesPage() {
                   value={formData.name}
                   onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
                   className='w-full px-4 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:border-primary'
-                  placeholder='Ex: Consulta inicial'
+                  placeholder='E.g. Initial consultation'
                 />
               </div>
 
               <div>
-                <label className='block text-sm font-medium text-neutral-300 mb-2'>Descrição</label>
+                <label className='block text-sm font-medium text-neutral-300 mb-2'>Description</label>
                 <textarea
                   maxLength={500}
                   value={formData.description}
@@ -296,13 +296,13 @@ export function ServicesPage() {
                   }
                   className='w-full px-4 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:border-primary resize-none'
                   rows={3}
-                  placeholder='Descrição opcional do serviço'
+                  placeholder='Optional service description'
                 />
               </div>
 
               <div>
                 <label className='block text-sm font-medium text-neutral-300 mb-2'>
-                  Duração (minutos) *
+                  Duration (minutes) *
                 </label>
                 <input
                   type='number'
@@ -319,7 +319,7 @@ export function ServicesPage() {
                   className='w-full px-4 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-neutral-100 focus:outline-none focus:border-primary'
                 />
                 <p className='text-xs text-neutral-500 mt-1'>
-                  Entre 5 minutos e 8 horas (480 minutos)
+                  Between 5 minutes and 8 hours (480 minutes)
                 </p>
               </div>
 
@@ -329,14 +329,14 @@ export function ServicesPage() {
                   onClick={closeModal}
                   className='flex-1 px-4 py-2 bg-neutral-800 text-neutral-300 rounded-lg font-medium hover:bg-neutral-700 transition-colors'
                 >
-                  Cancelar
+                  Cancel
                 </button>
                 <button
                   type='submit'
                   disabled={saving || !formData.name.trim()}
                   className='flex-1 px-4 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
                 >
-                  {saving ? 'Salvando...' : editingService ? 'Salvar' : 'Criar'}
+                  {saving ? 'Saving...' : editingService ? 'Save' : 'Create'}
                 </button>
               </div>
             </form>

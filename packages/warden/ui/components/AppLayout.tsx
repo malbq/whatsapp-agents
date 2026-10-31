@@ -30,7 +30,7 @@ export function AppLayout() {
                   className: 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-100',
                 }}
               >
-                Calendário
+                Calendar
               </Link>
               <Link
                 to='/threads'
@@ -40,7 +40,7 @@ export function AppLayout() {
                   className: 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-100',
                 }}
               >
-                Conversas
+                Conversations
               </Link>
               <Link
                 to='/settings'
@@ -50,7 +50,7 @@ export function AppLayout() {
                   className: 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-100',
                 }}
               >
-                Configurações
+                Settings
               </Link>
               <Link
                 to='/services'
@@ -60,7 +60,7 @@ export function AppLayout() {
                   className: 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-100',
                 }}
               >
-                Serviços
+                Services
               </Link>
             </div>
           </div>
@@ -70,7 +70,7 @@ export function AppLayout() {
               href='/auth/logout'
               className='text-neutral-400 hover:text-red-400 hover:bg-red-500/10 no-underline text-sm font-medium py-2 px-4 rounded-full transition-all'
             >
-              Sair
+              Log out
             </a>
           </div>
 
@@ -160,7 +160,7 @@ export function AppLayout() {
             }}
             onClick={() => setIsMenuOpen(false)}
           >
-            Calendário
+            Calendar
           </Link>
           <Link
             to='/threads'
@@ -171,7 +171,7 @@ export function AppLayout() {
             }}
             onClick={() => setIsMenuOpen(false)}
           >
-            Conversas
+            Conversations
           </Link>
           <Link
             to='/settings'
@@ -182,7 +182,7 @@ export function AppLayout() {
             }}
             onClick={() => setIsMenuOpen(false)}
           >
-            Configurações
+            Settings
           </Link>
           <Link
             to='/services'
@@ -193,14 +193,14 @@ export function AppLayout() {
             }}
             onClick={() => setIsMenuOpen(false)}
           >
-            Serviços
+            Services
           </Link>
           <div className='h-px bg-neutral-800 my-1' />
           <a
             href='/auth/logout'
             className='text-neutral-400 hover:text-red-400 hover:bg-red-500/10 no-underline text-sm font-medium px-4 py-3 rounded-lg transition-all'
           >
-            Sair
+            Log out
           </a>
         </div>
       </div>

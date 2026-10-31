@@ -15,22 +15,23 @@ export const createCancelAppointmentTool = (ctx: ToolContext) =>
       )
 
       if (!upcomingAppointment) {
-        return 'Não encontrei nenhum agendamento futuro para cancelar.'
+        return 'No upcoming appointment found to cancel.'
       }
 
       await ctx.calendar.cancelAppointment(upcomingAppointment.calendarEventId)
       await ctx.db.updateAppointmentStatus(upcomingAppointment.id, 'cancelled')
 
-      const formattedDate = upcomingAppointment.scheduledAt.toLocaleDateString('pt-BR', {
+      const formattedDate = upcomingAppointment.scheduledAt.toLocaleDateString('en-US', {
         weekday: 'long',
         day: '2-digit',
         month: '2-digit',
       })
-      const formattedTime = upcomingAppointment.scheduledAt.toLocaleTimeString('pt-BR', {
+      const formattedTime = upcomingAppointment.scheduledAt.toLocaleTimeString('en-US', {
         hour: '2-digit',
         minute: '2-digit',
+        hour12: false,
       })
 
-      return `Agendamento para ${formattedDate} às ${formattedTime} foi cancelado com sucesso.`
+      return `Appointment for ${formattedDate} at ${formattedTime} was successfully cancelled.`
     },
   })

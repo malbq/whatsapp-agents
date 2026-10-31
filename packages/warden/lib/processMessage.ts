@@ -26,7 +26,7 @@ export const processMessage =
       .persistUser({ waId: userWaId, name: userName })
       .catch((error) => {
         deps.chat.sendText(userWaId, {
-          text: 'Desculpe, tive um problema ao processar sua mensagem e não consigo te responder agora.',
+          text: 'Sorry, I had a problem processing your message and can\'t reply right now.',
         })
         console.error('Error persisting user:', error)
         return null
@@ -37,7 +37,7 @@ export const processMessage =
     if (message.type !== 'text') {
       const response: TextMessage = {
         type: 'text',
-        text: 'Desculpe, não entendo este tipo de mensagem. Por favor, envie uma mensagem de texto.',
+        text: 'Sorry, I don\'t understand this type of message. Please send a text message.',
       }
       const assistantMessageId = await deps.chat.sendText(userWaId, response)
       deps.db.storeMessage([
@@ -85,7 +85,7 @@ export const processMessage =
     const response = await generate({ messages, tools, db: deps.db }).catch(async (error) => {
       console.error('Error generating response:', JSON.stringify(error, null, 2))
       await deps.chat.sendText(userWaId, {
-        text: 'Desculpe, ocorreu um problema no processamento da sua solicitação. Tente novamente mais tarde.',
+        text: 'Sorry, there was a problem processing your request. Please try again later.',
       })
       return null
     })
@@ -100,12 +100,12 @@ export const processMessage =
       // For non-text messages in PoC, convert to text description
       console.warn('Non-text output type, converting to text:', response.output.type)
       return deps.chat.sendText(userWaId, {
-        text: 'Resposta processada com sucesso.',
+        text: 'Response processed successfully.',
       })
     })().catch((error) => {
       console.error(error)
       return deps.chat.sendText(userWaId, {
-        text: 'Desculpe, ocorreu um erro ao processar a resposta.',
+        text: 'Sorry, an error occurred while processing the response.',
       })
     })
 

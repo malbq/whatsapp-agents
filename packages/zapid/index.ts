@@ -76,7 +76,7 @@ const webhookApp = createWebhookApp(
             console.warn('Message quota exceeded')
             // TODO send template message
             chat.sendText(userWaId, {
-              text: '🤐 _Você atingiu o limite de mensagens de hoje._',
+              text: '🤐 _You have reached your daily message limit._',
             })
             return
           }

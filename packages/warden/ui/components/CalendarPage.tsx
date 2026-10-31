@@ -114,7 +114,7 @@ export function CalendarPage() {
     })
     if (!res.ok) {
       const err = await res.json()
-      throw new Error(err.error || 'Erro ao criar calendário')
+      throw new Error(err.error || 'Error creating calendar')
     }
     await router.invalidate()
   }
@@ -133,7 +133,7 @@ export function CalendarPage() {
     })
     if (!res.ok) {
       const err = await res.json()
-      throw new Error(err.error || 'Erro ao criar folga')
+      throw new Error(err.error || 'Error creating time off')
     }
     await router.invalidate()
   }

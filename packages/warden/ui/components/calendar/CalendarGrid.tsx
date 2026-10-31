@@ -2,7 +2,7 @@ import { parseEventDate } from './dateUtils'
 import { EventPill } from './EventPill'
 import type { CalendarEvent } from './types'
 
-const DAY_NAMES = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab']
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 interface MonthGridProps {
   events: CalendarEvent[]
@@ -113,7 +113,7 @@ export function MonthGrid({
                 {(eventsByDay.get(day)?.length ?? 0) > 4 && (
                 <div className='text-[10px] text-neutral-500 font-medium px-1 md:px-2 py-0.5'>
                   <span className='md:hidden'>+{(eventsByDay.get(day)!.length - 4)}</span>
-                  <span className='hidden md:inline'>+{eventsByDay.get(day)!.length - 4} mais</span>
+                  <span className='hidden md:inline'>+{eventsByDay.get(day)!.length - 4} more</span>
                 </div>
               )}
             </div>

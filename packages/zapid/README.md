@@ -1,197 +1,194 @@
-# Assistente de WhatsApp com IA
+# AI WhatsApp Assistant
 
 **Codename: zapid**
 
-Um assistente pessoal baseado em chat para WhatsApp. Armazena mensagens como memória semântica, recupera arquivos e histórico, busca na web e oferece recomendações contextuais com foco em privacidade.
+A chat-based personal assistant for WhatsApp. Stores messages as semantic memory, retrieves files and history, searches the web, and gives contextual recommendations with a focus on privacy.
 
-## Casos de Uso
+## Use Cases
 
-- Armazenar e recuperar documentos
-- Fazer perguntas usando contexto pessoal ou busca na web
-- Encontrar lugares, restaurantes, empresas próximas
-- Obter planos de treino/dieta, lembretes de refeições, receitas
-- Buscar e resumir conteúdo da web
+- Store and retrieve documents
+- Ask questions using personal context or web search
+- Find nearby places, restaurants, businesses
+- Get workout/diet plans, meal reminders, recipes
+- Search and summarize web content
 
-## Capacidades
+## Capabilities
 
-- **Multimodal (Google Gemini)**: áudio/voz, imagem, documento
-- **Memória semântica**: embeddings vetoriais para busca por similaridade
-- **IA conversacional**: OpenAI GPT-5 Mini
-- **Pesquisa na web**: Brave Search com extração de conteúdo
-- **Locais**: Google Places com dados verificados e compartilhamento de contato e localização
-- **Arquivos**: armazenamento e recuperação de imagens e documentos
-- **Recursos nativos do WhatsApp**: reações, localização, contatos
-- **Privacidade**: perfis de usuário com consentimento explícito
+- **Multimodal (Google Gemini)**: audio/voice, image, document
+- **Semantic memory**: vector embeddings for similarity search
+- **Conversational AI**: OpenAI GPT-5 Mini
+- **Web search**: Brave Search with content extraction
+- **Places**: Google Places with verified data and contact/location sharing
+- **Files**: image and document storage and retrieval
+- **Native WhatsApp features**: reactions, location, contacts
+- **Privacy**: user profiles with explicit consent
 
-## Como Funciona
+## How It Works
 
-1. Recebemos a mensagem (texto/mídia) via WhatsApp
-2. Extraímos e entendemos o conteúdo multimodal (transcrição de áudio/voz, análise de imagem, leitura de documentos)
-3. Carregamos perfil e histórico recente automaticamente para o contexto da conversa
-4. Decidimos ações: recuperar memórias/arquivos, pesquisar web, consultar lugares, atualizar perfil
-5. Geramos e entregamos a resposta com fallback seguro
-6. Pós-processamos em best‑effort: armazenamento de memória (mensagens, mídia, embeddings) e enriquecimento de perfil
+1. Receive the message (text/media) via WhatsApp
+2. Extract and understand multimodal content (audio/voice transcription, image analysis, document reading)
+3. Automatically load profile and recent history into the conversation context
+4. Decide actions: retrieve memories/files, search the web, query places, update profile
+5. Generate and deliver the response with a safe fallback
+6. Best-effort post-processing: memory storage (messages, media, embeddings) and profile enrichment
 
 ## Roadmap
 
-### Próximas Prioridades
+### Next Priorities
 
-- Retenção de contexto aprimorada com resultados de ferramentas no histórico
-- Análise de custo por operação: inferência, embedding, pesquisa na web, localização, armazenamento de arquivos, etc.
-- Sistema de planos de assinatura e rastreamento de uso
-- Conformidade LGPD: criptografia, consentimento explícito, termos de serviço e política de privacidade, exportação/exclusão de dados
-- Observabilidade: Monitoramento e alertas de custos, métricas e logging
-- Confiabilidade: redundância de infraestrutura, testes abrangentes, retry mechanisms, tratamento de erros
+- Better context retention with tool results in history
+- Per-operation cost analysis: inference, embedding, web search, places, file storage, etc.
+- Subscription plans and usage tracking
+- LGPD compliance: encryption, explicit consent, terms of service and privacy policy, data export/deletion
+- Observability: cost monitoring and alerts, metrics and logging
+- Reliability: infrastructure redundancy, comprehensive tests, retry mechanisms, error handling
 
-### Funcionalidades Futuras
+### Future Features
 
-- Ingestão de vídeo
-- TTS para respostas em áudio
-- Conversa em tempo real via [WhatsApp Cloud API Calling](https://developers.facebook.com/docs/whatsapp/cloud-api/calling)
-- Novas ferramentas:
-  - Geração de documentos (PDF, Word, Excel)
-  - Integração com armazenamento externo (Google Drive, OneDrive, Dropbox)
-  - Acesso à caixa de entrada de e-mail
-  - Geração/edição de imagens
+- Video ingestion
+- TTS for audio replies
+- Real-time conversation via [WhatsApp Cloud API Calling](https://developers.facebook.com/docs/whatsapp/cloud-api/calling)
+- New tools:
+  - Document generation (PDF, Word, Excel)
+  - External storage integration (Google Drive, OneDrive, Dropbox)
+  - Email inbox access
+  - Image generation/editing
 
-## Planos
+## Plans
 
-> Os planos abaixo ainda não estão implementados; são um rascunho de produto/precificação para o futuro.
+> The plans below are not implemented; they are a product/pricing draft for the future.
 
-### Gratuito
+### Free
 
-- Modelo: GPT-5 Nano ou modelo open-source
-- Mensagens por dia: ~50
-- Multimodal: Texto apenas
-- Memória: Histórico recente apenas
-- Perfil: Não
-- Arquivos: Não
-- Ferramentas: —
+- Model: GPT-5 Nano or an open-source model
+- Messages per day: ~50
+- Multimodal: Text only
+- Memory: Recent history only
+- Profile: No
+- Files: No
+- Tools: —
 
-### Básico
+### Basic
 
-- Modelo: GPT-5 Mini
-- Mensagens por dia: ~500
-- Multimodal: Sim
-- Memória: Perfil + histórico completo
-- Arquivos: Armazenar e recuperar
-- Ferramentas: Pesquisa na web, Google Places
+- Model: GPT-5 Mini
+- Messages per day: ~500
+- Multimodal: Yes
+- Memory: Profile + full history
+- Files: Store and retrieve
+- Tools: Web search, Google Places
 
 ### Pro
 
-- Modelo: Premium à escolha
-- Mensagens: Ilimitadas
-- Multimodal: Vídeo incluído
-- Memória: Perfil + histórico completo
-- Arquivos: Integração com armazenamento externo
-- Ferramentas: Avançadas (em definição)
+- Model: Premium of your choice
+- Messages: Unlimited
+- Multimodal: Video included
+- Memory: Profile + full history
+- Files: External storage integration
+- Tools: Advanced (to be defined)
 
-## Desenvolvimento e Stack
+## Development and Stack
 
-### Stack técnico
+### Tech stack
 
-- Framework web: HonoJS v4 (via pacote `@wa/server`)
-- Abstração de LLM: Vercel AI SDK (`ai`) com múltiplos provedores (OpenAI Responses + Google Gemini)
-- Serviços externos: Meta Business API (WhatsApp), OpenAI Responses API, Google AI Studio
-- Embeddings: Cloudflare Workers AI (geração) + vetores em PostgreSQL (extensão `vector` / pgvector)
-- Armazenamento de arquivos: `unstorage` filesystem (`FilesystemStorage`); integração com Cloudflare R2 planejada para produção
-- Agendador: suporte a lembretes baseado em cron via pacote `@wa/core` (integração específica do Zapid ainda em evolução)
+- Web framework: HonoJS v4 (via the `@wa/server` package)
+- LLM abstraction: Vercel AI SDK (`ai`) with multiple providers (OpenAI Responses + Google Gemini)
+- External services: Meta Business API (WhatsApp), OpenAI Responses API, Google AI Studio
+- Embeddings: Cloudflare Workers AI (generation) + vectors in PostgreSQL (`vector` extension / pgvector)
+- File storage: `unstorage` filesystem (`FilesystemStorage`); Cloudflare R2 integration planned for production
+- Scheduler: cron-based reminder support via the `@wa/core` package (Zapid-specific integration still in progress)
 
-### Convenções
+### Conventions
 
-- TypeScript estrito; prefira `unknown` a `any`. Valide com zod
-- ESM somente; imports relativos, agrupados (std, terceiros, internos)
-- Funções pequenas; retorne cedo em vez de `else`
-- Evite `try/catch` amplo; deixe erros propagarem quando possível
-- Sem estado global mutável; passe dependências por parâmetro
-- Variáveis/Tipos: `camelCase` para variáveis/funções; `PascalCase` para tipos/classes; `UPPER_SNAKE` para env
+- Strict TypeScript; prefer `unknown` over `any`. Validate with zod
+- ESM only; relative imports, grouped (std, third-party, internal)
+- Small functions; return early instead of `else`
+- Avoid broad `try/catch`; let errors propagate when possible
+- No global mutable state; pass dependencies as parameters
+- Variables/Types: `camelCase` for variables/functions; `PascalCase` for types/classes; `UPPER_SNAKE` for env
 
-## Arquitetura e Fluxo
+## Architecture and Flow
 
-Zapid segue um pipeline baseado em **Context** (estado efêmero por requisição, mantido em `AsyncLocalStorage`), com fases bem definidas:
+Zapid follows a pipeline built around a **Context** (ephemeral per-request state, kept in `AsyncLocalStorage`), with well-defined phases:
 
-1. `persistUser` garante `context.user` (cria ou carrega o usuário, incluindo o último perfil salvo).
-2. Ingestão da mensagem: convertemos a notificação do WhatsApp em um `DB.MessageInsert` via `toUserModelMessage`:
-   - texto é usado diretamente
-   - voz/áudio são transcritos com Google Gemini
-   - imagens são enviadas para análise (descrição + texto na imagem)
-   - documentos são lidos (PDF → `parsePdf`, demais → `transcribeDocument`) e preenchemos `context.inbound`.
-3. `responseGeneration` monta o contexto do agente (data/hora atual, perfil do usuário, mensagens recentes, instruções de sistema) e chama o modelo `gpt-5-mini-2025-08-07` via Vercel AI SDK para gerar um `GeneratedWhatsappMessage`.
-4. Entrega da resposta: `sendWhatsappMessage` envia o output pelo cliente WhatsApp (`chat`) e popula `context.outbound` com a mensagem da IA e metadados de uso.
-5. Pós-resposta (best‑effort): `storeMessageExchange` persiste mensagens e mídias:
-   - faz dedupe de arquivos por hash
-   - salva recursos em `resource` + storage filesystem
-   - grava mensagens em `message`
-   - se existir `context.improvedProfile`, grava nova versão em `user_profile_version`.
-6. Embeddings: `embedMessages` extrai texto da mensagem do usuário e da última resposta (incluindo descrição de imagem/documento quando aplicável), gera embeddings via Cloudflare Workers AI e grava `snippet` para busca semântica.
+1. User setup (`index.ts`): `db.persistUser` creates or loads the user (including the latest saved profile) and loads their entitlements into `context`.
+2. Message ingestion (`ingest.ts`): the WhatsApp notification is converted into a `DB.MessageInsert` via `toUserModelMessage`:
+   - text is used directly
+   - voice/audio is transcribed with Google Gemini
+   - images and documents are deduplicated by hash and saved to `resource` + filesystem storage
+   - the message is written to `message`, then embedded asynchronously by `embedInboundMessage` (images are analyzed; PDFs go through `parsePdf`, other documents through `transcribeDocument`).
+3. Consent and quota (`checkUserConsent`, `entitlements`): users without consent receive the onboarding template and stop here; users over the daily message quota get a limit notice.
+4. `responseGeneration` builds the agent context (current date/time, user profile, recent messages, system instructions) and calls the `gpt-5-mini-2025-08-07` model via Vercel AI SDK to generate a `GeneratedWhatsappMessage`.
+5. Response delivery: `sendWhatsappMessage` sends the output through the WhatsApp client (`chat`) and populates `context.outbound` with the AI message and usage metadata.
+6. Post-response (best‑effort): `storeAgentResponse` persists the outbound message and token usage; if `context.improvedProfile` exists, it writes a new version to `user_profile_version`.
+7. Embeddings: `embedOutboundMessages` extracts text from the response, generates embeddings via Cloudflare Workers AI, and writes `snippet` rows for semantic search.
 
-Características:
+Characteristics:
 
-- Raciocínio orientado a ferramentas (via Vercel AI SDK + `@wa/core/tools` e ferramentas locais):
+- Tool-driven reasoning (via Vercel AI SDK + `@wa/core/tools` and local tools):
   - `search_conversation_history`
   - `search_files`
-  - `send_text`
   - `web_search`
   - `web_fetch`
   - `google_places`
   - `send_reaction`
   - `update_user_profile`
-- Efeitos colaterais acontecem dentro de sistemas/ferramentas (persistência, storage, web search), não no core do pipeline de decisão.
-- Segmentação de erros:
-  - fluxo de resposta: em falha, logamos e enviamos fallback educado ao usuário
-  - pós-tarefas: best‑effort; falhas são logadas e não afetam o usuário.
-- Estratégia dupla de embeddings: entrada (mensagem atual do usuário) + saída (última resposta), para memória futura, personalização e busca por similaridade.
-- Logging contextual com `userId`.
-- Extensível: novos sistemas/ferramentas podem ser inseridos sem inflar o `Context` além do necessário.
+- Side effects happen inside systems/tools (persistence, storage, web search), not in the core decision pipeline.
+- Error segmentation:
+  - response flow: on failure, we log and send the user a polite fallback
+  - post-tasks: best‑effort; failures are logged and do not affect the user.
+- Dual embedding strategy: input (current user message) + output (latest response), for future memory, personalization, and similarity search.
+- Contextual logging with `userId`.
+- Extensible: new systems/tools can be added without growing `Context` beyond what is needed.
 
-## Estrutura do Código
+## Code Structure
 
-- `prompts/`: prompts curtos, focados em tokens (ex.: `system.ts`, `userProfile.ts`, `recentMessages.ts`)
-- `systems/`: funções assíncronas focadas, que leem/escrevem o `Context` via `getContext()`
-  - Exemplos: `persistUser.ts`, `responseGeneration.ts`, `storeMessageExchange.ts`, `embedMessages.ts`
-- `tools/`: ferramentas de primeira classe chamadas pelo modelo
-  - Específicas do agente: `googlePlaces.ts`, `updateUserProfile.ts`
-  - Genéricas (busca, histórico, envio de texto/reação, web): expostas por `@wa/core/tools`
-- `context.ts`: define o tipo `Context` e o armazenamento por requisição (`runContext` / `getContext`)
-- `db.ts` / `dbSchema.ts`: reuso do schema base de `@wa/core` + tabelas específicas (`user_profile_version`)
-- `types.ts` / `zapid.d.ts`: tipos auxiliares do agente
+- `prompts/`: short, token-focused prompts (e.g. `system.ts`, `userProfile.ts`, `recentMessages.ts`)
+- `systems/`: focused async functions that read/write `Context` via `getContext()`
+  - Examples: `checkUserConsent.ts`, `responseGeneration.ts`, `storeAgentResponse.ts`, `embedInboundMessage.ts`, `embedOutboundMessages.ts`
+- `tools/`: first-class tools called by the model
+  - Agent-specific: `googlePlaces.ts`, `updateUserProfile.ts`
+  - Generic (file/history search, reactions, web): exposed by `@wa/core/tools`
+- `context.ts`: defines the `Context` type and per-request storage (`runContext` / `getContext`)
+- `db.ts` / `dbSchema.ts`: reuses the base schema from `@wa/core` + agent-specific tables (`user_profile_version`, plans and entitlements)
+- `zapid.d.ts`: agent helper types
 
-## Banco de Dados
+## Database
 
-- PostgreSQL com suporte nativo a vetores (extensão `vector` / pgvector)
-- Tabelas base herdadas de `@wa/core`:
-  - `user`, `message`, `snippet`, `resource`, `reminder`, `raw_incoming_message`
-- Tabelas específicas do Zapid:
-  - `user_profile_version` (histórico de versões de perfil por usuário/mensagem)
-- Vetores: `vector(768)` com similaridade cosseno (indexados em `snippet.vector`)
+- PostgreSQL with native vector support (`vector` extension / pgvector)
+- Base tables inherited from `@wa/core`:
+  - `user`, `message`, `token_usage`, `snippet`, `resource`, `reminder`, `raw_incoming_message`
+- Zapid-specific tables:
+  - `user_profile_version` (profile version history per user/message)
+  - plans and entitlements (`plan`, `user_subscription`, `plan_entitlement`, `user_entitlement_override`, `user_entitlement_ledger`)
+- Vectors: `vector(768)` with cosine similarity (indexed on `snippet.vector`)
 
-### Setup Inicial
+### Initial Setup
 
-1. Execute `docker compose up -d` (na raiz do monorepo) para iniciar o container PostgreSQL.
-2. Conecte no banco e crie o database: `CREATE DATABASE zapid;`.
-3. Habilite a extensão pgvector: `CREATE EXTENSION IF NOT EXISTS vector;`.
-4. Rode as migrações:
+1. Run `docker compose up -d` (at the monorepo root) to start the PostgreSQL container.
+2. Connect to the server and create the database: `CREATE DATABASE zapid;`.
+3. Enable the pgvector extension: `CREATE EXTENSION IF NOT EXISTS vector;`.
+4. Run the migrations:
    - `bun run --filter '@wa/agent-zapid' db:clean`
    - `bun run --filter '@wa/agent-zapid' db:generate`
    - `bun run --filter '@wa/agent-zapid' db:migrate`
    - `bun run --filter '@wa/agent-zapid' db:seed`
 
-## Dicas de Testes
+## Testing Tips
 
-- Use o runner do Bun; mantenha testes determinísticos e pequenos
-- Espelhe padrões de testes existentes em `packages/core` e em `packages/zapid/agent.integration.test.ts` (`bun run test:integration`, requer Docker e chaves de API)
-- Mocks apenas para chat e dependências de IA
-- Prefira asserts exatos: formas de objetos/arrays, `toThrow(ErrorClass)`, `toThrow(/mensagem/)`
-- Limpe o banco em `afterEach` com helpers (veja `agent.integration.test.ts`)
+- Use Bun's runner; keep tests deterministic and small
+- Mirror existing test patterns in `packages/core` and in `packages/zapid/agent.integration.test.ts` (`bun run test:integration`, requires Docker and API keys)
+- Mock only chat and AI dependencies
+- Prefer exact asserts: object/array shapes, `toThrow(ErrorClass)`, `toThrow(/message/)`
+- Clean the database in `afterEach` with helpers (see `agent.integration.test.ts`)
 
 ## Build, lint, typecheck
 
-A partir da raiz do repositório:
+From the repository root:
 
-- Typecheck de todos os pacotes: `bun run typecheck`
-- Lint de todos os pacotes (oxc): `bun run lint`
+- Typecheck all packages: `bun run typecheck`
+- Lint all packages (oxc): `bun run lint`
 
-Dentro do pacote, scripts disponíveis:
+Scripts available inside the package:
 
 - `bun run typecheck`
 - `bun run lint`

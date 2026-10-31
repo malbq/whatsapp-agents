@@ -47,28 +47,28 @@ export function CreateTimeOffModal({
     setError(null)
 
     if (!defaultCalendarId) {
-      setError('Nenhum calendário padrão configurado')
+      setError('No default calendar configured')
       return
     }
 
     if (!summary.trim()) {
-      setError('Título é obrigatório')
+      setError('Title is required')
       return
     }
 
     if (!startDate) {
-      setError('Data de início é obrigatória')
+      setError('Start date is required')
       return
     }
 
     if (!endDate) {
-      setError('Data de fim é obrigatória')
+      setError('End date is required')
       return
     }
 
     // End date should be after start date
     if (endDate < startDate) {
-      setError('Data de fim deve ser após a data de início')
+      setError('End date must be after start date')
       return
     }
 
@@ -93,7 +93,7 @@ export function CreateTimeOffModal({
       setDescription('')
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao criar evento')
+      setError(err instanceof Error ? err.message : 'Error creating event')
     } finally {
       setIsSubmitting(false)
     }
@@ -115,7 +115,7 @@ export function CreateTimeOffModal({
     >
       <div className='bg-neutral-900 rounded-2xl shadow-xl w-full max-w-md border border-neutral-800'>
         <div className='flex items-center justify-between p-6 border-b border-neutral-800'>
-          <h2 className='text-lg font-semibold text-neutral-100'>Folga / Ausência</h2>
+          <h2 className='text-lg font-semibold text-neutral-100'>Time Off / Absence</h2>
           <button
             type='button'
             onClick={onClose}
@@ -137,7 +137,7 @@ export function CreateTimeOffModal({
               htmlFor='timeoff-summary'
               className='block text-sm font-medium text-neutral-400 mb-1.5'
             >
-              Título *
+              Title *
             </label>
             <input
               id='timeoff-summary'
@@ -145,7 +145,7 @@ export function CreateTimeOffModal({
               value={summary}
               onChange={(e) => setSummary(e.target.value)}
               className='w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-neutral-100 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all'
-              placeholder='Ex: Férias, Feriado, Consulta médica...'
+              placeholder='E.g. Vacation, Holiday, Doctor appointment...'
               autoFocus
             />
           </div>
@@ -156,7 +156,7 @@ export function CreateTimeOffModal({
                 htmlFor='timeoff-start'
                 className='block text-sm font-medium text-neutral-400 mb-1.5'
               >
-                Data início *
+                Start date *
               </label>
               <input
                 id='timeoff-start'
@@ -179,7 +179,7 @@ export function CreateTimeOffModal({
                 htmlFor='timeoff-end'
                 className='block text-sm font-medium text-neutral-400 mb-1.5'
               >
-                Data fim *
+                End date *
               </label>
               <input
                 id='timeoff-end'
@@ -197,14 +197,14 @@ export function CreateTimeOffModal({
               htmlFor='timeoff-description'
               className='block text-sm font-medium text-neutral-400 mb-1.5'
             >
-              Observações
+              Notes
             </label>
             <textarea
               id='timeoff-description'
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className='w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-neutral-100 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none'
-              placeholder='Observações opcionais'
+              placeholder='Optional notes'
               rows={2}
             />
           </div>
@@ -215,14 +215,14 @@ export function CreateTimeOffModal({
               onClick={onClose}
               className='flex-1 px-4 py-2.5 border border-neutral-700 rounded-xl text-neutral-300 font-medium hover:bg-neutral-800 transition-colors'
             >
-              Cancelar
+              Cancel
             </button>
             <button
               type='submit'
               disabled={isSubmitting}
               className='flex-1 px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
             >
-              {isSubmitting ? 'Criando...' : 'Criar'}
+              {isSubmitting ? 'Creating...' : 'Create'}
             </button>
           </div>
         </form>

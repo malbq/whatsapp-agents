@@ -26,29 +26,30 @@ export const createListAppointmentsTool = (ctx: ToolContext) =>
 
       if (filteredAppointments.length === 0) {
         return includeAll
-          ? 'Você não possui nenhum agendamento registrado.'
-          : 'Você não possui nenhum agendamento futuro.'
+          ? 'You have no appointments on record.'
+          : 'You have no upcoming appointments.'
       }
 
       const lines = filteredAppointments.map((appointment) => {
-        const formattedDate = appointment.scheduledAt.toLocaleDateString('pt-BR', {
+        const formattedDate = appointment.scheduledAt.toLocaleDateString('en-US', {
           weekday: 'long',
           day: '2-digit',
           month: '2-digit',
           year: 'numeric',
           timeZone: timezone,
         })
-        const formattedTime = appointment.scheduledAt.toLocaleTimeString('pt-BR', {
+        const formattedTime = appointment.scheduledAt.toLocaleTimeString('en-US', {
           hour: '2-digit',
           minute: '2-digit',
+          hour12: false,
           timeZone: timezone,
         })
 
         const statusLabel = getStatusLabel(appointment.status)
-        return `• ${formattedDate} às ${formattedTime}${statusLabel}`
+        return `• ${formattedDate} at ${formattedTime}${statusLabel}`
       })
 
-      const header = includeAll ? 'Seus agendamentos:' : 'Seus próximos agendamentos:'
+      const header = includeAll ? 'Your appointments:' : 'Your upcoming appointments:'
       return `${header}\n\n${lines.join('\n')}`
     },
   })
@@ -58,10 +59,10 @@ function getStatusLabel(status: 'scheduled' | 'confirmed' | 'cancelled' | 'compl
     case 'scheduled':
       return ''
     case 'confirmed':
-      return ' (confirmado)'
+      return ' (confirmed)'
     case 'cancelled':
-      return ' (cancelado)'
+      return ' (cancelled)'
     case 'completed':
-      return ' (realizado)'
+      return ' (completed)'
   }
 }

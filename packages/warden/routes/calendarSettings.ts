@@ -218,7 +218,7 @@ export function createCalendarSettingsRoute(db: WardenDB) {
     const body = await c.req.json<{ name: string; description?: string; timezone?: string }>()
 
     const schema = z.object({
-      name: z.string().min(1, 'Nome e obrigatorio'),
+      name: z.string().min(1, 'Name is required'),
       description: z.string().optional(),
       timezone: z.string().optional(),
     })
@@ -230,7 +230,7 @@ export function createCalendarSettingsRoute(db: WardenDB) {
 
     const calendarClient = await getAuthenticatedCalendarClient(db)
     if (!calendarClient) {
-      return c.json({ error: 'Calendario nao conectado' }, 400)
+      return c.json({ error: 'Calendar not connected' }, 400)
     }
 
     const { data: newCalendar } = await calendarClient.calendars.insert({
@@ -255,7 +255,7 @@ export function createCalendarSettingsRoute(db: WardenDB) {
 
     // Prevent disabling the appointment calendar
     if (appointmentCalendarId === calendarId && !body.enabled) {
-      return c.json({ error: 'O calendário de agendamentos não pode ser desativado.' }, 400)
+      return c.json({ error: 'The appointment calendar cannot be disabled.' }, 400)
     }
 
     await db.setCalendarEnabled(calendarId, body.enabled)
@@ -297,7 +297,7 @@ export function createCalendarSettingsRoute(db: WardenDB) {
 
     const calendarClient = await getAuthenticatedCalendarClient(db)
     if (!calendarClient) {
-      return c.json({ error: 'Calendario nao conectado' }, 400)
+      return c.json({ error: 'Calendar not connected' }, 400)
     }
 
     // Create all-day event
@@ -325,7 +325,7 @@ export function createCalendarSettingsRoute(db: WardenDB) {
 
     const calendarClient = await getAuthenticatedCalendarClient(db)
     if (!calendarClient) {
-      return c.json({ error: 'Calendario nao conectado' }, 400)
+      return c.json({ error: 'Calendar not connected' }, 400)
     }
 
     await calendarClient.events.delete({

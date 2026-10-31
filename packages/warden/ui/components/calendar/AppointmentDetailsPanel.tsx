@@ -19,20 +19,21 @@ function CloseIcon() {
 function formatDateTime(dateStr: string | null | undefined): string {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
-  return date.toLocaleString('pt-BR', {
+  return date.toLocaleString('en-US', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
+    hour12: false,
   })
 }
 
 function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
-  return date.toLocaleDateString('pt-BR', {
+  return date.toLocaleDateString('en-US', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -52,14 +53,14 @@ function formatTimeRange(event: CalendarEvent): string {
   if (!startStr) return '-'
 
   const start = new Date(startStr)
-  const startTime = start.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  const startTime = start.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
 
   if (!endStr) {
-    return `${formatDate(startStr)} às ${startTime}`
+    return `${formatDate(startStr)} at ${startTime}`
   }
 
   const end = new Date(endStr)
-  const endTime = end.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  const endTime = end.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
 
   // Check if same day
   if (start.toDateString() === end.toDateString()) {
@@ -71,10 +72,10 @@ function formatTimeRange(event: CalendarEvent): string {
 
 function formatStatus(status: 'scheduled' | 'confirmed' | 'cancelled' | 'completed'): string {
   const statusMap: Record<typeof status, string> = {
-    scheduled: 'Agendado',
-    confirmed: 'Confirmado',
-    cancelled: 'Cancelado',
-    completed: 'Concluído',
+    scheduled: 'Scheduled',
+    confirmed: 'Confirmed',
+    cancelled: 'Cancelled',
+    completed: 'Completed',
   }
   return statusMap[status]
 }
@@ -114,18 +115,18 @@ export function AppointmentDetailsPanel({ event, onClose, className }: Appointme
               style={{ backgroundColor: bgColor }}
             />
             <span className='text-xs text-neutral-500 uppercase tracking-wide'>
-              {event.isAppointmentCalendar ? 'Agendamento' : 'Evento'}
+              {event.isAppointmentCalendar ? 'Appointment' : 'Event'}
             </span>
           </div>
           <h3 className='text-lg font-semibold text-neutral-100 truncate'>
-            {event.summary || 'Sem título'}
+            {event.summary || 'Untitled'}
           </h3>
         </div>
         <button
           type='button'
           onClick={onClose}
           className='p-1 rounded text-neutral-400 hover:text-neutral-300 hover:bg-neutral-800 transition-colors flex-shrink-0'
-          title='Fechar'
+          title='Close'
         >
           <CloseIcon />
         </button>
@@ -136,15 +137,15 @@ export function AppointmentDetailsPanel({ event, onClose, className }: Appointme
         {event.appointment && (
           <>
             <DetailRow
-              label='Cliente'
+              label='Customer'
               value={event.appointment.customerName}
             />
             <DetailRow
-              label='Telefone'
+              label='Phone'
               value={event.appointment.customerPhone}
             />
             <DetailRow
-              label='Serviço'
+              label='Service'
               value={event.appointment.serviceName}
             />
             <DetailRow
@@ -154,11 +155,11 @@ export function AppointmentDetailsPanel({ event, onClose, className }: Appointme
           </>
         )}
         <DetailRow
-          label='Horário'
+          label='Time'
           value={formatTimeRange(event)}
         />
         <DetailRow
-          label='Descrição'
+          label='Description'
           value={event.description}
         />
       </div>

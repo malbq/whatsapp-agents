@@ -136,7 +136,7 @@ export class CalendarNotConnectedError extends Error {
 export class SlotUnavailableError extends Error {
   code: BookingErrorCode = 'SLOT_UNAVAILABLE'
 
-  constructor(message = 'O horário solicitado não está mais disponível.') {
+  constructor(message = 'The requested time is no longer available.') {
     super(message)
     this.name = 'SlotUnavailableError'
   }

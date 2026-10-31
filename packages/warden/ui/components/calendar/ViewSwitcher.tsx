@@ -17,7 +17,7 @@ export function ViewSwitcher({ currentView, onViewChange }: ViewSwitcherProps) {
             : 'text-neutral-400 hover:text-neutral-300'
         }`}
       >
-        Semana
+        Week
       </button>
       <button
         type='button'
@@ -28,7 +28,7 @@ export function ViewSwitcher({ currentView, onViewChange }: ViewSwitcherProps) {
             : 'text-neutral-400 hover:text-neutral-300'
         }`}
       >
-        Mês
+        Month
       </button>
     </div>
   )

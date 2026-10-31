@@ -16,18 +16,18 @@
 
 1. Create reminder
 
-- User: "Me lembra disso amanhã às 9h"
+- User: "Remind me about this tomorrow at 9am"
 - Assistant calls create_reminder(date, time, description, message)
 - Backend stores reminder and replies with confirmation including a reminder_id
 
 2. List reminders
 
-- User: "Quais são meus lembretes?"
+- User: "What are my reminders?"
 - Assistant lists upcoming active reminders (from schedule context or via list tool)
 
 3. Cancel reminder
 
-- User: "Cancela o lembrete das 9h"
+- User: "Cancel the 9am reminder"
 - Assistant shows matching items if ambiguous, then calls cancel_reminder(reminder_id)
 
 4. Delivery
@@ -44,7 +44,7 @@ sequenceDiagram
     participant DB as DB
     participant CRON as Scheduler
 
-    U->>A: "Me lembra amanhã às 9h"
+    U->>A: "Remind me tomorrow at 9am"
     A->>API: tool call: create_reminder {...}
     activate API
     API->>DB: insert reminder(status=scheduled)
@@ -93,7 +93,7 @@ Idempotency & concurrency
 ## Time & Locale Rules
 
 - Store due_at in UTC; store timezone separately.
-- The assistant must resolve relative dates like "amanhã" using the user's timezone.
+- The assistant must resolve relative dates like "tomorrow" using the user's timezone.
 - Time strings must be HH:MM (24h). Example: 09:00, 18:30.
 - The user’s timezone must be known (get in onboarding).
 - If a parsed time is in the past for today, schedule for the next valid day or ask for confirmation (LLM decides per prompt rules).
@@ -221,19 +221,19 @@ Add matching implementations to src/infra/dbLibSql.ts and a new SQL file infra/d
 
 Confirmation on create
 
-- "Ok! Vou te lembrar em 2025-09-17 às 09:00. id: rmd_8f..."
+- "Ok! I'll remind you on 2025-09-17 at 09:00. id: rmd_8f..."
 
 On list
 
-- Show up to 10 entries with local time; if none: "Você não tem lembretes ativos."
+- Show up to 10 entries with local time; if none: "You have no active reminders."
 
 On cancel
 
-- "Cancelei o lembrete rmd_8f..."
+- "Cancelled reminder rmd_8f..."
 
 Late delivery (optional)
 
-- "Lembrete: beber água (atrasado 12 min)"
+- "Reminder: drink water (12 min late)"
 
 ## Testing Plan
 

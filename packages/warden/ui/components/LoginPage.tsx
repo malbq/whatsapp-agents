@@ -11,7 +11,7 @@ export function LoginPage() {
           <h1 className='text-2xl font-bold text-center text-neutral-100'>Warden</h1>
 
           <p className='text-neutral-400 mt-2 text-center text-sm'>
-            Faca login para acessar o dashboard
+            Log in to access the dashboard
           </p>
 
           {error ? (
@@ -25,7 +25,7 @@ export function LoginPage() {
             className='flex items-center justify-center gap-3 bg-white text-black rounded-xl py-3 px-5 text-sm font-semibold no-underline mt-6 w-full hover:bg-neutral-200 transition-colors'
           >
             <GoogleIcon className='w-5 h-5' />
-            Entrar com Google
+            Sign in with Google
           </a>
         </div>
       </div>

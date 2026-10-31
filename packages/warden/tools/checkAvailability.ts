@@ -26,7 +26,7 @@ export const createCheckAvailabilityTool = (ctx: ToolContext) =>
       // Get calendar configuration
       const appointmentCalendarId = await ctx.db.getAppointmentCalendarId()
       if (!appointmentCalendarId) {
-        return 'Nenhum calendário de agendamentos configurado.'
+        return 'No appointment calendar configured.'
       }
 
       const [enabledCalendarIds, forceBusyCalendarIds, timezone] = await Promise.all([
@@ -52,13 +52,13 @@ export const createCheckAvailabilityTool = (ctx: ToolContext) =>
       })
 
       if (result.slots.length === 0) {
-        return 'Não há horários disponíveis nos próximos dias.'
+        return 'No available times in the next few days.'
       }
 
       // Group by date using the calendar's timezone
       const groupedByDate: Record<string, string[]> = {}
       for (const slot of result.slots) {
-        const dateKey = slot.start.toLocaleDateString('pt-BR', {
+        const dateKey = slot.start.toLocaleDateString('en-US', {
           weekday: 'long',
           day: '2-digit',
           month: '2-digit',
@@ -66,15 +66,16 @@ export const createCheckAvailabilityTool = (ctx: ToolContext) =>
         })
         if (!groupedByDate[dateKey]) groupedByDate[dateKey] = []
         groupedByDate[dateKey].push(
-          slot.start.toLocaleTimeString('pt-BR', {
+          slot.start.toLocaleTimeString('en-US', {
             hour: '2-digit',
             minute: '2-digit',
+            hour12: false,
             timeZone: result.timezone,
           })
         )
       }
 
-      let response = 'Horários disponíveis:\n'
+      let response = 'Available times:\n'
       for (const [date, times] of Object.entries(groupedByDate)) {
         response += `\n${date}: ${times.join(', ')}`
       }

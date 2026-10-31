@@ -19,13 +19,13 @@ export const createBookAppointmentTool = (ctx: ToolContext) =>
       // Parse time
       const [hours, minutes] = time.split(':').map(Number)
       if (hours === undefined || minutes === undefined || Number.isNaN(hours) || Number.isNaN(minutes)) {
-        return `Horario invalido: ${time}`
+        return `Invalid time: ${time}`
       }
       
       // Create date in calendar's timezone
       const startDate = parseDate({ date, hour: hours, minute: minutes, timezone })
       if (Number.isNaN(startDate.getTime())) {
-        return `Data ou horario invalido: ${date} ${time}`
+        return `Invalid date or time: ${date} ${time}`
       }
 
       // Default 30 min duration - in future this would come from service config
@@ -46,19 +46,20 @@ export const createBookAppointmentTool = (ctx: ToolContext) =>
         status: 'scheduled',
       })
 
-      const formattedDate = appointment.start.toLocaleDateString('pt-BR', {
+      const formattedDate = appointment.start.toLocaleDateString('en-US', {
         weekday: 'long',
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
         timeZone: timezone,
       })
-      const formattedTime = appointment.start.toLocaleTimeString('pt-BR', {
+      const formattedTime = appointment.start.toLocaleTimeString('en-US', {
         hour: '2-digit',
         minute: '2-digit',
+        hour12: false,
         timeZone: timezone,
       })
 
-      return `Agendamento realizado com sucesso para ${formattedDate} as ${formattedTime}.`
+      return `Appointment successfully booked for ${formattedDate} at ${formattedTime}.`
     },
   })

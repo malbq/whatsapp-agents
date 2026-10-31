@@ -33,7 +33,7 @@ export function CreateCalendarModal({ isOpen, onClose, onSubmit }: CreateCalenda
     setError(null)
 
     if (!name.trim()) {
-      setError('Nome é obrigatório')
+      setError('Name is required')
       return
     }
 
@@ -44,7 +44,7 @@ export function CreateCalendarModal({ isOpen, onClose, onSubmit }: CreateCalenda
       setDescription('')
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao criar calendário')
+      setError(err instanceof Error ? err.message : 'Error creating calendar')
     } finally {
       setIsSubmitting(false)
     }
@@ -63,7 +63,7 @@ export function CreateCalendarModal({ isOpen, onClose, onSubmit }: CreateCalenda
     >
       <div className='bg-neutral-900 rounded-2xl shadow-xl w-full max-w-md border border-neutral-800'>
         <div className='flex items-center justify-between p-6 border-b border-neutral-800'>
-          <h2 className='text-lg font-semibold text-neutral-100'>Novo Calendario</h2>
+          <h2 className='text-lg font-semibold text-neutral-100'>New Calendar</h2>
           <button
             type='button'
             onClick={onClose}
@@ -88,7 +88,7 @@ export function CreateCalendarModal({ isOpen, onClose, onSubmit }: CreateCalenda
               htmlFor='calendar-name'
               className='block text-sm font-medium text-neutral-400 mb-1.5'
             >
-              Nome *
+              Name *
             </label>
             <input
               id='calendar-name'
@@ -96,7 +96,7 @@ export function CreateCalendarModal({ isOpen, onClose, onSubmit }: CreateCalenda
               value={name}
               onChange={(e) => setName(e.target.value)}
               className='w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-neutral-100 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all'
-              placeholder='Ex: Consultas, Reuniões...'
+              placeholder='E.g. Consultations, Meetings...'
               autoFocus
             />
           </div>
@@ -106,14 +106,14 @@ export function CreateCalendarModal({ isOpen, onClose, onSubmit }: CreateCalenda
               htmlFor='calendar-description'
               className='block text-sm font-medium text-neutral-400 mb-1.5'
             >
-              Descrição
+              Description
             </label>
             <textarea
               id='calendar-description'
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className='w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-xl text-neutral-100 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none'
-              placeholder='Descrição opcional do calendário'
+              placeholder='Optional calendar description'
               rows={3}
             />
           </div>
@@ -124,14 +124,14 @@ export function CreateCalendarModal({ isOpen, onClose, onSubmit }: CreateCalenda
               onClick={onClose}
               className='flex-1 px-4 py-2.5 border border-neutral-700 rounded-xl text-neutral-300 font-medium hover:bg-neutral-800 transition-colors'
             >
-              Cancelar
+              Cancel
             </button>
             <button
               type='submit'
               disabled={isSubmitting}
               className='flex-1 px-4 py-2.5 bg-primary text-white rounded-xl font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
             >
-              {isSubmitting ? 'Criando...' : 'Criar'}
+              {isSubmitting ? 'Creating...' : 'Create'}
             </button>
           </div>
         </form>

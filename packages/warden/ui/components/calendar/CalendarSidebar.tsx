@@ -155,7 +155,7 @@ function CalendarItem({ calendar, isAppointment, onSetDefault, onToggleEnabled, 
             : 'text-neutral-400 opacity-0 group-hover:opacity-100 hover:text-amber-500'
         }`}
         title={
-          isAppointment ? 'Calendário de agendamentos' : 'Definir como calendário de agendamentos'
+          isAppointment ? 'Appointment calendar' : 'Set as appointment calendar'
         }
       >
         <CalendarIcon />
@@ -277,13 +277,13 @@ export function CalendarSidebar({
           ${className}`}
       >
         <div className='flex items-center justify-between px-4 py-3'>
-          <span className='text-sm font-medium text-neutral-400 tracking-wide'>Calendários</span>
+          <span className='text-sm font-medium text-neutral-400 tracking-wide'>Calendars</span>
           <div className='flex items-center gap-2'>
             <button
               type='button'
               onClick={onCreateCalendar}
               className='p-1 rounded text-neutral-400 hover:text-neutral-300 hover:bg-neutral-800 transition-colors'
-              title='Criar novo calendario'
+              title='Create new calendar'
             >
               <PlusIcon />
             </button>
@@ -292,7 +292,7 @@ export function CalendarSidebar({
                 type='button'
                 onClick={onClose}
                 className='p-1 rounded text-neutral-400 hover:text-neutral-300 hover:bg-neutral-800 transition-colors lg:hidden'
-                title='Fechar menu'
+                title='Close menu'
               >
                 <CloseIcon />
               </button>
@@ -300,7 +300,7 @@ export function CalendarSidebar({
           </div>
         </div>
         <div className='text-xs text-amber-100/70 bg-amber-800/15 px-4 pt-2 uppercase font-medium tracking-wide'>
-          Calendário de agendamentos
+          Appointment calendar
         </div>
 
         <div ref={containerRef}>
@@ -317,7 +317,7 @@ export function CalendarSidebar({
         </div>
 
         {calendars.length === 0 && (
-          <p className='text-sm text-neutral-500 text-center py-4'>Nenhum calendario encontrado</p>
+          <p className='text-sm text-neutral-500 text-center py-4'>No calendars found</p>
         )}
       </div>
     </>

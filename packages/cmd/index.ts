@@ -61,7 +61,7 @@ const webhookApp = createWebhookApp(
       } catch (error) {
         console.error('Error processing command:', error)
         await chat.sendText(userWaId, {
-          text: 'Desculpe, ocorreu um problema ao processar seu comando. Por favor, tente novamente.',
+          text: 'Sorry, there was a problem processing your command. Please try again.',
         })
       }
     },

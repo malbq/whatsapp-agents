@@ -69,7 +69,7 @@ const samples = [
                   id: 'wamid.HBgMNTU1NTEyMzQwMDAwFQIAEhgWM0VCMEVGNUQ4OEVBNUNGRjUwOTkwNgA=',
                   timestamp: '1762821946',
                   text: {
-                    body: 'olá',
+                    body: 'hello',
                   },
                   type: 'text',
                 },
@@ -160,7 +160,7 @@ const samples = [
                         {
                           phone: '+55 55 1234-0000',
                           wa_id: '555512340000',
-                          type: 'Celular',
+                          type: 'Mobile',
                         },
                       ],
                     },

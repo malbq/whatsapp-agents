@@ -1132,7 +1132,7 @@ describe('Agent', () => {
             message: {
               type: 'text',
               messageWaId: 'wamid.profile.1',
-              text: 'Meu nome é João e prefiro respostas em português. Moro na cidade de Fortaleza.',
+              text: 'My name is João and I prefer answers in Portuguese. I live in Fortaleza.',
             },
           },
         },
@@ -1165,7 +1165,7 @@ describe('Agent', () => {
       expect(users.length).toBe(1)
 
       const [userProfile] = await db.$client.query.userProfileVersion.findMany()
-      expect(userProfile?.profile).toMatch(/mauro/i)
+      expect(userProfile?.profile).toMatch(/jo[aã]o/i)
       expect(userProfile?.profile).toMatch(/portuguese/i)
       expect(userProfile?.profile).toMatch(/fortaleza/i)
     },

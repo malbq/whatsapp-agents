@@ -4,7 +4,7 @@ function formatEventTime(event: CalendarEvent): string {
   const startStr = event.start?.dateTime
   if (!startStr) return ''
   const date = new Date(startStr)
-  return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
 }
 
 interface EventPillProps {

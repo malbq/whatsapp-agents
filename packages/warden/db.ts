@@ -122,9 +122,9 @@ export const dbFactory = (): WardenDB => {
 
       if (result.length === 0) {
         const defaultInfo: BusinessInfo = {
-          name: 'Minha Empresa',
-          address: 'Endereço não configurado',
-          contact: 'contato@empresa.com',
+          name: 'My Business',
+          address: 'Address not configured',
+          contact: 'contact@business.com',
         }
         await this.updateBusinessInfo(defaultInfo)
         return defaultInfo

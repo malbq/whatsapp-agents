@@ -17,7 +17,6 @@ Agent Workflow
   - tools may be called:
     - search_conversation_history
     - search_files
-    - send_text: Server -[text message]-> User
     - web_search
     - web_fetch
     - google_places: Server -[location/contact message]-> User
@@ -64,7 +63,7 @@ export async function agent(): Promise<void> {
 
     const errorMessage: TextMessage = {
       type: 'text',
-      text: 'Desculpe, tive um problema ao processar sua mensagem.',
+      text: 'Sorry, I had a problem processing your message.',
     }
     const errorMessageId = await context.chat.sendText(userWaId, errorMessage)
     context.outbound = {

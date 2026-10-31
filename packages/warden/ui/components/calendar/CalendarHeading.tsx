@@ -2,18 +2,18 @@ import type { CalendarView } from './types'
 import { ViewSwitcher } from './ViewSwitcher'
 
 const MONTH_NAMES = [
-  'Janeiro',
-  'Fevereiro',
-  'Março',
-  'Abril',
-  'Maio',
-  'Junho',
-  'Julho',
-  'Agosto',
-  'Setembro',
-  'Outubro',
-  'Novembro',
-  'Dezembro',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ]
 
 function TimeOffIcon() {
@@ -61,18 +61,18 @@ function formatWeekRange(date: Date): string {
   const endDay = end.getDate()
 
   if (start.getMonth() === end.getMonth()) {
-    // Same month: "15 - 21 Dezembro 2024"
+    // Same month: "15 - 21 December 2024"
     return `${startDay} - ${endDay} ${MONTH_NAMES[start.getMonth()]} ${start.getFullYear()}`
   }
 
   if (start.getFullYear() === end.getFullYear()) {
-    // Different months, same year: "28 Dez - 3 Jan 2025"
+    // Different months, same year: "28 Dec - 3 Jan 2025"
     const startMonth = MONTH_NAMES[start.getMonth()]?.slice(0, 3)
     const endMonth = MONTH_NAMES[end.getMonth()]?.slice(0, 3)
     return `${startDay} ${startMonth} - ${endDay} ${endMonth} ${start.getFullYear()}`
   }
 
-  // Different years: "28 Dez 2024 - 3 Jan 2025"
+  // Different years: "28 Dec 2024 - 3 Jan 2025"
   const startMonth = MONTH_NAMES[start.getMonth()]?.slice(0, 3)
   const endMonth = MONTH_NAMES[end.getMonth()]?.slice(0, 3)
   return `${startDay} ${startMonth} ${start.getFullYear()} - ${endDay} ${endMonth} ${end.getFullYear()}`
@@ -175,7 +175,7 @@ export function CalendarHeading({
             onClick={handleToday}
             className='px-3 py-1.5 rounded-lg border border-neutral-700 bg-neutral-800 hover:bg-neutral-700 text-sm font-medium text-neutral-300 transition-colors'
           >
-            Hoje
+            Today
           </button>
           <div className='flex gap-1'>
             <button
@@ -223,7 +223,7 @@ export function CalendarHeading({
           className='flex items-center justify-center gap-2 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-lg text-sm font-medium transition-colors whitespace-nowrap'
         >
           <TimeOffIcon />
-          Adicionar Folga
+          Add Time Off
         </button>
       </div>
     </div>

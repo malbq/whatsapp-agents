@@ -3,7 +3,7 @@ import { parseEventDate } from './dateUtils'
 import { EventPill } from './EventPill'
 import type { CalendarEvent, WorkingHoursEntry } from './types'
 
-const DAY_NAMES = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab']
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const MINUTES_PER_ROW = 60
 
 function parseTime(timeStr: string): number {

@@ -463,13 +463,13 @@ function createCalendarAdapterFromGetter(
 
       const summary = serviceName
         ? `${serviceName} - ${customerName}`
-        : `Agendamento - ${customerName}`
+        : `Appointment - ${customerName}`
 
       const event = await calendar.events.insert({
         calendarId,
         requestBody: {
           summary,
-          description: `Cliente: ${customerName}\nTelefone: ${customerPhone}`,
+          description: `Customer: ${customerName}\nPhone: ${customerPhone}`,
           start: {
             dateTime: slot.start.toISOString(),
           },
@@ -514,15 +514,15 @@ function createCalendarAdapterFromGetter(
       const descriptionLines = event.data.description?.split('\n') ?? []
       const customerName =
         descriptionLines
-          .find((l) => l.startsWith('Cliente:'))
-          ?.replace('Cliente:', '')
+          .find((l) => l.startsWith('Customer:'))
+          ?.replace('Customer:', '')
           .trim() ??
         event.data.summary ??
         'Unknown'
       const customerPhone =
         descriptionLines
-          .find((l) => l.startsWith('Telefone:'))
-          ?.replace('Telefone:', '')
+          .find((l) => l.startsWith('Phone:'))
+          ?.replace('Phone:', '')
           .trim() ?? ''
 
       return {
@@ -549,15 +549,15 @@ function createCalendarAdapterFromGetter(
       const descriptionLines = event.data.description?.split('\n') ?? []
       const customerName =
         descriptionLines
-          .find((l) => l.startsWith('Cliente:'))
-          ?.replace('Cliente:', '')
+          .find((l) => l.startsWith('Customer:'))
+          ?.replace('Customer:', '')
           .trim() ??
         event.data.summary ??
         'Unknown'
       const customerPhone =
         descriptionLines
-          .find((l) => l.startsWith('Telefone:'))
-          ?.replace('Telefone:', '')
+          .find((l) => l.startsWith('Phone:'))
+          ?.replace('Phone:', '')
           .trim() ?? ''
 
       return {

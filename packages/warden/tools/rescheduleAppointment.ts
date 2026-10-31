@@ -19,7 +19,7 @@ export const createRescheduleAppointmentTool = (ctx: ToolContext) =>
       )
 
       if (!upcomingAppointment) {
-        return 'Nao encontrei nenhum agendamento futuro para reagendar.'
+        return 'No upcoming appointment found to reschedule.'
       }
 
       // Get calendar timezone
@@ -28,13 +28,13 @@ export const createRescheduleAppointmentTool = (ctx: ToolContext) =>
       // Parse time
       const [hours, minutes] = newTime.split(':').map(Number)
       if (hours === undefined || minutes === undefined || Number.isNaN(hours) || Number.isNaN(minutes)) {
-        return `Horario invalido: ${newTime}`
+        return `Invalid time: ${newTime}`
       }
 
       // Create date in calendar's timezone
       const newStart = parseDate({ date: newDate, hour: hours, minute: minutes, timezone })
       if (Number.isNaN(newStart.getTime())) {
-        return `Data ou horario invalido: ${newDate} ${newTime}`
+        return `Invalid date or time: ${newDate} ${newTime}`
       }
 
       // Default 30 min duration
@@ -48,19 +48,20 @@ export const createRescheduleAppointmentTool = (ctx: ToolContext) =>
       // Update local reference
       await ctx.db.updateAppointmentStatus(upcomingAppointment.id, 'scheduled')
 
-      const formattedDate = newStart.toLocaleDateString('pt-BR', {
+      const formattedDate = newStart.toLocaleDateString('en-US', {
         weekday: 'long',
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
         timeZone: timezone,
       })
-      const formattedTime = newStart.toLocaleTimeString('pt-BR', {
+      const formattedTime = newStart.toLocaleTimeString('en-US', {
         hour: '2-digit',
         minute: '2-digit',
+        hour12: false,
         timeZone: timezone,
       })
 
-      return `Agendamento reagendado com sucesso para ${formattedDate} as ${formattedTime}.`
+      return `Appointment successfully rescheduled for ${formattedDate} at ${formattedTime}.`
     },
   })

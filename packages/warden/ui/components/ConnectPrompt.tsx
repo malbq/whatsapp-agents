@@ -19,17 +19,17 @@ export function ConnectPrompt() {
             />
           </svg>
         </div>
-        <h2 className='text-2xl text-neutral-100 font-bold mb-3'>Calendário não conectado</h2>
+        <h2 className='text-2xl text-neutral-100 font-bold mb-3'>Calendar not connected</h2>
         <p className='text-neutral-400 text-base mb-8 leading-relaxed max-w-[320px] mx-auto'>
-          A conexão com o Google Calendar expirou ou não foi estabelecida. Reconecte para visualizar
-          e gerenciar seus compromissos.
+          The Google Calendar connection has expired or was never set up. Reconnect to view
+          and manage your appointments.
         </p>
         <a
           href='/api/calendar/connect'
           className='inline-flex items-center justify-center gap-3 py-3.5 px-8 rounded-xl text-sm font-semibold cursor-pointer no-underline transition-all bg-primary text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5'
         >
           <GoogleIcon className='w-5 h-5' />
-          Reconectar Google Calendar
+          Reconnect Google Calendar
         </a>
       </div>
     </div>

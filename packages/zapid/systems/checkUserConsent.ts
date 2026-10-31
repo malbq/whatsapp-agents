@@ -33,7 +33,7 @@ export async function checkUserConsent(): Promise<boolean> {
     // TODO: track template sent in ephemeral KV to avoid spamming
     ctx.chat.sendTemplate(ctx.user.waId, {
       name: import.meta.env.WA_ONBOARDING_TEMPLATE,
-      language: 'pt_BR',
+      language: 'en_US',
       flowToken: 'onboarding',
     })
     console.info("User hasn't consented, sent onboarding template")
