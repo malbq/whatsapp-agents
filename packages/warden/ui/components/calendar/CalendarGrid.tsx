@@ -70,17 +70,14 @@ export function MonthGrid({
       {DAY_NAMES.map((name) => (
         <div
           key={name}
-          className='bg-neutral-900/80 p-1 md:p-2 text-center text-[10px] md:text-xs font-bold text-neutral-500 uppercase'
+          className="bg-neutral-900/80 p-1 md:p-2 text-center text-[10px] md:text-xs font-bold text-neutral-500 uppercase"
         >
           {name}
         </div>
       ))}
       {days.map((day, idx) =>
         day === null ? (
-          <div
-            key={`empty-${idx}`}
-            className='bg-neutral-950'
-          />
+          <div key={`empty-${idx}`} className="bg-neutral-950" />
         ) : (
           <div
             key={day}
@@ -97,23 +94,23 @@ export function MonthGrid({
             >
               {day}
             </span>
-              <div className='flex flex-col gap-1'>
-                {eventsByDay
-                  .get(day)
-                  ?.slice(0, 4)
-                  .map((event) => (
-                    <EventPill
-                      key={event.id}
-                      event={event}
-                      isSelected={event.id === selectedEventId}
-                      onSelect={onSelectEvent}
-                      className='w-full text-[10px] md:text-xs truncate'
-                    />
-                  ))}
-                {(eventsByDay.get(day)?.length ?? 0) > 4 && (
-                <div className='text-[10px] text-neutral-500 font-medium px-1 md:px-2 py-0.5'>
-                  <span className='md:hidden'>+{(eventsByDay.get(day)!.length - 4)}</span>
-                  <span className='hidden md:inline'>+{eventsByDay.get(day)!.length - 4} more</span>
+            <div className="flex flex-col gap-1">
+              {eventsByDay
+                .get(day)
+                ?.slice(0, 4)
+                .map((event) => (
+                  <EventPill
+                    key={event.id}
+                    event={event}
+                    isSelected={event.id === selectedEventId}
+                    onSelect={onSelectEvent}
+                    className="w-full text-[10px] md:text-xs truncate"
+                  />
+                ))}
+              {(eventsByDay.get(day)?.length ?? 0) > 4 && (
+                <div className="text-[10px] text-neutral-500 font-medium px-1 md:px-2 py-0.5">
+                  <span className="md:hidden">+{eventsByDay.get(day)!.length - 4}</span>
+                  <span className="hidden md:inline">+{eventsByDay.get(day)!.length - 4} more</span>
                 </div>
               )}
             </div>

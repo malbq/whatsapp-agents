@@ -27,7 +27,9 @@ export interface ParseDateOptions {
  */
 export function parseDate(options: ParseDateOptions): Date
 export function parseDate(options: { date: string | null | undefined }): Date | null
-export function parseDate(options: ParseDateOptions | { date: string | null | undefined }): Date | null {
+export function parseDate(
+  options: ParseDateOptions | { date: string | null | undefined }
+): Date | null {
   const { date } = options
   if (!date) return null
 

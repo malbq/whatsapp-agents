@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @source "../**/*.tsx";
 
@@ -12,7 +12,6 @@
 }
 
 @layer components {
-
   /* Time input with accent-colored clock icon */
   .time-input::-webkit-calendar-picker-indicator {
     filter: invert(40%) sepia(80%) saturate(2000%) hue-rotate(220deg) brightness(95%);

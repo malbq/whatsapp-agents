@@ -1,4 +1,10 @@
-import { useLoaderData, useNavigate, useRouter, useRouterState, useSearch } from '@tanstack/react-router'
+import {
+  useLoaderData,
+  useNavigate,
+  useRouter,
+  useRouterState,
+  useSearch,
+} from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 
 import { ConnectPrompt } from './ConnectPrompt'
@@ -9,7 +15,13 @@ import { CalendarSidebar } from './calendar/CalendarSidebar'
 import { CreateCalendarModal } from './calendar/CreateCalendarModal'
 import { CreateTimeOffModal } from './calendar/CreateTimeOffModal'
 import { WeekGrid } from './calendar/WeekGrid'
-import type { CalendarData, CalendarEvent, CalendarResponse, CalendarView, SidebarCalendar } from './calendar/types'
+import type {
+  CalendarData,
+  CalendarEvent,
+  CalendarResponse,
+  CalendarView,
+  SidebarCalendar,
+} from './calendar/types'
 
 export function CalendarPage() {
   const data = useLoaderData({ from: '/_app/' }) as CalendarResponse
@@ -46,7 +58,7 @@ export function CalendarPage() {
 
   if (!data.connected) {
     return (
-      <div className='max-w-[1200px] mx-auto p-8'>
+      <div className="max-w-[1200px] mx-auto p-8">
         <ConnectPrompt />
       </div>
     )
@@ -147,9 +159,7 @@ export function CalendarPage() {
   }
 
   // Dynamic grid columns based on whether details panel is shown
-  const gridCols = selectedEvent
-    ? 'lg:grid-cols-[280px_1fr_320px]'
-    : 'lg:grid-cols-[280px_1fr]'
+  const gridCols = selectedEvent ? 'lg:grid-cols-[280px_1fr_320px]' : 'lg:grid-cols-[280px_1fr]'
 
   return (
     <>
@@ -164,7 +174,7 @@ export function CalendarPage() {
           onSetAppointmentCalendar={handleSetAppointmentCalendar}
           onToggleCalendarEnabled={handleToggleCalendarEnabled}
           onCreateCalendar={() => setIsModalOpen(true)}
-          className='lg:block row-span-2'
+          className="lg:block row-span-2"
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
         />
@@ -180,7 +190,7 @@ export function CalendarPage() {
           <AppointmentDetailsPanel
             event={selectedEvent}
             onClose={handleCloseDetails}
-            className='fixed inset-0 z-50 lg:static lg:z-auto row-span-2'
+            className="fixed inset-0 z-50 lg:static lg:z-auto row-span-2"
           />
         )}
         {currentView === 'month' ? (

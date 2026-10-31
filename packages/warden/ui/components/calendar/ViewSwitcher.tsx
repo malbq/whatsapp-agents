@@ -7,9 +7,9 @@ interface ViewSwitcherProps {
 
 export function ViewSwitcher({ currentView, onViewChange }: ViewSwitcherProps) {
   return (
-    <div className='flex rounded-lg bg-neutral-800 p-0.5'>
+    <div className="flex rounded-lg bg-neutral-800 p-0.5">
       <button
-        type='button'
+        type="button"
         onClick={() => onViewChange('week')}
         className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
           currentView === 'week'
@@ -20,7 +20,7 @@ export function ViewSwitcher({ currentView, onViewChange }: ViewSwitcherProps) {
         Week
       </button>
       <button
-        type='button'
+        type="button"
         onClick={() => onViewChange('month')}
         className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
           currentView === 'month'

@@ -48,7 +48,12 @@ describe('parseDate', () => {
   describe('timezone-aware parsing', () => {
     test('parses date in specified timezone', () => {
       // 9:00 AM in Sao Paulo (UTC-3) should be 12:00 UTC
-      const result = parseDate({ date: '2026-01-05', hour: 9, minute: 0, timezone: 'America/Sao_Paulo' })
+      const result = parseDate({
+        date: '2026-01-05',
+        hour: 9,
+        minute: 0,
+        timezone: 'America/Sao_Paulo',
+      })
 
       expect(result!.getUTCHours()).toBe(12)
       expect(result!.getUTCMinutes()).toBe(0)

@@ -27,7 +27,12 @@ export const createRescheduleAppointmentTool = (ctx: ToolContext) =>
 
       // Parse time
       const [hours, minutes] = newTime.split(':').map(Number)
-      if (hours === undefined || minutes === undefined || Number.isNaN(hours) || Number.isNaN(minutes)) {
+      if (
+        hours === undefined ||
+        minutes === undefined ||
+        Number.isNaN(hours) ||
+        Number.isNaN(minutes)
+      ) {
         return `Invalid time: ${newTime}`
       }
 

@@ -10,7 +10,9 @@ export const createListAppointmentsTool = (ctx: ToolContext) =>
       includeAll: z
         .boolean()
         .default(false)
-        .describe('If true, include past and cancelled appointments. Default is false (only upcoming scheduled appointments).'),
+        .describe(
+          'If true, include past and cancelled appointments. Default is false (only upcoming scheduled appointments).'
+        ),
     }),
     execute: async ({ includeAll }) => {
       const timezone = await ctx.calendar.getCalendarTimezone()

@@ -15,13 +15,18 @@ export const createBookAppointmentTool = (ctx: ToolContext) =>
     execute: async ({ date, time, serviceName }) => {
       // Get calendar timezone
       const timezone = await ctx.calendar.getCalendarTimezone()
-      
+
       // Parse time
       const [hours, minutes] = time.split(':').map(Number)
-      if (hours === undefined || minutes === undefined || Number.isNaN(hours) || Number.isNaN(minutes)) {
+      if (
+        hours === undefined ||
+        minutes === undefined ||
+        Number.isNaN(hours) ||
+        Number.isNaN(minutes)
+      ) {
         return `Invalid time: ${time}`
       }
-      
+
       // Create date in calendar's timezone
       const startDate = parseDate({ date, hour: hours, minute: minutes, timezone })
       if (Number.isNaN(startDate.getTime())) {

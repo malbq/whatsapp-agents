@@ -20,7 +20,7 @@ export function EventPill({ event, isSelected, onSelect, className = '', style }
 
   return (
     <button
-      type='button'
+      type="button"
       onClick={() => onSelect(event)}
       className={`block min-w-0 text-xs px-2 py-1 rounded truncate transition-all hover:brightness-110 text-left ${
         event.isAppointmentCalendar ? 'border-l-[3px]' : 'border-l-2'
@@ -35,9 +35,9 @@ export function EventPill({ event, isSelected, onSelect, className = '', style }
       }}
       title={event.summary}
     >
-      <div className='flex items-center gap-1 overflow-hidden'>
-        <span className='opacity-60 font-normal whitespace-nowrap'>{formatEventTime(event)}</span>
-        <span className='font-semibold truncate'>{event.summary}</span>
+      <div className="flex items-center gap-1 overflow-hidden">
+        <span className="opacity-60 font-normal whitespace-nowrap">{formatEventTime(event)}</span>
+        <span className="font-semibold truncate">{event.summary}</span>
       </div>
     </button>
   )

@@ -448,14 +448,12 @@ export namespace WhatsAppApi {
           flow_token?: string
           flow_action_data?: Record<string, unknown>
         }
-      }
+      },
     ]
   }
 
   export type TemplateParameter =
-    | TemplateTextParameter
-    | TemplateCurrencyParameter
-    | TemplateDateTimeParameter
+    TemplateTextParameter | TemplateCurrencyParameter | TemplateDateTimeParameter
 
   export interface TemplateTextParameter {
     type: 'text'

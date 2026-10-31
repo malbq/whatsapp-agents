@@ -147,7 +147,7 @@ export function WeekGrid({
   const firstHourRowIndex = hasAllDayEvents ? 3 : 2
 
   return (
-    <div className='mx-2 md:mx-6 mb-2 md:mb-6 rounded bg-neutral-800 border border-neutral-800 overflow-x-auto isolate'>
+    <div className="mx-2 md:mx-6 mb-2 md:mb-6 rounded bg-neutral-800 border border-neutral-800 overflow-x-auto isolate">
       <div
         className={`grid min-w-[800px] md:min-w-0 h-full
           gap-px
@@ -156,14 +156,14 @@ export function WeekGrid({
           auto-rows-fr`}
       >
         {/* Header row */}
-        <div className='row-start-1 col-start-1 p-1 md:p-2 -mr-px border-r border-neutral-800 bg-neutral-900 sticky left-0 z-20' />
+        <div className="row-start-1 col-start-1 p-1 md:p-2 -mr-px border-r border-neutral-800 bg-neutral-900 sticky left-0 z-20" />
         {weekDates.map((date, idx) => (
           <div
             key={`header-${idx}`}
-            className='p-1 md:p-2 text-center bg-neutral-900/80'
+            className="p-1 md:p-2 text-center bg-neutral-900/80"
             style={{ gridRowStart: 1, gridColumnStart: idx + 2 }}
           >
-            <div className='text-[10px] md:text-xs font-bold text-neutral-500 uppercase'>
+            <div className="text-[10px] md:text-xs font-bold text-neutral-500 uppercase">
               {DAY_NAMES[idx]}
             </div>
             <div
@@ -181,14 +181,14 @@ export function WeekGrid({
         {/* All-day events row */}
         {hasAllDayEvents && (
           <>
-            <div className='row-start-2 col-start-1 bg-neutral-900 left-0 z-20' />
+            <div className="row-start-2 col-start-1 bg-neutral-900 left-0 z-20" />
             {weekDates.map((date, idx) => {
               const dateKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
               const dayAllDayEvents = allDayEventsByDate.get(dateKey) || []
               return (
                 <div
                   key={`allday-${idx}`}
-                  className='p-1 min-h-8 flex flex-col gap-0.5 bg-neutral-900/50'
+                  className="p-1 min-h-8 flex flex-col gap-0.5 bg-neutral-900/50"
                   style={{ gridRowStart: 2, gridColumnStart: idx + 2 }}
                 >
                   {dayAllDayEvents.map((event) => (
@@ -197,7 +197,7 @@ export function WeekGrid({
                       event={event}
                       isSelected={event.id === selectedEventId}
                       onSelect={onSelectEvent}
-                      className='w-full'
+                      className="w-full"
                     />
                   ))}
                 </div>
@@ -212,7 +212,7 @@ export function WeekGrid({
           return (
             <Fragment key={`row-${hour}`}>
               <div
-                className='p-1 -mr-px text-right text-xs text-neutral-500 border-r border-neutral-800 bg-neutral-900 sticky left-0 z-20'
+                className="p-1 -mr-px text-right text-xs text-neutral-500 border-r border-neutral-800 bg-neutral-900 sticky left-0 z-20"
                 style={{ gridRowStart: rowStart, gridColumnStart: 1 }}
               >
                 {hour.toString().padStart(2, '0')}:00
@@ -220,7 +220,7 @@ export function WeekGrid({
               {weekDates.map((_, dayIdx) => (
                 <div
                   key={`cell-${hour}-${dayIdx}`}
-                  className='bg-neutral-900'
+                  className="bg-neutral-900"
                   style={{ gridRowStart: rowStart, gridColumnStart: dayIdx + 2 }}
                 />
               ))}
@@ -240,7 +240,7 @@ export function WeekGrid({
             return (
               <div
                 key={event.id}
-                className='p-1'
+                className="p-1"
                 style={{
                   gridColumnStart: dayIdx + 2,
                   gridRowStart: position.rowStart,
@@ -251,7 +251,7 @@ export function WeekGrid({
                   event={event}
                   isSelected={event.id === selectedEventId}
                   onSelect={onSelectEvent}
-                  className='w-full'
+                  className="w-full"
                 />
               </div>
             )

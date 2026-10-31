@@ -43,7 +43,9 @@ describe('getMessageTypeFromMimeType', () => {
 
     test('returns document for docx', () => {
       expect(
-        getMessageTypeFromMimeType('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+        getMessageTypeFromMimeType(
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
       ).toBe('document')
     })
 
@@ -53,7 +55,9 @@ describe('getMessageTypeFromMimeType', () => {
 
     test('returns document for xlsx', () => {
       expect(
-        getMessageTypeFromMimeType('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        getMessageTypeFromMimeType(
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
       ).toBe('document')
     })
 
@@ -63,7 +67,9 @@ describe('getMessageTypeFromMimeType', () => {
 
     test('returns document for pptx', () => {
       expect(
-        getMessageTypeFromMimeType('application/vnd.openxmlformats-officedocument.presentationml.presentation')
+        getMessageTypeFromMimeType(
+          'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+        )
       ).toBe('document')
     })
 
@@ -108,7 +114,9 @@ describe('getMessageTypeFromMimeType', () => {
     })
 
     test('handles mime type with multiple parameters', () => {
-      expect(getMessageTypeFromMimeType('text/plain; charset=utf-8; format=flowed')).toBe('document')
+      expect(getMessageTypeFromMimeType('text/plain; charset=utf-8; format=flowed')).toBe(
+        'document'
+      )
     })
   })
 })

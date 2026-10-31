@@ -87,7 +87,9 @@ describe('getExtFromMimeType', () => {
 
     test('handles docx', () => {
       expect(
-        getExtFromMimeType('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+        getExtFromMimeType(
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
       ).toBe('docx')
     })
 
@@ -107,7 +109,9 @@ describe('getExtFromMimeType', () => {
 
     test('handles pptx', () => {
       expect(
-        getExtFromMimeType('application/vnd.openxmlformats-officedocument.presentationml.presentation')
+        getExtFromMimeType(
+          'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+        )
       ).toBe('pptx')
     })
 

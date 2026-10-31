@@ -66,7 +66,9 @@ const calendarRoute = createRoute({
     month: search.month,
     view: search.view,
   }),
-  validateSearch: (search: Record<string, unknown>): { month?: string; view?: 'month' | 'week' } => ({
+  validateSearch: (
+    search: Record<string, unknown>
+  ): { month?: string; view?: 'month' | 'week' } => ({
     month: (search.month as string) || undefined,
     view: (search.view as 'month' | 'week') || undefined,
   }),
@@ -141,7 +143,13 @@ const servicesRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   loginRoute,
-  appLayoutRoute.addChildren([calendarRoute, threadsRoute, chatRoute, settingsRoute, servicesRoute]),
+  appLayoutRoute.addChildren([
+    calendarRoute,
+    threadsRoute,
+    chatRoute,
+    settingsRoute,
+    servicesRoute,
+  ]),
 ])
 
 export const router = createRouter({

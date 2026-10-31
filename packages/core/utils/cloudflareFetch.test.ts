@@ -124,9 +124,7 @@ describe('createCloudflareCompatibleFetch', () => {
       const data = {
         usage: { prompt_tokens: 100, completion_tokens: 50, total_tokens: 150 },
       }
-      const mockFetch = createStreamMockFetch([
-        `data: ${JSON.stringify(data)}\n\ndata: [DONE]\n\n`,
-      ])
+      const mockFetch = createStreamMockFetch([`data: ${JSON.stringify(data)}\n\ndata: [DONE]\n\n`])
 
       const customFetch = createCloudflareCompatibleFetch(mockFetch as any)
       const response = await customFetch('https://example.com')

@@ -14,14 +14,8 @@ interface CalendarSidebarProps {
 
 function PlusIcon() {
   return (
-    <svg
-      className='w-4 h-4'
-      viewBox='0 0 24 24'
-      fill='none'
-      stroke='currentColor'
-      strokeWidth={2}
-    >
-      <path d='M12 5v14M5 12h14' />
+    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <path d="M12 5v14M5 12h14" />
     </svg>
   )
 }
@@ -29,26 +23,16 @@ function PlusIcon() {
 function CloseIcon() {
   return (
     <svg
-      className='w-5 h-5'
-      viewBox='0 0 24 24'
-      fill='none'
-      stroke='currentColor'
+      className="w-5 h-5"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
       strokeWidth={2}
-      strokeLinecap='round'
-      strokeLinejoin='round'
+      strokeLinecap="round"
+      strokeLinejoin="round"
     >
-      <line
-        x1='18'
-        y1='6'
-        x2='6'
-        y2='18'
-      />
-      <line
-        x1='6'
-        y1='6'
-        x2='18'
-        y2='18'
-      />
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
     </svg>
   )
 }
@@ -56,40 +40,18 @@ function CloseIcon() {
 function CalendarIcon() {
   return (
     <svg
-      className='w-4 h-4'
-      viewBox='0 0 24 24'
-      fill='none'
-      stroke='currentColor'
+      className="w-4 h-4"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
       strokeWidth={2}
-      strokeLinecap='round'
-      strokeLinejoin='round'
+      strokeLinecap="round"
+      strokeLinejoin="round"
     >
-      <rect
-        x='3'
-        y='4'
-        width='18'
-        height='18'
-        rx='2'
-        ry='2'
-      />
-      <line
-        x1='16'
-        y1='2'
-        x2='16'
-        y2='6'
-      />
-      <line
-        x1='8'
-        y1='2'
-        x2='8'
-        y2='6'
-      />
-      <line
-        x1='3'
-        y1='10'
-        x2='21'
-        y2='10'
-      />
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="3" y1="10" x2="21" y2="10" />
     </svg>
   )
 }
@@ -102,7 +64,13 @@ interface CalendarItemProps {
   style?: React.CSSProperties
 }
 
-function CalendarItem({ calendar, isAppointment, onSetDefault, onToggleEnabled, style }: CalendarItemProps) {
+function CalendarItem({
+  calendar,
+  isAppointment,
+  onSetDefault,
+  onToggleEnabled,
+  style,
+}: CalendarItemProps) {
   const bgColor = calendar.backgroundColor || '#4285f4'
   // Appointment calendar is always enabled and cannot be toggled
   const isEnabled = isAppointment || calendar.enabled
@@ -115,16 +83,18 @@ function CalendarItem({ calendar, isAppointment, onSetDefault, onToggleEnabled, 
       }`}
       style={style}
     >
-      <label className={`relative flex items-center ${canToggle ? 'cursor-pointer' : 'cursor-default'}`}>
+      <label
+        className={`relative flex items-center ${canToggle ? 'cursor-pointer' : 'cursor-default'}`}
+      >
         <input
-          type='checkbox'
+          type="checkbox"
           checked={isEnabled}
           onChange={(e) => canToggle && onToggleEnabled(e.target.checked)}
           disabled={!canToggle}
-          className='sr-only peer'
+          className="sr-only peer"
         />
         <div
-          className='w-4 h-4 rounded-sm border-2 peer-checked:border-transparent peer-focus:ring-2 peer-focus:ring-offset-1 peer-focus:ring-offset-neutral-900 peer-focus:ring-neutral-500 transition-colors'
+          className="w-4 h-4 rounded-sm border-2 peer-checked:border-transparent peer-focus:ring-2 peer-focus:ring-offset-1 peer-focus:ring-offset-neutral-900 peer-focus:ring-neutral-500 transition-colors"
           style={{
             backgroundColor: isEnabled ? bgColor : 'transparent',
             borderColor: isEnabled ? 'transparent' : bgColor,
@@ -132,31 +102,31 @@ function CalendarItem({ calendar, isAppointment, onSetDefault, onToggleEnabled, 
         >
           {isEnabled && (
             <svg
-              className='w-full h-full text-white'
-              viewBox='0 0 24 24'
-              fill='none'
-              stroke='currentColor'
+              className="w-full h-full text-white"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
               strokeWidth={3}
             >
-              <path d='M5 13l4 4L19 7' />
+              <path d="M5 13l4 4L19 7" />
             </svg>
           )}
         </div>
       </label>
-      <span className={`flex-1 text-sm truncate ${isEnabled ? 'text-neutral-300' : 'text-neutral-500'}`}>
+      <span
+        className={`flex-1 text-sm truncate ${isEnabled ? 'text-neutral-300' : 'text-neutral-500'}`}
+      >
         {calendar.summary}
       </span>
       <button
-        type='button'
+        type="button"
         onClick={isAppointment ? undefined : onSetDefault}
         className={`p-1 rounded transition-all ${
           isAppointment
             ? 'text-neutral-300/40'
             : 'text-neutral-400 opacity-0 group-hover:opacity-100 hover:text-amber-500'
         }`}
-        title={
-          isAppointment ? 'Appointment calendar' : 'Set as appointment calendar'
-        }
+        title={isAppointment ? 'Appointment calendar' : 'Set as appointment calendar'}
       >
         <CalendarIcon />
       </button>
@@ -276,30 +246,30 @@ export function CalendarSidebar({
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
           ${className}`}
       >
-        <div className='flex items-center justify-between px-4 py-3'>
-          <span className='text-sm font-medium text-neutral-400 tracking-wide'>Calendars</span>
-          <div className='flex items-center gap-2'>
+        <div className="flex items-center justify-between px-4 py-3">
+          <span className="text-sm font-medium text-neutral-400 tracking-wide">Calendars</span>
+          <div className="flex items-center gap-2">
             <button
-              type='button'
+              type="button"
               onClick={onCreateCalendar}
-              className='p-1 rounded text-neutral-400 hover:text-neutral-300 hover:bg-neutral-800 transition-colors'
-              title='Create new calendar'
+              className="p-1 rounded text-neutral-400 hover:text-neutral-300 hover:bg-neutral-800 transition-colors"
+              title="Create new calendar"
             >
               <PlusIcon />
             </button>
             {onClose && (
               <button
-                type='button'
+                type="button"
                 onClick={onClose}
-                className='p-1 rounded text-neutral-400 hover:text-neutral-300 hover:bg-neutral-800 transition-colors lg:hidden'
-                title='Close menu'
+                className="p-1 rounded text-neutral-400 hover:text-neutral-300 hover:bg-neutral-800 transition-colors lg:hidden"
+                title="Close menu"
               >
                 <CloseIcon />
               </button>
             )}
           </div>
         </div>
-        <div className='text-xs text-amber-100/70 bg-amber-800/15 px-4 pt-2 uppercase font-medium tracking-wide'>
+        <div className="text-xs text-amber-100/70 bg-amber-800/15 px-4 pt-2 uppercase font-medium tracking-wide">
           Appointment calendar
         </div>
 
@@ -317,7 +287,7 @@ export function CalendarSidebar({
         </div>
 
         {calendars.length === 0 && (
-          <p className='text-sm text-neutral-500 text-center py-4'>No calendars found</p>
+          <p className="text-sm text-neutral-500 text-center py-4">No calendars found</p>
         )}
       </div>
     </>

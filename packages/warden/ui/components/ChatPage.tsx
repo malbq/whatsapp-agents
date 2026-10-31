@@ -260,17 +260,19 @@ function MessageBubble({ parsed }: { parsed: ParsedMessage }) {
   }
 
   return (
-    <div className={`max-w-[85%] md:max-w-[70%] rounded-xl p-3 ${bubbleStyles[parsed.bubbleClass]}`}>
-      <div className='flex justify-between mb-1 text-[10px] text-neutral-500'>
-        <span className='font-semibold uppercase tracking-wider'>{parsed.label}</span>
+    <div
+      className={`max-w-[85%] md:max-w-[70%] rounded-xl p-3 ${bubbleStyles[parsed.bubbleClass]}`}
+    >
+      <div className="flex justify-between mb-1 text-[10px] text-neutral-500">
+        <span className="font-semibold uppercase tracking-wider">{parsed.label}</span>
       </div>
       {parsed.content && (
-        <div className='whitespace-pre-wrap text-sm text-neutral-100 leading-relaxed'>
+        <div className="whitespace-pre-wrap text-sm text-neutral-100 leading-relaxed">
           {parsed.content}
         </div>
       )}
       {parsed.toolData && (
-        <div className='mt-2 p-2 bg-neutral-950/50 rounded-lg font-mono text-xs text-neutral-300 overflow-x-auto whitespace-pre-wrap'>
+        <div className="mt-2 p-2 bg-neutral-950/50 rounded-lg font-mono text-xs text-neutral-300 overflow-x-auto whitespace-pre-wrap">
           {parsed.toolData}
         </div>
       )}
@@ -291,12 +293,9 @@ function MessageGroup({
   if (parsedMessages.length === 0) return null
 
   return (
-    <div className='space-y-2'>
+    <div className="space-y-2">
       {parsedMessages.map((parsed, idx) => (
-        <MessageBubble
-          key={`${message.id}-${idx}`}
-          parsed={parsed}
-        />
+        <MessageBubble key={`${message.id}-${idx}`} parsed={parsed} />
       ))}
     </div>
   )
@@ -306,64 +305,51 @@ export function ChatPage() {
   const { thread } = useLoaderData({ from: '/_app/chat/$userId' })
 
   return (
-    <div className='flex flex-col h-full'>
+    <div className="flex flex-col h-full">
       {/* Header */}
-      <div className='bg-neutral-900 border-b border-neutral-800 px-4 py-3 flex items-center gap-4 shrink-0'>
-        <Link
-          to='/threads'
-          className='text-neutral-400 hover:text-neutral-100 transition-colors'
-        >
-          <svg
-            className='w-5 h-5'
-            fill='none'
-            viewBox='0 0 24 24'
-            stroke='currentColor'
-          >
+      <div className="bg-neutral-900 border-b border-neutral-800 px-4 py-3 flex items-center gap-4 shrink-0">
+        <Link to="/threads" className="text-neutral-400 hover:text-neutral-100 transition-colors">
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path
-              strokeLinecap='round'
-              strokeLinejoin='round'
+              strokeLinecap="round"
+              strokeLinejoin="round"
               strokeWidth={2}
-              d='M10 19l-7-7m0 0l7-7m-7 7h18'
+              d="M10 19l-7-7m0 0l7-7m-7 7h18"
             />
           </svg>
         </Link>
-        <div className='flex items-center gap-3 min-w-0 flex-1'>
-          <div className='w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold text-sm shrink-0'>
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold text-sm shrink-0">
             {thread.userName.charAt(0).toUpperCase()}
           </div>
-          <div className='min-w-0'>
-            <div className='font-semibold text-neutral-100 truncate'>{thread.userName}</div>
-            <div className='text-xs text-neutral-500 font-mono truncate'>{thread.externalId}</div>
+          <div className="min-w-0">
+            <div className="font-semibold text-neutral-100 truncate">{thread.userName}</div>
+            <div className="text-xs text-neutral-500 font-mono truncate">{thread.externalId}</div>
           </div>
         </div>
       </div>
 
       {/* Messages */}
-      <div className='flex-1 overflow-y-auto p-4 space-y-4'>
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {thread.messages.length === 0 ? (
-          <div className='text-center text-neutral-500 py-12'>
+          <div className="text-center text-neutral-500 py-12">
             <svg
-              className='w-12 h-12 mx-auto mb-4 text-neutral-600'
-              fill='none'
-              viewBox='0 0 24 24'
-              stroke='currentColor'
+              className="w-12 h-12 mx-auto mb-4 text-neutral-600"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
             >
               <path
-                strokeLinecap='round'
-                strokeLinejoin='round'
+                strokeLinecap="round"
+                strokeLinejoin="round"
                 strokeWidth={1.5}
-                d='M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z'
+                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
               />
             </svg>
             <p>No messages in this conversation</p>
           </div>
         ) : (
-          thread.messages.map((msg) => (
-            <MessageGroup
-              key={msg.id}
-              message={msg}
-            />
-          ))
+          thread.messages.map((msg) => <MessageGroup key={msg.id} message={msg} />)
         )}
       </div>
     </div>
