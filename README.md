@@ -1,5 +1,7 @@
 # WhatsApp Agents
 
+[![CI](https://github.com/malbq/whatsapp-agents/actions/workflows/ci.yml/badge.svg)](https://github.com/malbq/whatsapp-agents/actions/workflows/ci.yml)
+
 A Bun + TypeScript monorepo of AI agents that run on the WhatsApp Business Cloud API, built on shared packages for the WhatsApp client, the HTTP server, AI helpers, storage and Postgres persistence.
 
 > **Status: archived.** Meta's WhatsApp Business policy now forbids general-purpose AI assistants on the Business API, which rules out Zapid. Meta also launched its own Business AI agents, which covers Warden's use case. The code is kept as a portfolio reference. It is not maintained for production use.
@@ -55,3 +57,7 @@ spec/         design notes written during development
 ```
 
 See [AGENTS.md](./AGENTS.md) for conventions and contributor workflow.
+
+## License
+
+[MIT](./LICENSE)
