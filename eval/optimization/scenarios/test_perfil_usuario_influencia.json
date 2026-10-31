@@ -1,7 +1,0 @@
-{
-  "name": "perfil_usuario_influencia",
-  "messages": [{ "role": "user", "content": "Sugira um restaurante para o jantar hoje." }],
-  "context": {
-    "profile": "Preferências: vegetariano; cidade: São Paulo; bairro: Pinheiros"
-  }
-}

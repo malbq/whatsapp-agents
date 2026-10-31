@@ -2,8 +2,6 @@ import { ok } from 'node:assert'
 import { WebSearchError } from '../errors.js'
 import type { SearchParams, SearchResult, WebSearch } from './webSearch.js'
 
-ok(import.meta.env.BRAVE_SEARCH_API_KEY, 'BRAVE_SEARCH_API_KEY is required')
-
 interface BraveSearchResult {
   title: string
   url: string
@@ -40,9 +38,12 @@ const DEFAULT_REQUEST_TIMEOUT_MS = 30_000
 
 export namespace WebSearchBrave {
   export const createWebSearch = (options?: {
+    apiKey?: string
     queueTimeoutMs?: number
     requestTimeoutMs?: number
   }): WebSearch => {
+    const apiKey = options?.apiKey ?? import.meta.env.BRAVE_SEARCH_API_KEY
+    ok(apiKey, 'BRAVE_SEARCH_API_KEY is required')
     const QUEUE_TIMEOUT_MS = options?.queueTimeoutMs ?? DEFAULT_QUEUE_TIMEOUT_MS
     const REQUEST_TIMEOUT_MS = options?.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS
 
@@ -64,7 +65,7 @@ export namespace WebSearchBrave {
     const defaultHeaders = new Headers({
       Accept: 'application/json',
       'Accept-Encoding': 'gzip',
-      'X-Subscription-Token': import.meta.env.BRAVE_SEARCH_API_KEY,
+      'X-Subscription-Token': apiKey,
     })
 
     function calculateRemainingWait(): number {

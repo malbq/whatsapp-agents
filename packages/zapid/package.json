@@ -11,6 +11,7 @@
     "stop": "bun run ./bin/stop.ts",
     "typecheck": "tsc",
     "lint": "oxlint --fix",
+    "test:integration": "bun test --path-ignore-patterns=none ./agent.integration.test.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:clean": "bun run ./bin/db-clean.ts",

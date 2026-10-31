@@ -8,6 +8,7 @@
     "packages/*"
   ],
   "scripts": {
+    "test": "bun test",
     "typecheck": "bun run -F '*' typecheck",
     "lint": "bun run -F '*' lint"
   },

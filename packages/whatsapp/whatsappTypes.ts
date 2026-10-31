@@ -147,6 +147,14 @@ export namespace WhatsAppApi {
     }),
   })
 
+  // Fallback so unhandled types (reaction, sticker, location...) reach the unsupported branch
+  export const unknownMessageSchema = z.looseObject({
+    type: z.string(),
+    id: z.string(),
+    from: z.string(),
+    timestamp: z.string(),
+  })
+
   export const incomingMessageSchema = z.union([
     textMessageSchema,
     audioMessageSchema,
@@ -155,6 +163,7 @@ export namespace WhatsAppApi {
     templateButtonReplySchema,
     interactiveReplyMessageSchema,
     flowReplyMessageSchema,
+    unknownMessageSchema,
   ])
 
   export const messagesChangeMetadataSchema = z.object({

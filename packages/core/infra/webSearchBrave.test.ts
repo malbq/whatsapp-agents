@@ -11,7 +11,7 @@ describe('WebSearchBrave', () => {
     originalFetch = globalThis.fetch
     mockFetch = mock()
     globalThis.fetch = mockFetch as any
-    searchWeb = WebSearchBrave.createWebSearch()
+    searchWeb = WebSearchBrave.createWebSearch({ apiKey: 'test-key' })
   })
 
   afterEach(() => {
@@ -135,6 +135,7 @@ describe('WebSearchBrave', () => {
 
   it('should timeout after request timeout', async () => {
     const searchWebWithShortTimeout = WebSearchBrave.createWebSearch({
+      apiKey: 'test-key',
       queueTimeoutMs: 1000,
       requestTimeoutMs: 50,
     })

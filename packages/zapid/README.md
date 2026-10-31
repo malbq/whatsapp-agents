@@ -179,10 +179,10 @@ Características:
 ## Dicas de Testes
 
 - Use o runner do Bun; mantenha testes determinísticos e pequenos
-- Espelhe padrões de testes existentes em `packages/core` e em `packages/agent/zapid/agent.test.ts`
+- Espelhe padrões de testes existentes em `packages/core` e em `packages/zapid/agent.integration.test.ts` (`bun run test:integration`, requer Docker e chaves de API)
 - Mocks apenas para chat e dependências de IA
 - Prefira asserts exatos: formas de objetos/arrays, `toThrow(ErrorClass)`, `toThrow(/mensagem/)`
-- Limpe o banco em `afterEach` com helpers (veja `agent.test.ts`)
+- Limpe o banco em `afterEach` com helpers (veja `agent.integration.test.ts`)
 
 ## Build, lint, typecheck
 

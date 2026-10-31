@@ -21,7 +21,6 @@ docker-compose.yml
 README.md
 .oxlintrc.json
 storage
-eval
 poc
 script
 spec
