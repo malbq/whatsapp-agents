@@ -44,9 +44,12 @@ Use Bun's test runner from the root. You can scope to names or files:
 ## Developing agents
 
 - Start from an existing agent:
-  - See `packages/warden` for a minimal example.
+  - See `packages/cmd` for a minimal example.
   - See `packages/zapid` for a full, complex pipeline.
+- Agent layout: `config.ts` validates env with zod, `index.ts` is the composition root (builds clients and models, mounts routes), and the message handler receives everything it needs as arguments so tests can call it directly.
+- Only the composition root reads environment variables. Shared packages and agent modules take credentials, models and options as parameters.
 - Compose `@wa/server` and `@wa/whatsapp` in your agent's composition root (`index.ts`).
+- Cover the message flow with an offline smoke test: PGlite (in-process Postgres + pgvector) running the real migrations, plus the test doubles in `@wa/core/testing`.
 - Persist and embed messages through `@wa/core`.
 - **Strict Isolation**: Keep agent logic contained within the agent package. Systems, tools, prompts, and types must live inside the agent folder. Do not leak agent business logic into `packages/core`.
 

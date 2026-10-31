@@ -22,7 +22,7 @@ Agents keep their own business logic, prompts, schema and migrations; shared pac
 
 ## Stack
 
-Bun, TypeScript 7 (strict), Hono, Vercel AI SDK 7 (OpenAI, Google Gemini), Zod 4, Drizzle ORM, PostgreSQL + pgvector, Cloudflare Workers AI (embeddings), Sentry, React 19 + TanStack Router + Tailwind 4 (Warden dashboard), oxlint.
+Bun, TypeScript 7 (strict), Hono, Vercel AI SDK 7 (OpenAI, Google Gemini), Zod 4, Drizzle ORM, PostgreSQL + pgvector, Cloudflare Workers AI (embeddings), Sentry, React 19 + TanStack Router + Tailwind 4 (Warden dashboard), oxlint, Prettier. Tests run offline with PGlite (in-process Postgres) and AI SDK mock models.
 
 ## Getting started
 
@@ -30,18 +30,13 @@ Bun, TypeScript 7 (strict), Hono, Vercel AI SDK 7 (OpenAI, Google Gemini), Zod 4
 bun install
 bun run typecheck
 bun run lint
+bun run format:check
 bun run test           # offline: no network or API keys needed
 ```
 
-Running an agent needs a WhatsApp Business app, provider API keys and a database:
+The tests include smoke tests of each agent's full message flow, using in-process Postgres (PGlite) with the real migrations and mock AI models.
 
-```bash
-docker compose up -d                        # Postgres 18 + pgvector on :5432
-cp packages/zapid/.env.example packages/zapid/.env
-cd packages/zapid && bun run db:migrate && bun run dev
-```
-
-Each agent has a `.env.example` listing its variables. Zapid's end-to-end suite runs against real models and the local database: `bun run test:integration` inside `packages/zapid`.
+Running an agent for real needs a WhatsApp Business app, provider API keys and a database. `docker compose up -d` starts Postgres 18 + pgvector on :5432; then follow the agent's README to create its database, copy `.env.example` to `.env`, migrate and `bun run dev`. Configuration is validated at startup, so a missing variable fails fast with a clear message. Zapid's end-to-end suite runs against real models and the local database: `bun run test:integration` inside `packages/zapid`.
 
 ## Repository layout
 
