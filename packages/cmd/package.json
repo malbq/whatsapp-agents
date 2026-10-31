@@ -10,17 +10,14 @@
     "lint": "oxlint --fix"
   },
   "dependencies": {
-    "@ai-sdk/openai": "catalog:",
-    "@wa/core": "workspace:*",
     "@wa/server": "workspace:*",
     "@wa/whatsapp": "workspace:*",
-    "ai": "catalog:",
-    "hono": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@types/bun": "catalog:",
     "@types/node": "catalog:",
+    "@wa/core": "workspace:*",
     "oxlint": "catalog:",
     "typescript": "catalog:"
   }

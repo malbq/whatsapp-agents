@@ -1,20 +1,19 @@
 import type { Chat, IncomingMessage } from '@wa/whatsapp'
 
-const commands = ['help', 'text', 'contact', 'location', 'options'] as const
-export type Command = (typeof commands)[number]
 export function extractCommand(message: IncomingMessage): string | null {
-  if (message.type !== 'text' || !message.text) return null
-  const match = message.text.match(/^\/(help|text|contact|location|options \d+)$/)
-  if (!match) return null
-  return message.text
+  if (message.type !== 'text') return null
+  const text = message.text.trim()
+  return text.startsWith('/') ? text : null
 }
 
 export const helpText = `Available commands:
 /help - Show this help
-/text - Test text sending
-/contact - Test contact sending
-/location - Test location sending
-/options {N} - Test interactive list of {N} options`
+/text - Text message
+/contact - Contact card
+/location - Location pin
+/list - Interactive list
+/button - Interactive buttons
+/cta - Call-to-action URL button`
 
 export async function sendCommandMessage(
   chat: Chat,
@@ -25,7 +24,7 @@ export async function sendCommandMessage(
     case '/help':
       return chat.sendText(userId, { text: helpText })
     case '/text':
-      return chat.sendText(userId, { text: 'Echo test message sent successfully!' })
+      return chat.sendText(userId, { text: 'Text message sent successfully!' })
     case '/contact':
       return chat.sendContact(userId, {
         name: 'John Doe',
@@ -92,7 +91,7 @@ export async function sendCommandMessage(
       })
     default:
       return chat.sendText(userId, {
-        text: `Unknown command: /${command}. Type /help for available commands.`,
+        text: `Unknown command: ${command}. Type /help for available commands.`,
       })
   }
 }
