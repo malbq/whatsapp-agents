@@ -1,17 +1,9 @@
-import type { OutgoingMessage } from '@wa/whatsapp'
-import type {
-  AssistantModelMessage,
-  LanguageModelUsage,
-  SystemModelMessage,
-  TextPart,
-  UserModelMessage,
-} from 'ai'
+import type { AssistantModelMessage, LanguageModelUsage, TextPart, UserModelMessage } from 'ai'
 import type {
   AudioMessage,
   ContactMessage,
   IncomingDocumentMessage,
   IncomingImageMessage,
-  IncomingMessage,
   InteractiveButtonMessage,
   InteractiveCtaUrlMessage,
   InteractiveListMessage,
@@ -21,8 +13,9 @@ import type {
   TemplateMessage,
   TextMessage,
   VoiceMessage,
-} from '../../whatsapp/types'
-import { transcribeAudio } from '../ai/transcribeAudio'
+} from '@wa/whatsapp'
+import type { TranscribeAudio } from '../ai/transcribeAudio'
+import { assertNever } from './assertNever'
 
 //TODO how should we handle reaction messages?
 export interface ToUserModelMessageResult {
@@ -38,14 +31,15 @@ export async function toUserModelMessage(
     | IncomingDocumentMessage
     | IncomingImageMessage
     | LocationMessage
-    | ContactMessage
+    | ContactMessage,
+  deps: { transcribeAudio: TranscribeAudio }
 ): Promise<ToUserModelMessageResult> {
   switch (message.type) {
     case 'text':
       return { message: { role: 'user', content: [{ type: 'text', text: message.text }] } }
     case 'voice':
     case 'audio': {
-      const transcription = await transcribeAudio({
+      const transcription = await deps.transcribeAudio({
         audio: message.data,
         mimeType: message.mimeType,
       })
@@ -117,11 +111,8 @@ export async function toUserModelMessage(
           ],
         },
       }
-    default: {
-      // Prevent forgetting to handle a message type: Type '{ type: "video"; ... }' is not assignable to type 'never'
-      const _exhaustive: never = message
-      throw new Error(`Unsupported message type: ${(message as IncomingMessage).type}`)
-    }
+    default:
+      return assertNever(message, 'Unsupported message type')
   }
 }
 
@@ -152,14 +143,7 @@ export function toAssistantModelMessage(
         role: 'assistant',
         content: [{ type: 'text', text: JSON.stringify(message) }],
       }
-    default: {
-      // Prevent forgetting to handle a message type: Type '{ type: "video"; ... }' is not assignable to type 'never'
-      const _exhaustive: never = message
-      throw new Error(`Unsupported message type: ${(message as OutgoingMessage).type}`)
-    }
+    default:
+      return assertNever(message, 'Unsupported message type')
   }
-}
-
-export function toSystemModelMessage(content: string): SystemModelMessage {
-  return { role: 'system', content }
 }

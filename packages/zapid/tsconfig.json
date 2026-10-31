@@ -4,6 +4,6 @@
     "jsx": "react-jsx",
     "jsxImportSource": "hono/jsx"
   },
-  "include": ["**/*.ts", "**/*.tsx", "../core/core.d.ts", "../whatsapp/whatsapp.d.ts"],
+  "include": ["**/*.ts", "**/*.tsx"],
   "exclude": ["node_modules"]
 }

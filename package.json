@@ -10,7 +10,10 @@
   "scripts": {
     "test": "bun test",
     "typecheck": "bun run -F '*' typecheck",
-    "lint": "bun run -F '*' lint"
+    "lint": "oxlint --deny-warnings",
+    "lint:fix": "bun run -F '*' lint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "catalog": {
     "@types/bun": "^1.4.4",
@@ -31,6 +34,13 @@
     "@ai-sdk/google": "^4.0.109",
     "@ai-sdk/openai": "^4.0.106",
     "@ai-sdk/provider-utils": "^5.0.72",
-    "@sentry/bun": "^11.10.0"
+    "@sentry/bun": "^11.10.0",
+    "prettier": "^3.9.10",
+    "@electric-sql/pglite": "^0.5.13",
+    "@electric-sql/pglite-pgvector": "^0.0.14"
+  },
+  "devDependencies": {
+    "oxlint": "catalog:",
+    "prettier": "catalog:"
   }
 }

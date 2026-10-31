@@ -1,12 +1,13 @@
 import { tool } from 'ai'
 import { ok } from 'node:assert'
 import { z } from 'zod'
-import { generateEmbeddings } from '../ai/generateEmbeddings'
+import type { GenerateEmbeddings } from '../ai/generateEmbeddings'
 import type { ToolExecutionError } from '../errors'
 import type { DB } from '../infra/db'
 
 export interface SearchConversationHistoryContext {
   userId: string
+  generateEmbeddings: GenerateEmbeddings
   recentMessageIds: Array<string>
   searchSnippets: DB.Repository['searchSnippets']
 }
@@ -28,7 +29,7 @@ Examples:
     execute: async ({ query }) => {
       console.debug('search_conversation_history', { query })
       try {
-        const [embeddings] = await generateEmbeddings([query])
+        const [embeddings] = await ctx.generateEmbeddings([query])
         const queryEmbedding = embeddings?.[0]?.embedding
         ok(queryEmbedding, 'Query embedding not generated')
 

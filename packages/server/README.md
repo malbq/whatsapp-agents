@@ -63,6 +63,7 @@ Creates a new server instance.
 - `name: string` - Server name (for logging startup)
 - `version: string` - Server version (for logging startup)
 - `port: number` - Port to listen on
+- `development?: boolean` - Bun development mode with detailed error pages (default: `false`)
 
 **Returns:**
 

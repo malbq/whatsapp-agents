@@ -1,4 +1,3 @@
-import { ok } from 'node:assert'
 import { WebSearchError } from '../errors.js'
 import type { SearchParams, SearchResult, WebSearch } from './webSearch.js'
 
@@ -37,15 +36,14 @@ const DEFAULT_QUEUE_TIMEOUT_MS = 30_000
 const DEFAULT_REQUEST_TIMEOUT_MS = 30_000
 
 export namespace WebSearchBrave {
-  export const createWebSearch = (options?: {
-    apiKey?: string
+  export const createWebSearch = (options: {
+    apiKey: string
     queueTimeoutMs?: number
     requestTimeoutMs?: number
   }): WebSearch => {
-    const apiKey = options?.apiKey ?? import.meta.env.BRAVE_SEARCH_API_KEY
-    ok(apiKey, 'BRAVE_SEARCH_API_KEY is required')
-    const QUEUE_TIMEOUT_MS = options?.queueTimeoutMs ?? DEFAULT_QUEUE_TIMEOUT_MS
-    const REQUEST_TIMEOUT_MS = options?.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS
+    const { apiKey } = options
+    const QUEUE_TIMEOUT_MS = options.queueTimeoutMs ?? DEFAULT_QUEUE_TIMEOUT_MS
+    const REQUEST_TIMEOUT_MS = options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS
 
     let remainingRequests: number | null = null
     let resetAfter: number | null = null

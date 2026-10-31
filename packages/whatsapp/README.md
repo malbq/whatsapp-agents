@@ -33,7 +33,7 @@ const notification = await chat.parseNotification(webhookBody)
 if (notification && 'message' in notification) {
   const { message } = notification
   if (message.type === 'text') {
-    console.log(message.text) 
+    console.log(message.text)
   }
 }
 
@@ -52,17 +52,11 @@ import { Hono } from 'hono'
 import { createWhatsappClient, createWebhookApp } from '@wa/whatsapp'
 
 const app = new Hono()
-const chat = createWhatsappClient({
-  apiToken: process.env.META_API_TOKEN,
-  businessPhoneId: process.env.META_BUSINESS_PHONE_ID,
-})
+const chat = createWhatsappClient({ apiToken, businessPhoneId, apiVersion: 'v23.0' })
 
 const webhookApp = createWebhookApp(
   chat,
-  {
-    appSecret: process.env.META_APP_SECRET,
-    verifyToken: process.env.META_WEBHOOK_VERIFY_TOKEN,
-  },
+  { appSecret, verifyToken },
   {
     onMessage: async (notification, rawBody) => {
       // notification is of type MessageNotification
@@ -97,9 +91,9 @@ The `createWebhookApp` function:
 
 - Creates a Hono app with `GET /` for Meta's verification request
 - Creates `POST /` for incoming notifications
-- Validates HMAC-SHA256 signature automatically using `x-hub-signature-256`
+- Validates the HMAC-SHA256 signature in `x-hub-signature-256` (constant-time compare)
 - Parses notifications and routes to appropriate handlers
-- Returns proper HTTP responses (200, 401)
+- Answers 200 right away and runs handlers in the background (errors are logged); invalid signatures get 401
 
 ## Configuration
 
@@ -107,9 +101,9 @@ The `createWebhookApp` function:
 
 - `apiToken`: Meta API access token
 - `businessPhoneId`: WhatsApp Business Phone Number ID
+- `apiVersion` (optional): Graph API version, defaults to `v23.0`
 
-**Environment Variables:**
-- `WA_API_VERSION`: Required (e.g., "v18.0") - Accessed via `import.meta.env.WA_API_VERSION`
+The package reads no environment variables; pass everything in.
 
 ### Webhook Routes (required)
 

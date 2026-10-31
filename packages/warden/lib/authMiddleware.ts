@@ -1,6 +1,6 @@
 import { getCookie } from 'hono/cookie'
 import { createMiddleware } from 'hono/factory'
-import { getSession, SESSION_COOKIE, type Session } from '../routes/auth'
+import { SESSION_COOKIE, type Session, type Sessions } from './session'
 
 declare module 'hono' {
   interface ContextVariableMap {
@@ -8,26 +8,32 @@ declare module 'hono' {
   }
 }
 
-export const requireAuth = createMiddleware(async (c, next) => {
-  const cookie = getCookie(c, SESSION_COOKIE)
-  const session = await getSession(cookie)
+export type AuthMiddleware = ReturnType<typeof createAuthMiddleware>
 
-  if (!session) {
-    return c.redirect('/login')
-  }
+export function createAuthMiddleware(sessions: Sessions) {
+  /** Redirects anonymous visitors to the login page */
+  const requireAuth = createMiddleware(async (c, next) => {
+    const session = await sessions.getSession(getCookie(c, SESSION_COOKIE))
 
-  c.set('session', session)
-  return next()
-})
+    if (!session) {
+      return c.redirect('/login')
+    }
 
-export const requireAuthApi = createMiddleware(async (c, next) => {
-  const cookie = getCookie(c, SESSION_COOKIE)
-  const session = await getSession(cookie)
+    c.set('session', session)
+    return next()
+  })
 
-  if (!session) {
-    return c.json({ error: 'Unauthorized' }, 401)
-  }
+  /** Answers anonymous API calls with 401 */
+  const requireAuthApi = createMiddleware(async (c, next) => {
+    const session = await sessions.getSession(getCookie(c, SESSION_COOKIE))
 
-  c.set('session', session)
-  return next()
-})
+    if (!session) {
+      return c.json({ error: 'Unauthorized' }, 401)
+    }
+
+    c.set('session', session)
+    return next()
+  })
+
+  return { requireAuth, requireAuthApi }
+}

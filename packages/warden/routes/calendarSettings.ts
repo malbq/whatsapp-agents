@@ -1,9 +1,9 @@
 import { google } from 'googleapis'
 import { Hono } from 'hono'
-import { getCookie } from 'hono/cookie'
 import { z } from 'zod'
 import type { WardenDB } from '../db'
-import { getSession, SESSION_COOKIE } from './auth'
+import type { AuthMiddleware } from '../lib/authMiddleware'
+import { createOAuth2Client, type GoogleOAuthConfig } from '../lib/googleOAuth'
 
 export interface CalendarListItem {
   id: string
@@ -34,18 +34,11 @@ export interface CalendarEvent {
   }
 }
 
-function getOAuth2Client() {
-  return new google.auth.OAuth2(
-    import.meta.env.GOOGLE_CLIENT_ID,
-    import.meta.env.GOOGLE_CLIENT_SECRET
-  )
-}
-
-async function getAuthenticatedCalendarClient(db: WardenDB) {
+async function getAuthenticatedCalendarClient(db: WardenDB, oauth: GoogleOAuthConfig) {
   const connection = await db.getCalendarConnection()
   if (!connection) return null
 
-  const oauth2Client = getOAuth2Client()
+  const oauth2Client = createOAuth2Client(oauth)
   oauth2Client.setCredentials({ refresh_token: connection.refreshToken })
 
   return google.calendar({ version: 'v3', auth: oauth2Client })
@@ -88,32 +81,29 @@ async function fetchMultiCalendarEvents(
   const flatEvents = allEvents.flat()
 
   // Fetch appointment data for events from appointment calendar
-  const appointmentEventIds = flatEvents
-    .filter((e) => e.isAppointmentCalendar)
-    .map((e) => e.id)
+  const appointmentEventIds = flatEvents.filter((e) => e.isAppointmentCalendar).map((e) => e.id)
 
-  const appointmentsMap = await db.getAppointmentsWithCustomerByCalendarEventIds(appointmentEventIds)
+  const appointmentsMap =
+    await db.getAppointmentsWithCustomerByCalendarEventIds(appointmentEventIds)
 
   // Enrich events with appointment data
+  // Events are built above, so they can be enriched in place
   return flatEvents.map((event) => {
     const appointment = appointmentsMap.get(event.id)
-    if (appointment) {
-      return {
-        ...event,
-        appointment: {
-          customerName: appointment.customerName,
-          customerPhone: appointment.customerPhone,
-          serviceName: appointment.serviceName,
-          status: appointment.status,
-        },
-      }
-    }
-    return event
+    if (!appointment) return event
+    return Object.assign(event, {
+      appointment: {
+        customerName: appointment.customerName,
+        customerPhone: appointment.customerPhone,
+        serviceName: appointment.serviceName,
+        status: appointment.status,
+      },
+    })
   })
 }
 
-async function getCalendarData(db: WardenDB) {
-  const calendarClient = await getAuthenticatedCalendarClient(db)
+async function getCalendarData(db: WardenDB, oauth: GoogleOAuthConfig) {
+  const calendarClient = await getAuthenticatedCalendarClient(db, oauth)
   if (!calendarClient) {
     return null
   }
@@ -150,25 +140,23 @@ async function getCalendarData(db: WardenDB) {
   }
 }
 
-export function createCalendarSettingsRoute(db: WardenDB) {
+export interface CalendarSettingsRouteDeps {
+  db: WardenDB
+  auth: AuthMiddleware
+  oauth: GoogleOAuthConfig
+}
+
+export function createCalendarSettingsRoute({ db, auth, oauth }: CalendarSettingsRouteDeps) {
   const app = new Hono()
 
-  // Middleware to check session for all routes
-  app.use('*', async (c, next) => {
-    const sessionCookie = getCookie(c, SESSION_COOKIE)
-    const session = await getSession(sessionCookie)
-    if (!session) {
-      return c.json({ error: 'Unauthorized' }, 401)
-    }
-    return next()
-  })
+  app.use('*', auth.requireAuthApi)
 
   // Get all calendar data (calendars list, events, settings)
   app.get('/data', async (c) => {
     const monthParam = c.req.query('month')
     const currentMonth = monthParam ? new Date(monthParam) : new Date()
 
-    const calendarData = await getCalendarData(db)
+    const calendarData = await getCalendarData(db, oauth)
     if (!calendarData) {
       return c.json({ connected: false })
     }
@@ -228,7 +216,7 @@ export function createCalendarSettingsRoute(db: WardenDB) {
       return c.json({ error: validation.error.issues[0]?.message }, 400)
     }
 
-    const calendarClient = await getAuthenticatedCalendarClient(db)
+    const calendarClient = await getAuthenticatedCalendarClient(db, oauth)
     if (!calendarClient) {
       return c.json({ error: 'Calendar not connected' }, 400)
     }
@@ -295,7 +283,7 @@ export function createCalendarSettingsRoute(db: WardenDB) {
       return c.json({ error: validation.error.issues[0]?.message }, 400)
     }
 
-    const calendarClient = await getAuthenticatedCalendarClient(db)
+    const calendarClient = await getAuthenticatedCalendarClient(db, oauth)
     if (!calendarClient) {
       return c.json({ error: 'Calendar not connected' }, 400)
     }
@@ -323,7 +311,7 @@ export function createCalendarSettingsRoute(db: WardenDB) {
     const calendarId = decodeURIComponent(c.req.param('calendarId'))
     const eventId = decodeURIComponent(c.req.param('eventId'))
 
-    const calendarClient = await getAuthenticatedCalendarClient(db)
+    const calendarClient = await getAuthenticatedCalendarClient(db, oauth)
     if (!calendarClient) {
       return c.json({ error: 'Calendar not connected' }, 400)
     }

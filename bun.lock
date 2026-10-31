@@ -4,22 +4,23 @@
   "workspaces": {
     "": {
       "name": "zapid",
+      "devDependencies": {
+        "oxlint": "catalog:",
+        "prettier": "catalog:",
+      },
     },
     "packages/cmd": {
       "name": "@wa/agent-cmd",
       "version": "0.0.1",
       "dependencies": {
-        "@ai-sdk/openai": "catalog:",
-        "@wa/core": "workspace:*",
         "@wa/server": "workspace:*",
         "@wa/whatsapp": "workspace:*",
-        "ai": "catalog:",
-        "hono": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {
         "@types/bun": "catalog:",
         "@types/node": "catalog:",
+        "@wa/core": "workspace:*",
         "oxlint": "catalog:",
         "typescript": "catalog:",
       },
@@ -27,15 +28,12 @@
     "packages/core": {
       "name": "@wa/core",
       "dependencies": {
-        "@ai-sdk/google": "catalog:",
         "@ai-sdk/openai": "catalog:",
         "@ai-sdk/provider-utils": "catalog:",
         "@wa/whatsapp": "workspace:*",
         "ai": "catalog:",
         "compromise": "catalog:",
         "drizzle-orm": "catalog:",
-        "hono": "catalog:",
-        "postgres": "catalog:",
         "retext": "catalog:",
         "retext-readability": "catalog:",
         "unpdf": "catalog:",
@@ -44,7 +42,6 @@
       },
       "devDependencies": {
         "@types/bun": "catalog:",
-        "drizzle-kit": "catalog:",
         "oxlint": "catalog:",
         "typescript": "catalog:",
       },
@@ -78,6 +75,8 @@
         "zod": "catalog:",
       },
       "devDependencies": {
+        "@electric-sql/pglite": "catalog:",
+        "@electric-sql/pglite-pgvector": "catalog:",
         "@types/bun": "catalog:",
         "@types/node": "catalog:",
         "@types/react": "^19.3.0",
@@ -85,6 +84,7 @@
         "bun-plugin-tailwind": "^0.1.2",
         "drizzle-kit": "catalog:",
         "oxlint": "catalog:",
+        "postgres": "catalog:",
         "typescript": "catalog:",
       },
     },
@@ -104,6 +104,7 @@
       "name": "@wa/agent-zapid",
       "version": "0.0.1",
       "dependencies": {
+        "@ai-sdk/google": "catalog:",
         "@ai-sdk/openai": "catalog:",
         "@sentry/bun": "catalog:",
         "@wa/core": "workspace:*",
@@ -115,9 +116,12 @@
         "zod": "catalog:",
       },
       "devDependencies": {
+        "@electric-sql/pglite": "catalog:",
+        "@electric-sql/pglite-pgvector": "catalog:",
         "@types/bun": "catalog:",
         "drizzle-kit": "catalog:",
         "oxlint": "catalog:",
+        "postgres": "catalog:",
         "typescript": "catalog:",
       },
     },
@@ -126,6 +130,8 @@
     "@ai-sdk/google": "^4.0.109",
     "@ai-sdk/openai": "^4.0.106",
     "@ai-sdk/provider-utils": "^5.0.72",
+    "@electric-sql/pglite": "^0.5.13",
+    "@electric-sql/pglite-pgvector": "^0.0.14",
     "@sentry/bun": "^11.10.0",
     "@types/bun": "^1.4.4",
     "@types/node": "^26.6.6",
@@ -136,6 +142,7 @@
     "hono": "^4.13.14",
     "oxlint": "^1.90.0",
     "postgres": "^3.4.9",
+    "prettier": "^3.9.10",
     "retext": "^9.0.0",
     "retext-readability": "^8.0.0",
     "typescript": "^7.0.2",
@@ -155,6 +162,10 @@
     "@ai-sdk/provider-utils": ["@ai-sdk/provider-utils@5.0.72", "", { "dependencies": { "@ai-sdk/provider": "4.0.35", "@standard-schema/spec": "^1.1.0", "@workflow/serde": "4.1.0", "eventsource-parser": "^3.0.8", "undici": "^7.29.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-M6QAztI84jWumQSvKcGOL91DxhChsWxn3D3gYtV0/7E1TPQg9BmLdIerOolUC/jghQbMlQrHyzp0hqdIhUZ2Rw=="],
 
     "@drizzle-team/brocli": ["@drizzle-team/brocli@0.10.2", "", {}, "sha512-z33Il7l5dKjUgGULTqBsQBQwckHh5AbIuxhdsIxDDiZAzBOrZO6q9ogcWC65kU382AfynTfgNumVcNIjuIua6w=="],
+
+    "@electric-sql/pglite": ["@electric-sql/pglite@0.5.13", "", {}, "sha512-4rZuxK1k07w6sSpJzjMri0B9+HuXuC7V9pxVB51pR0T9KPqXg6TD0mdaEwBA9rkcL4jdht4tGDf/wYzAiGhT7g=="],
+
+    "@electric-sql/pglite-pgvector": ["@electric-sql/pglite-pgvector@0.0.14", "", { "peerDependencies": { "@electric-sql/pglite": "0.5.13" } }, "sha512-sJCsaVnuqo18CJyPV32pbVCDlhjV+iFCSlwOW7+kTkzIRJSWkju+LnQ9DlWpRR+S+V5m//LA+w4+Ne2afBQ0wg=="],
 
     "@esbuild-kit/core-utils": ["@esbuild-kit/core-utils@3.3.2", "", { "dependencies": { "esbuild": "~0.18.20", "source-map-support": "^0.5.21" } }, "sha512-sPRAnw9CdSsRmEtnsl2WXWdyquogVpB3yZ3dgwJfe8zrOzTsV7cJvmwrKVa+0ma5BoiGJ+BoqkMvawbayKUsqQ=="],
 
@@ -603,6 +614,8 @@
     "pluralize": ["pluralize@8.0.0", "", {}, "sha512-Nc3IT5yHzflTfbjgqWcCPpo7DaKy4FnpB0l/zCAW0Tc7jxAiuqSxHasntB3D7887LSrA93kDJ9IXovxJYxyLCA=="],
 
     "postgres": ["postgres@3.4.9", "", {}, "sha512-GD3qdB0x1z9xgFI6cdRD6xu2Sp2WCOEoe3mtnyB5Ee0XrrL5Pe+e4CCnJrRMnL1zYtRDZmQQVbvOttLnKDLnaw=="],
+
+    "prettier": ["prettier@3.9.10", "", { "bin": { "prettier": "bin/prettier.cjs" } }, "sha512-skGHTH1Yb9QvaTC4hWnRTzEYtCpApF0UMBPz+t/0ZPzP8ihefo/btKd+QA7pUE0fEwA1SbS/NmhyEcstdXOIdA=="],
 
     "qs": ["qs@6.14.0", "", { "dependencies": { "side-channel": "^1.1.0" } }, "sha512-YWWTjgABSKcvs/nWBi9PycY/JiPJqOD4JA6o9Sej2AtvSGarXxKC3OQSk4pAarbdQlKAh5D4FCQkJNkW+GAn3w=="],
 

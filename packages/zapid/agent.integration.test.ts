@@ -7,8 +7,10 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } fr
 import { and, eq } from 'drizzle-orm'
 import { styleText } from 'node:util'
 import { agent } from './agent'
-import { runContext } from './context'
-import { dbFactory, type UserEntitlements, type UserWithProfile, type ZapidRepository } from './db'
+import { loadConfig, type Config } from './config'
+import { runContext, type AgentDeps } from './context'
+import type { UserEntitlements, UserWithProfile, ZapidRepository } from './db'
+import { createAgentAI, createDatabase } from './deps'
 import { userQuota } from './dbSchema'
 import { ingest } from './ingest'
 
@@ -39,7 +41,7 @@ interface MockChat extends Chat {
   >
 }
 
-async function createTestDatabase(): Promise<string> {
+async function createTestDatabase(): Promise<{ testDbName: string; databaseUrl: string }> {
   const testDbName = `zapid_test_${Date.now()}`
 
   const createResult =
@@ -54,7 +56,6 @@ async function createTestDatabase(): Promise<string> {
   await Bun.$`docker exec wa-postgres psql -U postgres -d ${testDbName} -c "CREATE EXTENSION IF NOT EXISTS vector"`.quiet()
 
   const databaseUrl = `postgresql://postgres:postgres@localhost:5432/${testDbName}`
-  import.meta.env.DATABASE_URL = databaseUrl
 
   await Bun.$`bun run drizzle-kit push --dialect=postgresql --schema=./dbSchema.ts --url=${databaseUrl}`
     .cwd(import.meta.dir)
@@ -62,7 +63,7 @@ async function createTestDatabase(): Promise<string> {
 
   console.log(styleText('dim', `⚙ Schema pushed to ${testDbName}`))
 
-  return testDbName
+  return { testDbName, databaseUrl }
 }
 
 async function dropTestDatabase(testDbName: string): Promise<void> {
@@ -140,7 +141,10 @@ function createMockChat(): MockChat {
   }
 }
 
+let config: Config
+let agentServices: Pick<AgentDeps, 'ai' | 'onboardingTemplate' | 'googlePlacesApiKey'>
 let testDbName: string | undefined
+let testDatabaseUrl: string
 let testStorageDir: string
 let db: ZapidRepository
 let storage: Storage
@@ -153,6 +157,12 @@ const imgBase64 =
 
 describe('Agent', () => {
   beforeAll(async () => {
+    config = loadConfig()
+    agentServices = {
+      ai: createAgentAI(config),
+      onboardingTemplate: config.WA_ONBOARDING_TEMPLATE,
+      googlePlacesApiKey: config.GOOGLE_PLACES_API_KEY,
+    }
     testStorageDir = `/tmp/zapid-test-storage-${Date.now()}`
     await Bun.$`mkdir -p ${testStorageDir}`.quiet()
     console.log(styleText('dim', `⚙ Created test storage directory: ${testStorageDir}`))
@@ -166,11 +176,13 @@ describe('Agent', () => {
   })
 
   beforeEach(async () => {
-    testDbName = await createTestDatabase()
-    db = dbFactory()
+    const testDatabase = await createTestDatabase()
+    testDbName = testDatabase.testDbName
+    testDatabaseUrl = testDatabase.databaseUrl
+    db = createDatabase(config, testDatabaseUrl)
     storage = FilesystemStorage.storage(testStorageDir)
     chat = createMockChat()
-    webSearch = WebSearchBrave.createWebSearch()
+    webSearch = WebSearchBrave.createWebSearch({ apiKey: config.BRAVE_SEARCH_API_KEY })
 
     const seedSql = await Bun.file(`${import.meta.dir}/__fixtures__/base_user_seed.sql`).text()
     await db.$client.execute(seedSql)
@@ -194,6 +206,7 @@ describe('Agent', () => {
           storage,
           chat,
           webSearch,
+          ...agentServices,
           user: seededUser,
           entitlements: seededEntitlements,
           notification: {
@@ -227,7 +240,7 @@ describe('Agent', () => {
     async () => {
       // Verify initial state - no usage recorded
       const initialLedger = await db.$client.query.userEntitlementLedger.findMany({
-        where: (ledger, { eq }) => eq(ledger.userId, seededUser.id),
+        where: (ledger) => eq(ledger.userId, seededUser.id),
       })
       expect(initialLedger).toHaveLength(0)
 
@@ -242,6 +255,7 @@ describe('Agent', () => {
           storage,
           chat,
           webSearch,
+          ...agentServices,
           user: seededUser,
           entitlements: seededEntitlements,
           notification: {
@@ -264,7 +278,7 @@ describe('Agent', () => {
 
       // Verify usage_ledger has an entry
       const ledgerAfterFirst = await db.$client.query.userEntitlementLedger.findMany({
-        where: (ledger, { eq }) => eq(ledger.userId, seededUser.id),
+        where: (ledger) => eq(ledger.userId, seededUser.id),
       })
       expect(ledgerAfterFirst).toHaveLength(1)
       expect(ledgerAfterFirst[0]).toMatchObject({
@@ -285,6 +299,7 @@ describe('Agent', () => {
           storage,
           chat,
           webSearch,
+          ...agentServices,
           user: seededUser,
           entitlements: seededEntitlements,
           notification: {
@@ -307,7 +322,7 @@ describe('Agent', () => {
 
       // Verify usage_ledger has two entries
       const ledgerAfterSecond = await db.$client.query.userEntitlementLedger.findMany({
-        where: (ledger, { eq }) => eq(ledger.userId, seededUser.id),
+        where: (ledger) => eq(ledger.userId, seededUser.id),
       })
       expect(ledgerAfterSecond).toHaveLength(2)
 
@@ -329,6 +344,7 @@ describe('Agent', () => {
           storage,
           chat,
           webSearch,
+          ...agentServices,
           user: seededUser,
           entitlements: seededEntitlements,
           notification: {
@@ -355,6 +371,7 @@ describe('Agent', () => {
           storage,
           chat,
           webSearch,
+          ...agentServices,
           user: seededUser,
           entitlements: seededEntitlements,
           notification: {
@@ -392,6 +409,7 @@ describe('Agent', () => {
           storage,
           chat,
           webSearch,
+          ...agentServices,
           user: seededUser,
           entitlements: seededEntitlements,
           notification: {
@@ -445,6 +463,7 @@ describe('Agent', () => {
           storage,
           chat,
           webSearch,
+          ...agentServices,
           user: seededUser,
           entitlements: seededEntitlements,
           notification: {
@@ -487,6 +506,7 @@ describe('Agent', () => {
           storage,
           chat,
           webSearch,
+          ...agentServices,
           user: seededUser,
           entitlements: seededEntitlements,
           notification: {
@@ -527,6 +547,7 @@ describe('Agent', () => {
           storage,
           chat,
           webSearch,
+          ...agentServices,
           user: seededUser,
           entitlements: seededEntitlements,
           notification: {
@@ -564,7 +585,7 @@ describe('Agent', () => {
     async () => {
       // Verify initial state - no web_search usage recorded
       const initialLedger = await db.$client.query.userEntitlementLedger.findMany({
-        where: (ledger, { and, eq }) =>
+        where: (ledger) =>
           and(eq(ledger.userId, seededUser.id), eq(ledger.key, 'n_web_search_calls_per_day')),
       })
       expect(initialLedger).toHaveLength(0)
@@ -580,6 +601,7 @@ describe('Agent', () => {
           storage,
           chat,
           webSearch,
+          ...agentServices,
           user: seededUser,
           entitlements: seededEntitlements,
           notification: {
@@ -602,7 +624,7 @@ describe('Agent', () => {
 
       // Verify usage_ledger has an entry for web_search
       const ledgerAfter = await db.$client.query.userEntitlementLedger.findMany({
-        where: (ledger, { and, eq }) =>
+        where: (ledger) =>
           and(eq(ledger.userId, seededUser.id), eq(ledger.key, 'n_web_search_calls_per_day')),
       })
       expect(ledgerAfter.length).toBeGreaterThanOrEqual(1)
@@ -625,7 +647,7 @@ describe('Agent', () => {
     async () => {
       // Verify initial state - no google_places usage recorded
       const initialLedger = await db.$client.query.userEntitlementLedger.findMany({
-        where: (ledger, { and, eq }) =>
+        where: (ledger) =>
           and(eq(ledger.userId, seededUser.id), eq(ledger.key, 'n_google_places_calls_per_day')),
       })
       expect(initialLedger).toHaveLength(0)
@@ -641,6 +663,7 @@ describe('Agent', () => {
           storage,
           chat,
           webSearch,
+          ...agentServices,
           user: seededUser,
           entitlements: seededEntitlements,
           notification: {
@@ -663,7 +686,7 @@ describe('Agent', () => {
 
       // Verify usage_ledger has an entry for google_places
       const ledgerAfter = await db.$client.query.userEntitlementLedger.findMany({
-        where: (ledger, { and, eq }) =>
+        where: (ledger) =>
           and(eq(ledger.userId, seededUser.id), eq(ledger.key, 'n_google_places_calls_per_day')),
       })
       expect(ledgerAfter.length).toBe(1)
@@ -686,7 +709,7 @@ describe('Agent', () => {
     async () => {
       // Verify initial state - no storage usage
       const initialResources = await db.$client.query.resource.findMany({
-        where: (resource, { eq }) => eq(resource.userId, seededUser.id),
+        where: (resource) => eq(resource.userId, seededUser.id),
       })
       expect(initialResources).toHaveLength(0)
 
@@ -704,6 +727,7 @@ describe('Agent', () => {
           storage,
           chat,
           webSearch,
+          ...agentServices,
           user: seededUser,
           entitlements: seededEntitlements,
           notification: {
@@ -727,7 +751,7 @@ describe('Agent', () => {
 
       // Verify resource table has an entry with correct size
       const resourcesAfterFirst = await db.$client.query.resource.findMany({
-        where: (resource, { eq }) => eq(resource.userId, seededUser.id),
+        where: (resource) => eq(resource.userId, seededUser.id),
       })
       expect(resourcesAfterFirst).toHaveLength(1)
       expect(resourcesAfterFirst[0]!.size).toBe(imgSize)
@@ -750,6 +774,7 @@ describe('Agent', () => {
           storage,
           chat,
           webSearch,
+          ...agentServices,
           user: seededUser,
           entitlements: seededEntitlements,
           notification: {
@@ -773,7 +798,7 @@ describe('Agent', () => {
 
       // Verify resource table has two entries
       const resourcesAfterSecond = await db.$client.query.resource.findMany({
-        where: (resource, { eq }) => eq(resource.userId, seededUser.id),
+        where: (resource) => eq(resource.userId, seededUser.id),
       })
       expect(resourcesAfterSecond).toHaveLength(2)
 
@@ -795,6 +820,7 @@ describe('Agent', () => {
           storage,
           chat,
           webSearch,
+          ...agentServices,
           user: seededUser,
           entitlements: seededEntitlements,
           notification: {
@@ -833,6 +859,7 @@ describe('Agent', () => {
           storage,
           chat,
           webSearch,
+          ...agentServices,
           user: seededUser,
           entitlements: seededEntitlements,
           notification: {
@@ -865,196 +892,33 @@ describe('Agent', () => {
   test(
     'uses search_conversation_history tool to recall stored memory and writes base fixture',
     async () => {
-      const originalMaxRecent = import.meta.env.MAX_RECENT_MESSAGES
-      import.meta.env.MAX_RECENT_MESSAGES = '4'
+      db = createDatabase({ ...config, MAX_RECENT_MESSAGES: 4 }, testDatabaseUrl)
+      const fs = await import('node:fs/promises')
+      const fixtureDir = `${import.meta.dir}/__fixtures__`
+      const fixturePath = `${fixtureDir}/search_conversation_history_dump.sql`
 
+      let hasFixture = false
       try {
-        const fs = await import('node:fs/promises')
-        const fixtureDir = `./packages/agent/zapid/__fixtures__`
-        const fixturePath = `${fixtureDir}/search_conversation_history_dump.sql`
-
-        let hasFixture = false
-        try {
-          await fs.access(fixturePath)
-          hasFixture = true
-        } catch {
-          hasFixture = false
-        }
-
-        if (hasFixture) {
-          const sql = await fs.readFile(fixturePath, 'utf8')
-          // Seed database with existing fixture for deterministic state
-          await db.$client.execute(sql)
-        }
-
-        const run = async (text: string) => {
-          await runContext(
-            {
-              db,
-              storage,
-              chat,
-              webSearch,
-              user: seededUser,
-              entitlements: seededEntitlements,
-              notification: {
-                userName: seededUser.name,
-                userWaId: seededUser.waId,
-                userPhone: seededUser.waId,
-                timestamp: new Date(),
-                message: {
-                  type: 'text',
-                  messageWaId: `wamid.memory.${Date.now()}`,
-                  text,
-                },
-              },
-            },
-            async () => {
-              await ingest()
-              await agent()
-            }
-          )
-        }
-
-        if (!hasFixture) {
-          // 1–3: seed memory and general context only when fixture does not exist
-          await run('The secret door code is 4242.')
-          await run('How are you?')
-          await run('Thanks!')
-
-          // Dump base SQL fixture after the first three messages
-          const messagesAfterThree = await db.$client.query.message.findMany()
-          const snippetsAfterThree = await db.$client.query.snippet.findMany()
-          const usersAfterThree = await db.$client.query.user.findMany()
-
-          await fs.mkdir(fixtureDir, { recursive: true })
-
-          const sqlLines: string[] = []
-
-          // Users first (FK target for message.user_id)
-          for (const u of usersAfterThree) {
-            sqlLines.push(
-              `INSERT INTO "user" ("id", "waId", "name", "joinedAt") VALUES (` +
-                `${esc(u.id)}, ` +
-                `${esc(u.waId)}, ` +
-                `${esc(u.name)}, ` +
-                `${u.joinedAt ? esc(u.joinedAt.toISOString()) : 'NOW()'}::timestamptz` +
-                `);`
-            )
-          }
-
-          // Messages next
-          for (const m of messagesAfterThree) {
-            sqlLines.push(
-              `INSERT INTO "message" ("id", "userId", "waId", "type", "messages", "resourceId", "timestamp") VALUES (` +
-                `${esc(m.id)}, ` +
-                `${esc(m.userId)}, ` +
-                `${m.waId ? esc(m.waId) : 'NULL'}, ` +
-                `${esc(m.type)}, ` +
-                `${esc(JSON.stringify(m.messages))}, ` +
-                `${m.resourceId ? esc(m.resourceId) : 'NULL'}, ` +
-                `${m.timestamp ? esc(m.timestamp.toISOString()) : 'NOW()'}::timestamptz` +
-                `);`
-            )
-          }
-
-          // Snippets last (FK target for snippet.message_id)
-          for (const s of snippetsAfterThree) {
-            sqlLines.push(
-              `INSERT INTO "snippet" ("id", "messageId", "sequence", "content", "vector") VALUES (` +
-                `${esc(s.id)}, ` +
-                `${esc(s.messageId)}, ` +
-                `${s.sequence}, ` +
-                `${esc(s.content)}, ` +
-                `'[${s.vector.join(',')}]'::vector` +
-                `);`
-            )
-          }
-
-          await fs.writeFile(fixturePath, sqlLines.join('\n') + '\n', 'utf8')
-        }
-
-        // 4: ask to recall the secret code
-        await run(
-          'I forgot the secret door code I told you earlier. Please answer only with the 4 digits.'
-        )
-
-        const allMessages = await db.$client.query.message.findMany()
-
-        const hasSearchConversationHistoryCall = allMessages.some((m) => {
-          // Search through the bundled messages array for tool calls
-          return m.messages.some((msg: any) => {
-            if (msg.role !== 'assistant') return false
-            if (Array.isArray(msg.content)) {
-              return msg.content.some(
-                (c: any) => c.type === 'tool-call' && c.toolName === 'search_conversation_history'
-              )
-            }
-            if (Array.isArray(msg.toolCalls)) {
-              return msg.toolCalls.some(
-                (tc: any) => tc.name === 'search_conversation_history'
-              )
-            }
-            return false
-          })
-        })
-
-        expect(hasSearchConversationHistoryCall).toBe(true)
-
-        expect(chat.sentMessages).not.toHaveLength(0)
-        const responseMessage = chat.sentMessages.at(-1)!
-        expect('text' in responseMessage).toBe(true)
-        const responseText = 'text' in responseMessage ? responseMessage.text : ''
-        expect(responseText.replace(/\D/g, '')).toContain('4242')
-      } finally {
-        import.meta.env.MAX_RECENT_MESSAGES = originalMaxRecent
+        await fs.access(fixturePath)
+        hasFixture = true
+      } catch {
+        hasFixture = false
       }
-    },
-    { timeout: 120000 }
-  )
 
-  test(
-    'uses search_files tool to retrieve a previously sent image',
-    async () => {
-      const originalMaxRecent = import.meta.env.MAX_RECENT_MESSAGES
-      import.meta.env.MAX_RECENT_MESSAGES = '1'
-      try {
-        const imgBuffer = Uint8Array.fromBase64(imgBase64).buffer
+      if (hasFixture) {
+        const sql = await fs.readFile(fixturePath, 'utf8')
+        // Seed database with existing fixture for deterministic state
+        await db.$client.execute(sql)
+      }
 
-        // First: send the image
+      const run = async (text: string) => {
         await runContext(
           {
             db,
             storage,
             chat,
             webSearch,
-            user: seededUser,
-            entitlements: seededEntitlements,
-            notification: {
-              userName: seededUser.name,
-              userWaId: seededUser.waId,
-              userPhone: seededUser.waId,
-              timestamp: new Date(),
-              message: {
-                type: 'image',
-                messageWaId: 'wamid.file.1',
-                data: imgBuffer,
-                mimeType: 'image/png',
-              },
-            },
-          },
-          async () => {
-            await ingest()
-            await agent()
-          }
-        )
-
-        // Second: ask to retrieve the image
-        await runContext(
-          {
-            db,
-            storage,
-            chat,
-            webSearch,
+            ...agentServices,
             user: seededUser,
             entitlements: seededEntitlements,
             notification: {
@@ -1064,8 +928,8 @@ describe('Agent', () => {
               timestamp: new Date(),
               message: {
                 type: 'text',
-                messageWaId: 'wamid.file.2',
-                text: 'Send me the Hello World image I sent you. Send it directly without transformation.',
+                messageWaId: `wamid.memory.${Date.now()}`,
+                text,
               },
             },
           },
@@ -1074,41 +938,194 @@ describe('Agent', () => {
             await agent()
           }
         )
-
-        // Verify search_files tool was called
-        const allMessages = await db.$client.query.message.findMany()
-        const hasSearchFilesCall = allMessages.some((m) => {
-          // Search through the bundled messages array for tool calls
-          return m.messages.some((msg: any) => {
-            if (msg.role !== 'assistant') return false
-            if (Array.isArray(msg.content)) {
-              return msg.content.some(
-                (c: any) => c.type === 'tool-call' && c.toolName === 'search_files'
-              )
-            }
-            if (Array.isArray(msg.toolCalls)) {
-              return msg.toolCalls.some((tc: any) => tc.name === 'search_files')
-            }
-            return false
-          })
-        })
-
-        expect(hasSearchFilesCall).toBe(true)
-
-        // Verify image was sent back
-        const imageMessages = chat.sentMessages.filter((msg) => 'data' in msg && msg.data)
-        expect(imageMessages.length).toBeGreaterThanOrEqual(1)
-
-        // Compare binaries
-        const sentImage = imageMessages.at(-1) as { data: ArrayBuffer }
-        const originalBytes = new Uint8Array(imgBuffer)
-        const returnedBytes = new Uint8Array(sentImage.data)
-
-        expect(returnedBytes.length).toBe(originalBytes.length)
-        expect(returnedBytes).toEqual(originalBytes)
-      } finally {
-        import.meta.env.MAX_RECENT_MESSAGES = originalMaxRecent
       }
+
+      if (!hasFixture) {
+        // 1–3: seed memory and general context only when fixture does not exist
+        await run('The secret door code is 4242.')
+        await run('How are you?')
+        await run('Thanks!')
+
+        // Dump base SQL fixture after the first three messages
+        const messagesAfterThree = await db.$client.query.message.findMany()
+        const snippetsAfterThree = await db.$client.query.snippet.findMany()
+        const usersAfterThree = await db.$client.query.user.findMany()
+
+        await fs.mkdir(fixtureDir, { recursive: true })
+
+        const sqlLines: string[] = []
+
+        // Users first (FK target for message.user_id)
+        for (const u of usersAfterThree) {
+          sqlLines.push(
+            `INSERT INTO "user" ("id", "waId", "name", "joinedAt") VALUES (` +
+              `${esc(u.id)}, ` +
+              `${esc(u.waId)}, ` +
+              `${esc(u.name)}, ` +
+              `${u.joinedAt ? esc(u.joinedAt.toISOString()) : 'NOW()'}::timestamptz` +
+              `);`
+          )
+        }
+
+        // Messages next
+        for (const m of messagesAfterThree) {
+          sqlLines.push(
+            `INSERT INTO "message" ("id", "userId", "waId", "type", "messages", "resourceId", "timestamp") VALUES (` +
+              `${esc(m.id)}, ` +
+              `${esc(m.userId)}, ` +
+              `${m.waId ? esc(m.waId) : 'NULL'}, ` +
+              `${esc(m.type)}, ` +
+              `${esc(JSON.stringify(m.messages))}, ` +
+              `${m.resourceId ? esc(m.resourceId) : 'NULL'}, ` +
+              `${m.timestamp ? esc(m.timestamp.toISOString()) : 'NOW()'}::timestamptz` +
+              `);`
+          )
+        }
+
+        // Snippets last (FK target for snippet.message_id)
+        for (const s of snippetsAfterThree) {
+          sqlLines.push(
+            `INSERT INTO "snippet" ("id", "messageId", "sequence", "content", "vector") VALUES (` +
+              `${esc(s.id)}, ` +
+              `${esc(s.messageId)}, ` +
+              `${s.sequence}, ` +
+              `${esc(s.content)}, ` +
+              `'[${s.vector.join(',')}]'::vector` +
+              `);`
+          )
+        }
+
+        await fs.writeFile(fixturePath, sqlLines.join('\n') + '\n', 'utf8')
+      }
+
+      // 4: ask to recall the secret code
+      await run(
+        'I forgot the secret door code I told you earlier. Please answer only with the 4 digits.'
+      )
+
+      const allMessages = await db.$client.query.message.findMany()
+
+      const hasSearchConversationHistoryCall = allMessages.some((m) => {
+        // Search through the bundled messages array for tool calls
+        return m.messages.some((msg: any) => {
+          if (msg.role !== 'assistant') return false
+          if (Array.isArray(msg.content)) {
+            return msg.content.some(
+              (c: any) => c.type === 'tool-call' && c.toolName === 'search_conversation_history'
+            )
+          }
+          if (Array.isArray(msg.toolCalls)) {
+            return msg.toolCalls.some((tc: any) => tc.name === 'search_conversation_history')
+          }
+          return false
+        })
+      })
+
+      expect(hasSearchConversationHistoryCall).toBe(true)
+
+      expect(chat.sentMessages).not.toHaveLength(0)
+      const responseMessage = chat.sentMessages.at(-1)!
+      expect('text' in responseMessage).toBe(true)
+      const responseText = 'text' in responseMessage ? responseMessage.text : ''
+      expect(responseText.replace(/\D/g, '')).toContain('4242')
+    },
+    { timeout: 120000 }
+  )
+
+  test(
+    'uses search_files tool to retrieve a previously sent image',
+    async () => {
+      db = createDatabase({ ...config, MAX_RECENT_MESSAGES: 1 }, testDatabaseUrl)
+      const imgBuffer = Uint8Array.fromBase64(imgBase64).buffer
+
+      // First: send the image
+      await runContext(
+        {
+          db,
+          storage,
+          chat,
+          webSearch,
+          ...agentServices,
+          user: seededUser,
+          entitlements: seededEntitlements,
+          notification: {
+            userName: seededUser.name,
+            userWaId: seededUser.waId,
+            userPhone: seededUser.waId,
+            timestamp: new Date(),
+            message: {
+              type: 'image',
+              messageWaId: 'wamid.file.1',
+              data: imgBuffer,
+              mimeType: 'image/png',
+            },
+          },
+        },
+        async () => {
+          await ingest()
+          await agent()
+        }
+      )
+
+      // Second: ask to retrieve the image
+      await runContext(
+        {
+          db,
+          storage,
+          chat,
+          webSearch,
+          ...agentServices,
+          user: seededUser,
+          entitlements: seededEntitlements,
+          notification: {
+            userName: seededUser.name,
+            userWaId: seededUser.waId,
+            userPhone: seededUser.waId,
+            timestamp: new Date(),
+            message: {
+              type: 'text',
+              messageWaId: 'wamid.file.2',
+              text: 'Send me the Hello World image I sent you. Send it directly without transformation.',
+            },
+          },
+        },
+        async () => {
+          await ingest()
+          await agent()
+        }
+      )
+
+      // Verify search_files tool was called
+      const allMessages = await db.$client.query.message.findMany()
+      const hasSearchFilesCall = allMessages.some((m) => {
+        // Search through the bundled messages array for tool calls
+        return m.messages.some((msg: any) => {
+          if (msg.role !== 'assistant') return false
+          if (Array.isArray(msg.content)) {
+            return msg.content.some(
+              (c: any) => c.type === 'tool-call' && c.toolName === 'search_files'
+            )
+          }
+          if (Array.isArray(msg.toolCalls)) {
+            return msg.toolCalls.some((tc: any) => tc.name === 'search_files')
+          }
+          return false
+        })
+      })
+
+      expect(hasSearchFilesCall).toBe(true)
+
+      // Verify image was sent back
+      const imageMessages = chat.sentMessages.filter((msg) => 'data' in msg && msg.data)
+      expect(imageMessages.length).toBeGreaterThanOrEqual(1)
+
+      // Compare binaries
+      const sentImage = imageMessages.at(-1) as { data: ArrayBuffer }
+      const originalBytes = new Uint8Array(imgBuffer)
+      const returnedBytes = new Uint8Array(sentImage.data)
+
+      expect(returnedBytes.length).toBe(originalBytes.length)
+      expect(returnedBytes).toEqual(originalBytes)
     },
     { timeout: 120000 }
   )
@@ -1122,6 +1139,7 @@ describe('Agent', () => {
           storage,
           chat,
           webSearch,
+          ...agentServices,
           user: seededUser,
           entitlements: seededEntitlements,
           notification: {
@@ -1182,6 +1200,7 @@ describe('Agent', () => {
             storage,
             chat,
             webSearch,
+            ...agentServices,
             user: seededUser,
             entitlements: seededEntitlements,
             notification: {

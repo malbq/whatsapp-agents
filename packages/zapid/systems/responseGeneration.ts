@@ -1,4 +1,3 @@
-import { openai } from '@ai-sdk/openai'
 import { generateWhatsappMessage } from '@wa/core/ai/generateWhatsappMessage'
 import { ResponseGenerationError } from '@wa/core/errors'
 import type { DB } from '@wa/core/infra/db'
@@ -11,19 +10,16 @@ import {
 } from '@wa/core/tools'
 import { sendWhatsappMessage } from '@wa/core/utils/sendWhatsappMessage'
 import { toDbMessage } from '@wa/core/utils/toDbMessage'
-import { toSystemModelMessage } from '@wa/core/utils/toModelMessage'
 import { stepCountIs, type ModelMessage, type ToolSet } from 'ai'
 import { ok } from 'node:assert'
 import { getContext } from '../context'
 import type { ZapidRepository } from '../db'
 import { system } from '../prompts/system'
 import { userProfile } from '../prompts/userProfile'
-import { googlePlacesTool } from '../tools/googlePlaces'
+import { createGooglePlacesTool } from '../tools/googlePlaces'
 import { updateUserProfileTool } from '../tools/updateUserProfile'
 import { hasQuotaRemaining, isFeatureEnabled, recordUsage } from './entitlements'
 
-ok(import.meta.env.OPENAI_API_KEY, 'OPENAI_API_KEY is required')
-const model = openai.responses('gpt-5-mini-2025-08-07')
 const MAX_STEPS = 10
 
 export async function responseGeneration() {
@@ -46,15 +42,14 @@ export async function responseGeneration() {
     context.chat.sendTypingIndicator(lastUserMessage.waId)
   }
 
-  // Build agent context
-  const agentContext: Array<ModelMessage> = [
-    toSystemModelMessage(`Current date: ${new Date().toDateString()}.`),
-  ]
-
+  // AI SDK 7 only accepts system content through `instructions`
+  const instructions = [system, `Current date: ${new Date().toDateString()}.`]
   if (user.profile.length > 0) {
-    agentContext.push(userProfile(user.profile))
+    instructions.push(userProfile(user.profile))
     console.debug('Context included: user profile')
   }
+
+  const agentContext: Array<ModelMessage> = []
 
   const recentMessageIds = recentMessages.map((m) => m.id)
 
@@ -64,14 +59,10 @@ export async function responseGeneration() {
     agentContext.push(...row.messages)
   }
 
-  console.debug(`Generating WhatsApp message`, {
-    provider: model.provider,
-    model: model.modelId,
-    context: agentContext,
-  })
+  console.debug(`Generating WhatsApp message`, { context: agentContext })
   const response = await generateWhatsappMessage({
-    model,
-    instructions: system,
+    model: context.ai.responseModel,
+    instructions: instructions.join('\n\n'),
     messages: agentContext,
     abortSignal: context.abortSignal,
     tools: createToolSet({
@@ -89,11 +80,7 @@ export async function responseGeneration() {
       },
     },
   })
-  console.debug('Generated WhatsApp message', {
-    provider: model.provider,
-    model: model.modelId,
-    response,
-  })
+  console.debug('Generated WhatsApp message', { response })
 
   const assistantMessageId = await sendWhatsappMessage({
     chat: context.chat,
@@ -122,7 +109,7 @@ async function fillMediaMessagesWithData(
   const messagesToFill = new Map(
     recentMessages
       .map<[number, string | undefined | null]>((row, index) => [index, row.storageKey])
-      .filter(([_, storageKey]) => !!storageKey) as Array<[number, string]>
+      .filter(([, storageKey]) => !!storageKey) as Array<[number, string]>
   )
   const data = new Map<DB.Resource['storageKey'], ArrayBuffer>()
   const keys = new Set<DB.Resource['storageKey']>(messagesToFill.values())
@@ -165,7 +152,7 @@ interface CreateToolSetParams {
 }
 
 function createToolSet({ userId, recentMessageIds, lastUserMessageWaId }: CreateToolSetParams) {
-  const { user, chat, db, webSearch } = getContext()
+  const { user, chat, db, webSearch, ai, googlePlacesApiKey } = getContext()
   ok(user, 'User not found')
 
   const webSearchTool = createWebSearchTool({
@@ -184,12 +171,14 @@ function createToolSet({ userId, recentMessageIds, lastUserMessageWaId }: Create
 
   const searchConversationHistoryTool = createSearchConversationHistoryTool({
     userId,
+    generateEmbeddings: ai.generateEmbeddings,
     recentMessageIds,
     searchSnippets: db.searchSnippets,
   })
 
   const searchFilesTool = createSearchFilesTool({
     userId,
+    generateEmbeddings: ai.generateEmbeddings,
     searchResources: db.searchResources,
   })
 
@@ -218,6 +207,7 @@ function createToolSet({ userId, recentMessageIds, lastUserMessageWaId }: Create
     isFeatureEnabled('b_enable_google_places_tool') &&
     hasQuotaRemaining('n_google_places_calls_per_day')
   ) {
+    const googlePlacesTool = createGooglePlacesTool({ apiKey: googlePlacesApiKey })
     toolset[googlePlacesTool.title!] = googlePlacesTool
   }
 

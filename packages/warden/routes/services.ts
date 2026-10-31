@@ -1,33 +1,33 @@
 import { Hono } from 'hono'
-import { getCookie } from 'hono/cookie'
 import { z } from 'zod'
 import type { WardenDB } from '../db'
-import { getSession, SESSION_COOKIE } from './auth'
+import type { AuthMiddleware } from '../lib/authMiddleware'
 
 const createServiceSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
   description: z.string().max(500).optional(),
-  durationMinutes: z.number().int().min(5, 'Duration must be at least 5 minutes').max(480, 'Duration cannot exceed 8 hours'),
+  durationMinutes: z
+    .number()
+    .int()
+    .min(5, 'Duration must be at least 5 minutes')
+    .max(480, 'Duration cannot exceed 8 hours'),
 })
 
 const updateServiceSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100).optional(),
   description: z.string().max(500).optional().nullable(),
-  durationMinutes: z.number().int().min(5, 'Duration must be at least 5 minutes').max(480, 'Duration cannot exceed 8 hours').optional(),
+  durationMinutes: z
+    .number()
+    .int()
+    .min(5, 'Duration must be at least 5 minutes')
+    .max(480, 'Duration cannot exceed 8 hours')
+    .optional(),
 })
 
-export function createServicesRoute(db: WardenDB) {
+export function createServicesRoute(db: WardenDB, auth: AuthMiddleware) {
   const app = new Hono()
 
-  // Middleware to check session for all routes
-  app.use('*', async (c, next) => {
-    const sessionCookie = getCookie(c, SESSION_COOKIE)
-    const session = await getSession(sessionCookie)
-    if (!session) {
-      return c.json({ error: 'Unauthorized' }, 401)
-    }
-    return next()
-  })
+  app.use('*', auth.requireAuthApi)
 
   // List all services (excludes soft-deleted)
   app.get('/', async (c) => {
@@ -83,8 +83,10 @@ export function createServicesRoute(db: WardenDB) {
 
     const updateData: Parameters<typeof db.updateService>[1] = {}
     if (validation.data.name !== undefined) updateData.name = validation.data.name
-    if (validation.data.description !== undefined) updateData.description = validation.data.description ?? undefined
-    if (validation.data.durationMinutes !== undefined) updateData.durationMinutes = validation.data.durationMinutes
+    if (validation.data.description !== undefined)
+      updateData.description = validation.data.description ?? undefined
+    if (validation.data.durationMinutes !== undefined)
+      updateData.durationMinutes = validation.data.durationMinutes
 
     const service = await db.updateService(id, updateData)
 

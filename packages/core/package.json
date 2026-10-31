@@ -8,22 +8,20 @@
     "./infra/*": "./infra/*.ts",
     "./tools": "./tools/index.ts",
     "./utils/*": "./utils/*.ts",
-    "./errors": "./errors.ts"
+    "./errors": "./errors.ts",
+    "./testing": "./testing.ts"
   },
   "scripts": {
     "typecheck": "tsc",
     "lint": "oxlint --fix"
   },
   "dependencies": {
-    "@ai-sdk/google": "catalog:",
     "@ai-sdk/openai": "catalog:",
     "@ai-sdk/provider-utils": "catalog:",
     "@wa/whatsapp": "workspace:*",
     "ai": "catalog:",
     "compromise": "catalog:",
     "drizzle-orm": "catalog:",
-    "hono": "catalog:",
-    "postgres": "catalog:",
     "retext": "catalog:",
     "retext-readability": "catalog:",
     "unpdf": "catalog:",
@@ -32,7 +30,6 @@
   },
   "devDependencies": {
     "@types/bun": "catalog:",
-    "drizzle-kit": "catalog:",
     "oxlint": "catalog:",
     "typescript": "catalog:"
   }

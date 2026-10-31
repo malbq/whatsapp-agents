@@ -1,4 +1,7 @@
 import { SQL } from 'bun'
+import { ok } from 'node:assert'
+
+ok(import.meta.env.DATABASE_URL, 'DATABASE_URL is required')
 
 const seedSQL = `DO $$
 BEGIN
@@ -55,7 +58,7 @@ BEGIN
   ) AS entitlements(key, value);
 END $$;`
 
-const client = new SQL(process.env.DATABASE_URL!)
+const client = new SQL(import.meta.env.DATABASE_URL)
 
 await client.unsafe(seedSQL)
 

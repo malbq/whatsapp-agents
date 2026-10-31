@@ -61,7 +61,7 @@ export function createChatRoute(db: ZapidRepository, storage: Storage) {
   return async (c: Context) => {
     const [users, modelPricing] = await Promise.all([
       db.$client.query.user.findMany({
-        orderBy: (user, { desc }) => [desc(user.joinedAt)],
+        orderBy: (user) => [desc(user.joinedAt)],
       }),
       fetchPricing(),
     ])
@@ -84,7 +84,7 @@ export function createChatRoute(db: ZapidRepository, storage: Storage) {
           .where(eq(schema.message.userId, selectedUserId))
           .orderBy(desc(schema.message.timestamp))
           .limit(100)
-          .then((rows) => rows.reverse())
+          .then((rows) => rows.toReversed())
 
         if (rawMessages.length > 0) {
           const messageIds = rawMessages.map((m) => m.message.id)
@@ -116,11 +116,12 @@ export function createChatRoute(db: ZapidRepository, storage: Storage) {
             })
           )
 
-          messages = rawMessages.map((r) => ({
-            ...r.message,
-            usages: usageByMessageId.get(r.message.id) ?? [],
-            imageDataUrl: imageDataUrls.get(r.message.id),
-          }))
+          messages = rawMessages.map((r) =>
+            Object.assign(r.message, {
+              usages: usageByMessageId.get(r.message.id) ?? [],
+              imageDataUrl: imageDataUrls.get(r.message.id),
+            })
+          )
         }
       }
     }
@@ -137,13 +138,10 @@ export function createChatRoute(db: ZapidRepository, storage: Storage) {
 }
 
 const Layout: FC<{ title: string; children: Child }> = ({ title, children }) => (
-  <html lang='en'>
+  <html lang="en">
     <head>
-      <meta charset='UTF-8' />
-      <meta
-        name='viewport'
-        content='width=device-width, initial-scale=1.0'
-      />
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <title>{title}</title>
       <style>{`
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -339,12 +337,9 @@ const Layout: FC<{ title: string; children: Child }> = ({ title, children }) => 
 )
 
 const UserListItem: FC<{ user: DB.User; isActive: boolean }> = ({ user, isActive }) => (
-  <a
-    href={`/chat?user=${user.id}`}
-    class={`user-item ${isActive ? 'active' : ''}`}
-  >
-    <div class='user-name'>{user.name}</div>
-    <div class='user-id'>{user.waId}</div>
+  <a href={`/chat?user=${user.id}`} class={`user-item ${isActive ? 'active' : ''}`}>
+    <div class="user-name">{user.name}</div>
+    <div class="user-id">{user.waId}</div>
   </a>
 )
 
@@ -591,33 +586,33 @@ const UsageDisplay: FC<{ usage: UsageSummary; modelPricing: ModelPricing[] }> = 
   }))
 
   return (
-    <div class='message-usage'>
-      <div class='usage-items'>
-        <span class='usage-item'>
-          <span class='usage-label'>in:</span> {formatTokens(usage.inputTokens)}
+    <div class="message-usage">
+      <div class="usage-items">
+        <span class="usage-item">
+          <span class="usage-label">in:</span> {formatTokens(usage.inputTokens)}
         </span>
         {usage.cachedTokens > 0 && (
-          <span class='usage-item'>
-            <span class='usage-label'>cached:</span> {formatTokens(usage.cachedTokens)}
+          <span class="usage-item">
+            <span class="usage-label">cached:</span> {formatTokens(usage.cachedTokens)}
           </span>
         )}
-        <span class='usage-item'>
-          <span class='usage-label'>out:</span> {formatTokens(usage.outputTokens)}
+        <span class="usage-item">
+          <span class="usage-label">out:</span> {formatTokens(usage.outputTokens)}
         </span>
         {usage.reasoningTokens > 0 && (
-          <span class='usage-item'>
-            <span class='usage-label'>reasoning:</span> {formatTokens(usage.reasoningTokens)}
+          <span class="usage-item">
+            <span class="usage-label">reasoning:</span> {formatTokens(usage.reasoningTokens)}
           </span>
         )}
-        <span class='usage-item usage-total'>= {formatTokens(usage.totalTokens)} tokens</span>
+        <span class="usage-item usage-total">= {formatTokens(usage.totalTokens)} tokens</span>
       </div>
       {costs.length > 0 && (
-        <table class='price-table'>
+        <table class="price-table">
           <tbody>
             {costs.map((c) => (
               <tr key={c.name}>
-                <td class='price-model'>{c.name}</td>
-                <td class='price-cost'>{formatCost(c.cost)}</td>
+                <td class="price-model">{c.name}</td>
+                <td class="price-cost">{formatCost(c.cost)}</td>
               </tr>
             ))}
           </tbody>
@@ -641,34 +636,17 @@ const MessageBubble: FC<{ message: MessageWithUsage; modelPricing: ModelPricing[
         const showUnindexed = index === 0 && unindexedUsage
 
         return (
-          <div
-            key={index}
-            class={`message ${parsed.bubbleClass}`}
-          >
-            <div class='message-header'>
-              <span class='message-role'>{parsed.label}</span>
+          <div key={index} class={`message ${parsed.bubbleClass}`}>
+            <div class="message-header">
+              <span class="message-role">{parsed.label}</span>
             </div>
             {index === 0 && message.imageDataUrl && (
-              <img
-                src={message.imageDataUrl}
-                class='message-image'
-                alt='User sent image'
-              />
+              <img src={message.imageDataUrl} class="message-image" alt="User sent image" />
             )}
-            {parsed.content && <div class='message-content'>{parsed.content}</div>}
-            {parsed.toolData && <div class='tool-output'>{parsed.toolData}</div>}
-            {showUnindexed && (
-              <UsageDisplay
-                usage={unindexedUsage}
-                modelPricing={modelPricing}
-              />
-            )}
-            {usage && (
-              <UsageDisplay
-                usage={usage}
-                modelPricing={modelPricing}
-              />
-            )}
+            {parsed.content && <div class="message-content">{parsed.content}</div>}
+            {parsed.toolData && <div class="tool-output">{parsed.toolData}</div>}
+            {showUnindexed && <UsageDisplay usage={unindexedUsage} modelPricing={modelPricing} />}
+            {usage && <UsageDisplay usage={usage} modelPricing={modelPricing} />}
           </div>
         )
       })}
@@ -676,7 +654,7 @@ const MessageBubble: FC<{ message: MessageWithUsage; modelPricing: ModelPricing[
   )
 }
 
-export const ChatPage: FC<ChatPageProps> = ({ users, selectedUser, messages, modelPricing }) => {
+const ChatPage: FC<ChatPageProps> = ({ users, selectedUser, messages, modelPricing }) => {
   const totalUsage = getTotalUsage(messages)
   const totalCosts = modelPricing.map((mp) => ({
     name: mp.name,
@@ -685,43 +663,35 @@ export const ChatPage: FC<ChatPageProps> = ({ users, selectedUser, messages, mod
 
   return (
     <Layout title={`Zapid Chat - ${selectedUser?.name ?? 'Select User'}`}>
-      <aside class='sidebar'>
+      <aside class="sidebar">
         {users.map((user) => (
-          <UserListItem
-            key={user.id}
-            user={user}
-            isActive={selectedUser?.id === user.id}
-          />
+          <UserListItem key={user.id} user={user} isActive={selectedUser?.id === user.id} />
         ))}
       </aside>
-      <main class='main'>
+      <main class="main">
         {selectedUser && (
           <>
-            <div class='chat-header'>
-              <div class='header-info'>
+            <div class="chat-header">
+              <div class="header-info">
                 <h2>{selectedUser.name}</h2>
-                <div class='subtitle'>{selectedUser.waId}</div>
+                <div class="subtitle">{selectedUser.waId}</div>
               </div>
               {totalCosts.length > 0 && (
-                <table class='header-price-table'>
+                <table class="header-price-table">
                   <tbody>
                     {totalCosts.map((c) => (
                       <tr key={c.name}>
-                        <td class='price-model'>{c.name}</td>
-                        <td class='price-cost'>{formatCost(c.cost)}</td>
+                        <td class="price-model">{c.name}</td>
+                        <td class="price-cost">{formatCost(c.cost)}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               )}
             </div>
-            <div class='messages'>
+            <div class="messages">
               {messages.map((msg) => (
-                <MessageBubble
-                  key={msg.id}
-                  message={msg}
-                  modelPricing={modelPricing}
-                />
+                <MessageBubble key={msg.id} message={msg} modelPricing={modelPricing} />
               ))}
             </div>
           </>

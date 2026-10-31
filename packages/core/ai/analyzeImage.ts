@@ -1,11 +1,5 @@
-import { createGoogleGenerativeAI } from '@ai-sdk/google'
-import { generateText, type LanguageModelUsage, type TextPart } from 'ai'
-import { ok } from 'node:assert'
+import { generateText, type LanguageModel, type LanguageModelUsage, type TextPart } from 'ai'
 
-ok(import.meta.env.GOOGLE_GENERATIVE_AI_API_KEY, 'GOOGLE_GENERATIVE_AI_API_KEY is required')
-
-const googleProvider = createGoogleGenerativeAI()
-const imageAnalysisModel = googleProvider('gemini-2.5-flash')
 const IMAGE_ANALYSIS_TEMP = 0.1
 
 export interface AnalyzeImageResult {
@@ -31,29 +25,27 @@ If there is any text present in the image, transcribe it accurately and try to r
 - Description must have less than 2000 characters.
 - Return only a concise description and transcribed text; no extra commentary or meta-information.`
 
-export const analyzeImage: AnalyzeImage = async ({
-  instructions = defaultInstructions,
-  imageUrl,
-  caption,
-}) => {
-  const result = await generateText({
-    model: imageAnalysisModel,
-    temperature: IMAGE_ANALYSIS_TEMP,
-    instructions,
-    messages: [
-      {
-        role: 'user',
-        content: [
-          { type: 'image', image: imageUrl },
-          ...(caption ? [{ type: 'text', text: caption } satisfies TextPart] : []),
-        ],
+export const createAnalyzeImage =
+  ({ model }: { model: LanguageModel }): AnalyzeImage =>
+  async ({ instructions = defaultInstructions, imageUrl, caption }) => {
+    const result = await generateText({
+      model,
+      temperature: IMAGE_ANALYSIS_TEMP,
+      instructions,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'image', image: imageUrl },
+            ...(caption ? [{ type: 'text', text: caption } satisfies TextPart] : []),
+          ],
+        },
+      ],
+      telemetry: {
+        functionId: 'analyzeImage',
+        isEnabled: true,
       },
-    ],
-    telemetry: {
-      functionId: 'analyzeImage',
-      isEnabled: true,
-    },
-  })
-  console.debug(`Image analyzed with ${imageAnalysisModel.provider}/${imageAnalysisModel.modelId}`)
-  return { text: result.text, usage: result.usage }
-}
+    })
+    console.debug(`Image analyzed with ${result.response.modelId}`)
+    return { text: result.text, usage: result.usage }
+  }

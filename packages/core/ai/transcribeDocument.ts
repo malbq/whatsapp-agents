@@ -1,11 +1,4 @@
-import { createGoogleGenerativeAI } from '@ai-sdk/google'
-import { generateText, type LanguageModelUsage } from 'ai'
-import { ok } from 'node:assert'
-
-ok(import.meta.env.GOOGLE_GENERATIVE_AI_API_KEY, 'GOOGLE_GENERATIVE_AI_API_KEY is required')
-
-const googleProvider = createGoogleGenerativeAI()
-const documentTranscriptionModel = googleProvider('gemini-2.5-flash-lite')
+import { generateText, type LanguageModel, type LanguageModelUsage } from 'ai'
 
 export interface TranscribeDocumentResult {
   text: string
@@ -33,37 +26,32 @@ export const defaultInstructions = `Extract the complete text content from the p
   - Do not add introductions, conclusions, or commentary.
   - The extracted text should faithfully represent the source without added style, but may be adjusted for baseline readability (as per rules above).`
 
-export const transcribeDocument: TranscribeDocument = async ({
-  instructions = defaultInstructions,
-  document,
-  mimeType,
-  filename,
-}) => {
-  const copy = document.slice(0)
-  const result = await generateText({
-    model: documentTranscriptionModel,
-    temperature: 0,
-    instructions,
-    messages: [
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'file',
-            data: copy,
-            mediaType: mimeType,
-            filename,
-          },
-        ],
+export const createTranscribeDocument =
+  ({ model }: { model: LanguageModel }): TranscribeDocument =>
+  async ({ instructions = defaultInstructions, document, mimeType, filename }) => {
+    const copy = document.slice(0)
+    const result = await generateText({
+      model,
+      temperature: 0,
+      instructions,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'file',
+              data: copy,
+              mediaType: mimeType,
+              filename,
+            },
+          ],
+        },
+      ],
+      telemetry: {
+        functionId: 'transcribeDocument',
+        isEnabled: true,
       },
-    ],
-    telemetry: {
-      functionId: 'transcribeDocument',
-      isEnabled: true,
-    },
-  })
-  console.debug(
-    `Document transcribed with ${documentTranscriptionModel.provider}/${documentTranscriptionModel.modelId}`
-  )
-  return { text: result.text, usage: result.usage }
-}
+    })
+    console.debug(`Document transcribed with ${result.response.modelId}`)
+    return { text: result.text, usage: result.usage }
+  }

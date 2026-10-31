@@ -1,12 +1,13 @@
-import type { ToolExecutionError } from '@wa/core/errors'
 import { tool } from 'ai'
 import { ok } from 'node:assert'
 import { z } from 'zod'
-import { generateEmbeddings } from '../ai/generateEmbeddings'
+import type { GenerateEmbeddings } from '../ai/generateEmbeddings'
+import type { ToolExecutionError } from '../errors'
 import type { DB } from '../infra/db'
 
 export interface SearchFilesContext {
   userId: string
+  generateEmbeddings: GenerateEmbeddings
   searchResources: DB.Repository['searchResources']
 }
 
@@ -26,7 +27,7 @@ If several are close, ask a clarifying question or present the list for selectio
     execute: async ({ query }) => {
       console.debug('search_files', { query })
       try {
-        const [embeddings] = await generateEmbeddings([query])
+        const [embeddings] = await ctx.generateEmbeddings([query])
         const queryEmbedding = embeddings?.[0]?.embedding
         ok(queryEmbedding, 'Query embedding not generated')
 

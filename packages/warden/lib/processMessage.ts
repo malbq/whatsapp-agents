@@ -1,8 +1,7 @@
 import { toDbMessage, type AssistantTurnResult } from '@wa/core/utils/toDbMessage'
 import { toDbTokenUsage } from '@wa/core/utils/toDbUsage'
-import { toUserModelMessage } from '@wa/core/utils/toModelMessage'
 import type { Chat, MessageNotification, TextMessage } from '@wa/whatsapp'
-import type { ModelMessage } from 'ai'
+import type { LanguageModel, ModelMessage, UserModelMessage } from 'ai'
 import type { CalendarAdapter } from '../calendar/types'
 import type { WardenDB } from '../db'
 import { createTools } from '../tools'
@@ -12,7 +11,10 @@ export interface ProcessMessageDeps {
   db: WardenDB
   chat: Chat
   calendar: CalendarAdapter
+  model: LanguageModel
 }
+
+const logError = (context: string) => (error: unknown) => console.error(context, error)
 
 export const processMessage =
   (deps: ProcessMessageDeps) => async (notification: MessageNotification) => {
@@ -20,43 +22,49 @@ export const processMessage =
 
     const { message, userWaId, userName, timestamp } = notification
 
-    deps.chat.acknowledgeMessage(message.messageWaId)
+    deps.chat
+      .acknowledgeMessage(message.messageWaId)
+      .catch(logError('Error acknowledging message:'))
 
-    const user = await deps.db
-      .persistUser({ waId: userWaId, name: userName })
-      .catch((error) => {
-        deps.chat.sendText(userWaId, {
-          text: 'Sorry, I had a problem processing your message and can\'t reply right now.',
+    const user = await deps.db.persistUser({ waId: userWaId, name: userName }).catch((error) => {
+      deps.chat
+        .sendText(userWaId, {
+          text: "Sorry, I had a problem processing your message and can't reply right now.",
         })
-        console.error('Error persisting user:', error)
-        return null
-      })
+        .catch(logError('Error sending failure reply:'))
+      console.error('Error persisting user:', error)
+      return null
+    })
 
     if (!user) return
 
     if (message.type !== 'text') {
       const response: TextMessage = {
         type: 'text',
-        text: 'Sorry, I don\'t understand this type of message. Please send a text message.',
+        text: "Sorry, I don't understand this type of message. Please send a text message.",
       }
       const assistantMessageId = await deps.chat.sendText(userWaId, response)
-      deps.db.storeMessage([
-        toDbMessage({
-          userId: user.id,
-          waId: message.messageWaId,
-          modelMessage: { role: 'user', content: '<error>Unsupported message type</error>' },
-          type: 'unsupported',
-        }),
-        toDbMessage({
-          userId: user.id,
-          waId: assistantMessageId,
-          modelMessage: { role: 'assistant', content: response.text },
-        }),
-      ])
+      await deps.db
+        .storeMessage([
+          toDbMessage({
+            userId: user.id,
+            waId: message.messageWaId,
+            modelMessage: { role: 'user', content: '<error>Unsupported message type</error>' },
+            type: 'unsupported',
+          }),
+          toDbMessage({
+            userId: user.id,
+            waId: assistantMessageId,
+            modelMessage: { role: 'assistant', content: response.text },
+          }),
+        ])
+        .catch(logError('Error storing unsupported message:'))
       return
     }
 
-    deps.chat.sendTypingIndicator(message.messageWaId)
+    deps.chat
+      .sendTypingIndicator(message.messageWaId)
+      .catch(logError('Error sending typing indicator:'))
 
     const recentMessages = await deps.db
       .findRecentMessages({ userId: user.id })
@@ -65,9 +73,10 @@ export const processMessage =
         return []
       })
 
-    const { message: userModelMessage, usage: transcriptionUsage } = await toUserModelMessage(
-      message
-    )
+    const userModelMessage: UserModelMessage = {
+      role: 'user',
+      content: [{ type: 'text', text: message.text }],
+    }
 
     const messages: ModelMessage[] = [
       ...recentMessages.flatMap((row) => row.messages),
@@ -82,13 +91,15 @@ export const processMessage =
       db: deps.db,
     })
 
-    const response = await generate({ messages, tools, db: deps.db }).catch(async (error) => {
-      console.error('Error generating response:', JSON.stringify(error, null, 2))
-      await deps.chat.sendText(userWaId, {
-        text: 'Sorry, there was a problem processing your request. Please try again later.',
-      })
-      return null
-    })
+    const response = await generate({ model: deps.model, messages, tools, db: deps.db }).catch(
+      async (error) => {
+        console.error('Error generating response:', JSON.stringify(error, null, 2))
+        await deps.chat.sendText(userWaId, {
+          text: 'Sorry, there was a problem processing your request. Please try again later.',
+        })
+        return null
+      }
+    )
 
     if (!response) return
 
@@ -125,20 +136,10 @@ export const processMessage =
       response,
     })
 
-    const [userMessageId, assistantMessageDbId] = await deps.db.storeMessage([
+    const [, assistantMessageDbId] = await deps.db.storeMessage([
       userMessage,
       assistantTurn.message,
     ])
-
-    if (transcriptionUsage && userMessageId) {
-      await deps.db.storeTokenUsage(
-        toDbTokenUsage({
-          messageId: userMessageId,
-          source: 'audio_transcription',
-          usage: transcriptionUsage,
-        })
-      )
-    }
 
     if (assistantTurn.usages.length > 0 && assistantMessageDbId) {
       const usageInserts = assistantTurn.usages.map((u) =>

@@ -7,7 +7,7 @@ Warden is a white-label WhatsApp business attendant that handles customer inquir
 1. Run `docker compose up -d` (from the monorepo root) to start the PostgreSQL container.
 2. Connect to the database and create the database: `CREATE DATABASE warden;`.
 3. Enable extensions: `CREATE EXTENSION IF NOT EXISTS vector; CREATE EXTENSION IF NOT EXISTS unaccent;`.
-4. Copy `.env.example` to `.env` and fill in the values.
+4. Copy `.env.example` to `.env` and fill in the values. `config.ts` validates them at startup and fails fast with a list of missing or invalid variables.
 5. Run migrations: `bun run db:migrate`.
 
 ### Obtaining Google OAuth Credentials
@@ -43,12 +43,16 @@ Warden is:
 
 Warden follows the established agent architecture pattern:
 
-- **Composition root**: `index.ts` wires together `@wa/core`, `@wa/server`, and `@wa/whatsapp`
+- **Composition root**: `index.ts` loads config once (`loadConfig()` in `config.ts`) and wires together `@wa/core` and `@wa/whatsapp`; library modules never read `import.meta.env` and receive their dependencies (DB client, model, OAuth credentials, session secret) explicitly
 - **Webhook integration**: Uses `createWebhookApp()` from `@wa/whatsapp` with `app.route()`
 - **Message processing**: Handles `Message` types from `@wa/whatsapp` directly
 - **Core persistence**: Uses `@wa/core` DB/storage for message and knowledge base persistence
 - **Calendar integration**: Pluggable adapters for Google Calendar and Cal.com
 - **Scheduler**: Internal scheduler for WhatsApp appointment reminders
+
+## Testing
+
+`AGENT=1 bun test packages/warden` (from the repo root) runs offline: `lib/processMessage.test.ts` drives a full message flow against in-process Postgres (PGlite + pgvector, real migrations), a mock language model, a recording WhatsApp chat and a fake calendar adapter. No network or API keys needed.
 
 ## Dashboard UI
 
@@ -61,7 +65,8 @@ The dashboard uses Google OAuth for authentication. Users must sign in with a Go
 **Configuration:**
 
 - `DASHBOARD_SESSION_SECRET`: Required. A random string (32+ characters) used to sign session cookies.
-- `DASHBOARD_REDIRECT_URI`: OAuth callback URL.
+- `DASHBOARD_REDIRECT_URI`: Required. OAuth callback URL.
+- `NODE_ENV`: Set to `production` to mark cookies as `Secure`.
 
 **Routes:**
 

@@ -1,8 +1,5 @@
 import type { IncomingMessage } from '@wa/whatsapp'
-import { ok } from 'node:assert'
 import { getContext } from '../context'
-
-ok(import.meta.env.WA_ONBOARDING_TEMPLATE, 'WA_ONBOARDING_TEMPLATE is required')
 
 /**
  * Checks if user has consented to use the service and can use the service
@@ -32,7 +29,7 @@ export async function checkUserConsent(): Promise<boolean> {
   if (!hasConsent) {
     // TODO: track template sent in ephemeral KV to avoid spamming
     ctx.chat.sendTemplate(ctx.user.waId, {
-      name: import.meta.env.WA_ONBOARDING_TEMPLATE,
+      name: ctx.onboardingTemplate,
       language: 'en_US',
       flowToken: 'onboarding',
     })

@@ -1,17 +1,37 @@
+import type { AnalyzeImage } from '@wa/core/ai/analyzeImage'
+import type { GenerateEmbeddings } from '@wa/core/ai/generateEmbeddings'
+import type { TranscribeAudio } from '@wa/core/ai/transcribeAudio'
+import type { TranscribeDocument } from '@wa/core/ai/transcribeDocument'
 import type { Storage } from '@wa/core/infra/storage'
 import type { WebSearch } from '@wa/core/infra/webSearch'
 import type { AssistantTurnResult } from '@wa/core/utils/toDbMessage'
 import type { Chat, MessageNotification, OutgoingMessage } from '@wa/whatsapp'
+import type { LanguageModel } from 'ai'
 import { ok } from 'node:assert'
 import { AsyncLocalStorage } from 'node:async_hooks'
 import type { UserEntitlements, UserWithProfile, ZapidRepository } from './db'
 
-type Context = {
-  notification: MessageNotification
+export interface AgentAI {
+  responseModel: LanguageModel
+  transcribeAudio: TranscribeAudio
+  transcribeDocument: TranscribeDocument
+  analyzeImage: AnalyzeImage
+  generateEmbeddings: GenerateEmbeddings
+}
+
+/** Long-lived dependencies, built once in the composition root */
+export interface AgentDeps {
   db: ZapidRepository
   storage: Storage
   chat: Chat
   webSearch: WebSearch
+  ai: AgentAI
+  onboardingTemplate: string
+  googlePlacesApiKey: string
+}
+
+type Context = AgentDeps & {
+  notification: MessageNotification
   user: UserWithProfile
   entitlements: UserEntitlements
   outbound?: AssistantTurnResult

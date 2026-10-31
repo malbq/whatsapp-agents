@@ -1,8 +1,6 @@
 import type { DB } from '@wa/core/infra/db'
-import { Postgres } from '@wa/core/infra/dbPostgres'
-import { SQL } from 'bun'
-import { eq } from 'drizzle-orm'
-import { drizzle, type BunSQLDatabase } from 'drizzle-orm/bun-sql'
+import { Postgres, type PostgresClient } from '@wa/core/infra/dbPostgres'
+import { eq, inArray, isNull } from 'drizzle-orm'
 import * as schema from './dbSchema'
 import type {
   AppointmentWithCustomer,
@@ -40,8 +38,12 @@ export interface WardenDB extends DB.Repository {
   deleteService: (id: string) => Promise<void>
   createAppointment: (appointment: Omit<CustomerAppointment, 'id'>) => Promise<CustomerAppointment>
   getAppointmentByCalendarEventId: (calendarEventId: string) => Promise<CustomerAppointment | null>
-  getAppointmentWithCustomerByCalendarEventId: (calendarEventId: string) => Promise<AppointmentWithCustomer | null>
-  getAppointmentsWithCustomerByCalendarEventIds: (calendarEventIds: string[]) => Promise<Map<string, AppointmentWithCustomer>>
+  getAppointmentWithCustomerByCalendarEventId: (
+    calendarEventId: string
+  ) => Promise<AppointmentWithCustomer | null>
+  getAppointmentsWithCustomerByCalendarEventIds: (
+    calendarEventIds: string[]
+  ) => Promise<Map<string, AppointmentWithCustomer>>
   getAppointmentsByUserId: (userId: string) => Promise<CustomerAppointment[]>
   updateAppointmentStatus: (id: string, status: CustomerAppointment['status']) => Promise<void>
   listThreads: () => Promise<Array<Thread>>
@@ -59,7 +61,10 @@ export interface WardenDB extends DB.Repository {
   getForceBusyCalendarIds: () => Promise<string[]>
   setCalendarEnabled: (calendarId: string, enabled: boolean) => Promise<void>
   setCalendarForceBusy: (calendarId: string, forceBusy: boolean) => Promise<void>
-  ensureCalendarSettings: (calendarIds: string[], defaultAppointmentCalendarId: string) => Promise<void>
+  ensureCalendarSettings: (
+    calendarIds: string[],
+    defaultAppointmentCalendarId: string
+  ) => Promise<void>
   // Availability settings
   getAvailabilitySettings: () => Promise<AvailabilitySettings>
   updateAvailabilitySettings: (settings: Partial<AvailabilitySettings>) => Promise<void>
@@ -68,46 +73,9 @@ export interface WardenDB extends DB.Repository {
   setWorkingHours: (entries: Omit<WorkingHoursEntry, 'id'>[]) => Promise<void>
 }
 
-const connectionKey = Symbol.for('warden.db.connection')
-const cleanupKey = Symbol.for('warden.db.cleanup')
+export type WardenClient = PostgresClient<typeof schema>
 
-interface ConnectionState {
-  dbClient: BunSQLDatabase<typeof schema>
-  sqlClient: SQL
-}
-
-function getOrCreateClient(): BunSQLDatabase<typeof schema> {
-  const existing = (globalThis as Record<symbol, ConnectionState>)[connectionKey]
-  if (existing) {
-    return existing.dbClient
-  }
-
-  const sqlClient = new SQL(import.meta.env.DATABASE_URL)
-  const dbClient = drizzle(sqlClient, { schema })
-
-  const state: ConnectionState = { dbClient, sqlClient }
-  ;(globalThis as Record<symbol, ConnectionState>)[connectionKey] = state
-
-  const cleanup = () => {
-    const current = (globalThis as Record<symbol, ConnectionState>)[connectionKey]
-    if (current?.sqlClient) {
-      current.sqlClient.close().catch(() => {})
-      delete (globalThis as Record<symbol, ConnectionState>)[connectionKey]
-    }
-  }
-
-  if (!(globalThis as Record<symbol, boolean>)[cleanupKey]) {
-    ;(globalThis as Record<symbol, boolean>)[cleanupKey] = true
-    process.once('SIGINT', cleanup)
-    process.once('SIGTERM', cleanup)
-    process.once('exit', cleanup)
-  }
-
-  return dbClient
-}
-
-export const dbFactory = (): WardenDB => {
-  const client = getOrCreateClient()
+export const createWardenRepository = (client: WardenClient): WardenDB => {
   const coreDB = Postgres.dbFactory({ client })
 
   return {
@@ -162,7 +130,6 @@ export const dbFactory = (): WardenDB => {
     },
 
     async listServices() {
-      const { isNull } = await import('drizzle-orm')
       const result = await client
         .select()
         .from(schema.service)
@@ -294,7 +261,9 @@ export const dbFactory = (): WardenDB => {
       }
     },
 
-    async getAppointmentWithCustomerByCalendarEventId(calendarEventId: string): Promise<AppointmentWithCustomer | null> {
+    async getAppointmentWithCustomerByCalendarEventId(
+      calendarEventId: string
+    ): Promise<AppointmentWithCustomer | null> {
       const result = await client
         .select({
           id: schema.appointment.id,
@@ -329,10 +298,11 @@ export const dbFactory = (): WardenDB => {
       }
     },
 
-    async getAppointmentsWithCustomerByCalendarEventIds(calendarEventIds: string[]): Promise<Map<string, AppointmentWithCustomer>> {
+    async getAppointmentsWithCustomerByCalendarEventIds(
+      calendarEventIds: string[]
+    ): Promise<Map<string, AppointmentWithCustomer>> {
       if (calendarEventIds.length === 0) return new Map()
 
-      const { inArray } = await import('drizzle-orm')
       const result = await client
         .select({
           id: schema.appointment.id,
@@ -400,34 +370,25 @@ export const dbFactory = (): WardenDB => {
           name: true,
           waId: true,
         },
+        with: {
+          messages: {
+            orderBy: (message, { asc }) => [asc(message.timestamp)],
+          },
+        },
         orderBy: (user, { desc }) => [desc(user.joinedAt)],
       })
 
-      const threads: Array<Thread> = []
-
-      for (const user of users) {
-        const userId = user.id
-        if (!userId) continue
-
-        const messages = await client.query.message.findMany({
-          where: (message, { eq }) => eq(message.userId, userId),
-          orderBy: (message, { asc }) => [asc(message.timestamp)],
-        })
-
-        threads.push({
-          userId,
-          userName: user.name,
-          externalId: user.waId,
-          messages,
-        })
-      }
-
-      return threads
+      return users.map((user) => ({
+        userId: user.id,
+        userName: user.name,
+        externalId: user.waId,
+        messages: user.messages,
+      }))
     },
 
     async getThread(userId: string): Promise<Thread | null> {
       const user = await client.query.user.findFirst({
-        where: (u, { eq }) => eq(u.id, userId),
+        where: eq(schema.user.id, userId),
         columns: {
           id: true,
           name: true,
@@ -438,7 +399,7 @@ export const dbFactory = (): WardenDB => {
       if (!user) return null
 
       const messages = await client.query.message.findMany({
-        where: (message, { eq }) => eq(message.userId, userId),
+        where: eq(schema.message.userId, userId),
         orderBy: (message, { asc }) => [asc(message.timestamp)],
       })
 
@@ -618,6 +579,8 @@ export const dbFactory = (): WardenDB => {
       calendarIds: string[],
       defaultAppointmentCalendarId: string
     ): Promise<void> {
+      if (calendarIds.length === 0) return
+
       // Check if we have any appointment calendar set
       const existingAppointment = await client
         .select()
@@ -626,19 +589,19 @@ export const dbFactory = (): WardenDB => {
         .limit(1)
 
       // Ensure each calendar has a settings row (default to enabled)
-      for (const calId of calendarIds) {
-        const isDefault = calId === defaultAppointmentCalendarId && existingAppointment.length === 0
-        await client
-          .insert(schema.calendarSettings)
-          .values({
+      await client
+        .insert(schema.calendarSettings)
+        .values(
+          calendarIds.map((calId) => ({
             calendarId: calId,
             enabled: true,
-            isAppointmentCalendar: isDefault,
+            isAppointmentCalendar:
+              calId === defaultAppointmentCalendarId && existingAppointment.length === 0,
             displayOrder: 0,
             forceBusy: false,
-          })
-          .onConflictDoNothing()
-      }
+          }))
+        )
+        .onConflictDoNothing()
     },
 
     async getAvailabilitySettings(): Promise<AvailabilitySettings> {

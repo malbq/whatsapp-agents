@@ -17,10 +17,10 @@ It does not expose any HTTP or WhatsApp-specific code. Agents own their pipeline
 
 This package is ESM-only and exposes module subpaths for clear boundaries:
 
-- `@wa/core/ai/*` — AI helpers
-  - `generateEmbeddings` — batch embedding with chunking
-  - `transcribeAudio`, `transcribeDocument`, `analyzeImage`
-  - `generateWhatsappMessage`
+- `@wa/core/ai/*` — AI helpers. Each is a factory that takes the model to use, so agents pick providers and tests can pass mock models.
+  - `createGenerateEmbeddings({ model })` — batch embedding with chunking; `createCloudflareEmbeddingModel()` builds the Workers AI model
+  - `createTranscribeAudio`, `createTranscribeDocument`, `createAnalyzeImage` — `({ model })`
+  - `generateWhatsappMessage` — structured output constrained to WhatsApp message types
 - `@wa/core/infra/*` — Infra primitives
   - `db`, `dbPostgres` — DB interfaces and PostgreSQL implementation
   - `storage`, `storageFilesystem` — object storage interfaces and filesystem adapter (dev)
@@ -31,6 +31,7 @@ This package is ESM-only and exposes module subpaths for clear boundaries:
 - `@wa/core/utils/*` — Utilities
   - `cloudflareFetch`, `sanitizeFilename`, `htmlToText`, `priorities`, `parsePdf`, etc.
 - `@wa/core/errors` — Error handling utilities
+- `@wa/core/testing` — Offline test doubles: recording `Chat`, mock language/embedding models, in-memory storage
 
 Types are exported alongside each module (see source files for details). Prefer unknown over any and validate inputs with zod where applicable.
 
@@ -45,6 +46,7 @@ Types are exported alongside each module (see source files for details). Prefer 
 - Compose these modules in your agent composition root.
 - Persist inbound/outbound messages through infra/db.
 - Generate/store embeddings through ai/generateEmbeddings and infra/dbPostgres.
+- `Postgres.dbFactory` accepts any Drizzle Postgres client (Bun SQL in production, PGlite in tests).
 - Use tools/\* for model tool-calling. The tools expect dependencies to be injected (no global state).
 
 ## Guidelines
@@ -55,20 +57,23 @@ Types are exported alongside each module (see source files for details). Prefer 
 - No global mutable state; inject dependencies explicitly
 - Keep tokens minimal in prompts; log usage where appropriate
 
-## Environment
+## Configuration
 
-Typical env used by submodules (agents must provide them):
-
-- Cloudflare AI: `CF_ACCOUNT_ID`, `CF_API_TOKEN`
-- Brave Search (optional): `BRAVE_API_KEY`
+This package never reads environment variables. Agents load and validate their config at startup and pass credentials, models and tuning options in explicitly.
 
 ## Examples
 
 - Generate embeddings for texts:
 
 ```ts
-import { generateEmbeddings } from '@wa/core/ai/generateEmbeddings'
+import {
+  createCloudflareEmbeddingModel,
+  createGenerateEmbeddings,
+} from '@wa/core/ai/generateEmbeddings'
 
+const generateEmbeddings = createGenerateEmbeddings({
+  model: createCloudflareEmbeddingModel({ accountId, apiToken }),
+})
 const groups = await generateEmbeddings(['hello world'])
 // groups is Array<Array<{ content, embedding }>> matching input order
 ```
@@ -76,8 +81,10 @@ const groups = await generateEmbeddings(['hello world'])
 - Web search tool in an agent:
 
 ```ts
+import { WebSearchBrave } from '@wa/core/infra/webSearchBrave'
 import { createWebSearchTool } from '@wa/core/tools'
 
+const webSearch = WebSearchBrave.createWebSearch({ apiKey })
 const tool = createWebSearchTool({ webSearch })
 ```
 
@@ -87,8 +94,8 @@ const tool = createWebSearchTool({ webSearch })
 import { Postgres } from '@wa/core/infra/dbPostgres'
 import { drizzle } from 'drizzle-orm/bun-sql'
 
-const client = drizzle(process.env.DATABASE_URL!)
-const db = Postgres.dbFactory({ client })
+const client = drizzle(databaseUrl)
+const db = Postgres.dbFactory({ client, options: { maxRecentMessages: 20 } })
 
 await db.storeMessage([
   {

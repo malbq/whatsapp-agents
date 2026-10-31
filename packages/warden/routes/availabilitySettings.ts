@@ -1,8 +1,7 @@
 import { Hono } from 'hono'
-import { getCookie } from 'hono/cookie'
 import { z } from 'zod'
 import type { WardenDB } from '../db'
-import { getSession, SESSION_COOKIE } from './auth'
+import type { AuthMiddleware } from '../lib/authMiddleware'
 
 const availabilitySettingsSchema = z.object({
   bufferMinutes: z.number().min(0).max(120).optional(),
@@ -20,18 +19,10 @@ const workingHoursEntrySchema = z.object({
 
 const workingHoursSchema = z.array(workingHoursEntrySchema)
 
-export function createAvailabilitySettingsRoute(db: WardenDB) {
+export function createAvailabilitySettingsRoute(db: WardenDB, auth: AuthMiddleware) {
   const app = new Hono()
 
-  // Middleware to check session for all routes
-  app.use('*', async (c, next) => {
-    const sessionCookie = getCookie(c, SESSION_COOKIE)
-    const session = await getSession(sessionCookie)
-    if (!session) {
-      return c.json({ error: 'Unauthorized' }, 401)
-    }
-    return next()
-  })
+  app.use('*', auth.requireAuthApi)
 
   // Get all availability settings
   app.get('/', async (c) => {

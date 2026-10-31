@@ -56,9 +56,3 @@ export function hasQuotaRemaining(key: DailyLedgerEntitlementKey): boolean {
   const quota = entitlements.quotas[key]
   return quota.remaining === null || quota.remaining > 0
 }
-
-export function hasStorageCapacity(additionalBytes: number): boolean {
-  const { entitlements } = getContext()
-  const quota = entitlements.quotas['n_storage_size']
-  return quota.limit === null || quota.used + additionalBytes <= quota.limit
-}

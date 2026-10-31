@@ -2,18 +2,22 @@ import { google } from 'googleapis'
 import { Hono } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import type { WardenDB } from '../db'
+import { createOAuth2Client, type GoogleOAuthConfig } from '../lib/googleOAuth'
+import { SESSION_COOKIE, type Session, type Sessions } from '../lib/session'
 
-export interface Session {
-  email: string
-  expiresAt: number
-}
-
-export const SESSION_COOKIE = 'warden_session'
 const STATE_COOKIE = 'oauth_state'
 const NEXT_COOKIE = 'oauth_next'
 const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000
 
 const SCOPES = ['openid', 'email', 'https://www.googleapis.com/auth/calendar']
+
+export interface AuthRoutesDeps {
+  db: WardenDB
+  sessions: Sessions
+  oauth: GoogleOAuthConfig
+  redirectUri: string
+  secureCookies: boolean
+}
 
 function generateRandomString(): string {
   const array = new Uint8Array(32)
@@ -21,64 +25,15 @@ function generateRandomString(): string {
   return Array.from(array, (b) => b.toString(16).padStart(2, '0')).join('')
 }
 
-async function signToken(data: Session): Promise<string> {
-  const payload = JSON.stringify(data)
-  const encoder = new TextEncoder()
-  const key = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(import.meta.env.DASHBOARD_SESSION_SECRET),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  )
-  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(payload))
-  const signatureHex = Array.from(new Uint8Array(signature), (b) =>
-    b.toString(16).padStart(2, '0')
-  ).join('')
-  return `${Buffer.from(payload).toString('base64url')}.${signatureHex}`
-}
-
-async function verifyToken(token: string): Promise<Session | null> {
-  const parts = token.split('.')
-  if (parts.length !== 2) return null
-
-  const [payloadB64, signatureHex] = parts
-  if (!payloadB64 || !signatureHex) return null
-
-  const payload = Buffer.from(payloadB64, 'base64url').toString('utf-8')
-  const encoder = new TextEncoder()
-  const key = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(import.meta.env.DASHBOARD_SESSION_SECRET),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['verify']
-  )
-  const signature = new Uint8Array(signatureHex.match(/.{2}/g)!.map((byte) => parseInt(byte, 16)))
-  const valid = await crypto.subtle.verify('HMAC', key, signature, encoder.encode(payload))
-  if (!valid) return null
-
-  const data = JSON.parse(payload) as Session
-  if (data.expiresAt < Date.now()) return null
-
-  return data
-}
-
-export async function getSession(cookie: string | undefined): Promise<Session | null> {
-  if (!cookie) return null
-  return verifyToken(cookie)
-}
-
-function getOAuth2Client() {
-  return new google.auth.OAuth2(
-    import.meta.env.GOOGLE_CLIENT_ID,
-    import.meta.env.GOOGLE_CLIENT_SECRET,
-    import.meta.env.DASHBOARD_REDIRECT_URI
-  )
-}
-
-export function createAuthRoutes(db: WardenDB) {
+export function createAuthRoutes({
+  db,
+  sessions,
+  oauth,
+  redirectUri,
+  secureCookies,
+}: AuthRoutesDeps) {
   const app = new Hono()
+  const getOAuth2Client = () => createOAuth2Client(oauth, redirectUri)
 
   app.get('/login', (c) => {
     const error = c.req.query('error')
@@ -92,7 +47,7 @@ export function createAuthRoutes(db: WardenDB) {
 
     setCookie(c, STATE_COOKIE, state, {
       httpOnly: true,
-      secure: import.meta.env.NODE_ENV === 'production',
+      secure: secureCookies,
       sameSite: 'Lax',
       maxAge: 600,
       path: '/',
@@ -101,7 +56,7 @@ export function createAuthRoutes(db: WardenDB) {
     if (next) {
       setCookie(c, NEXT_COOKIE, next, {
         httpOnly: true,
-        secure: import.meta.env.NODE_ENV === 'production',
+        secure: secureCookies,
         sameSite: 'Lax',
         maxAge: 600,
         path: '/',
@@ -171,11 +126,11 @@ export function createAuthRoutes(db: WardenDB) {
       expiresAt: Date.now() + SESSION_DURATION_MS,
     }
 
-    const token = await signToken(session)
+    const token = await sessions.sign(session)
 
     setCookie(c, SESSION_COOKIE, token, {
       httpOnly: true,
-      secure: import.meta.env.NODE_ENV === 'production',
+      secure: secureCookies,
       sameSite: 'Lax',
       maxAge: SESSION_DURATION_MS / 1000,
       path: '/',

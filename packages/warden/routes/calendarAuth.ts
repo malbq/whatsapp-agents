@@ -2,7 +2,8 @@ import { google } from 'googleapis'
 import { Hono } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import type { WardenDB } from '../db'
-import { getSession, SESSION_COOKIE } from './auth'
+import type { AuthMiddleware } from '../lib/authMiddleware'
+import { createOAuth2Client, type GoogleOAuthConfig } from '../lib/googleOAuth'
 
 const STATE_COOKIE = 'calendar_oauth_state'
 
@@ -18,31 +19,31 @@ function generateRandomString(): string {
   return Array.from(array, (b) => b.toString(16).padStart(2, '0')).join('')
 }
 
-function getOAuth2Client() {
-  return new google.auth.OAuth2(
-    import.meta.env.GOOGLE_CLIENT_ID,
-    import.meta.env.GOOGLE_CLIENT_SECRET,
-    import.meta.env.CALENDAR_REDIRECT_URI
-  )
+export interface CalendarAuthRoutesDeps {
+  db: WardenDB
+  auth: AuthMiddleware
+  oauth: GoogleOAuthConfig
+  redirectUri: string
+  secureCookies: boolean
 }
 
-export function createCalendarAuthRoutes(db: WardenDB) {
+export function createCalendarAuthRoutes({
+  db,
+  auth,
+  oauth,
+  redirectUri,
+  secureCookies,
+}: CalendarAuthRoutesDeps) {
   const app = new Hono()
+  const getOAuth2Client = () => createOAuth2Client(oauth, redirectUri)
 
   // Start calendar OAuth flow
-  app.get('/connect', async (c) => {
-    // Verify user is logged in
-    const sessionCookie = getCookie(c, SESSION_COOKIE)
-    const session = await getSession(sessionCookie)
-    if (!session) {
-      return c.redirect('/login')
-    }
-
+  app.get('/connect', auth.requireAuth, (c) => {
     const state = generateRandomString()
 
     setCookie(c, STATE_COOKIE, state, {
       httpOnly: true,
-      secure: import.meta.env.NODE_ENV === 'production',
+      secure: secureCookies,
       sameSite: 'Lax',
       maxAge: 600,
       path: '/',
@@ -60,14 +61,8 @@ export function createCalendarAuthRoutes(db: WardenDB) {
   })
 
   // OAuth callback
-  app.get('/callback', async (c) => {
-    // Verify user is logged in
-    const sessionCookie = getCookie(c, SESSION_COOKIE)
-    const session = await getSession(sessionCookie)
-    if (!session) {
-      return c.redirect('/login')
-    }
-
+  app.get('/callback', auth.requireAuth, async (c) => {
+    const session = c.get('session')
     const code = c.req.query('code')
     const state = c.req.query('state')
     const storedState = getCookie(c, STATE_COOKIE)
@@ -115,14 +110,7 @@ export function createCalendarAuthRoutes(db: WardenDB) {
   })
 
   // Disconnect calendar
-  app.post('/disconnect', async (c) => {
-    // Verify user is logged in
-    const sessionCookie = getCookie(c, SESSION_COOKIE)
-    const session = await getSession(sessionCookie)
-    if (!session) {
-      return c.json({ error: 'Unauthorized' }, 401)
-    }
-
+  app.post('/disconnect', auth.requireAuthApi, async (c) => {
     // Optionally revoke the token with Google
     const connection = await db.getCalendarConnection()
     if (connection) {
@@ -139,13 +127,7 @@ export function createCalendarAuthRoutes(db: WardenDB) {
   })
 
   // Get connection status (API endpoint)
-  app.get('/status', async (c) => {
-    const sessionCookie = getCookie(c, SESSION_COOKIE)
-    const session = await getSession(sessionCookie)
-    if (!session) {
-      return c.json({ error: 'Unauthorized' }, 401)
-    }
-
+  app.get('/status', auth.requireAuthApi, async (c) => {
     const connection = await db.getCalendarConnection()
 
     if (!connection) {

@@ -3,6 +3,7 @@ import { ok } from 'node:assert'
 import type { GeneratedWhatsappMessage } from '../ai/generateWhatsappMessage'
 import type { DB } from '../infra/db'
 import type { Storage } from '../infra/storage'
+import { assertNever } from './assertNever'
 
 export async function sendWhatsappMessage({
   chat,
@@ -63,10 +64,7 @@ export async function sendWhatsappMessage({
         mimeType: file.mimeType,
       })
     }
-    default: {
-      // Prevent forgetting to handle a message type: Type '{ type: "video"; ... }' is not assignable to type 'never'
-      const _exhaustive: never = message
-      throw new Error(`Unsupported message type: ${(message as GeneratedWhatsappMessage).type}`)
-    }
+    default:
+      return assertNever(message, 'Unsupported message type')
   }
 }

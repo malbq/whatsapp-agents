@@ -2,9 +2,9 @@ import type { calendar_v3 } from 'googleapis'
 import { google } from 'googleapis'
 import type { WardenDB } from '../db'
 import { parseDate } from '../lib/dateUtils'
+import { createOAuth2Client, type GoogleOAuthConfig } from '../lib/googleOAuth'
 import {
   CalendarNotConnectedError,
-  SlotUnavailableError,
   type Appointment,
   type AvailabilityResult,
   type BusyInterval,
@@ -92,13 +92,6 @@ async function getHolidayCalendarEvents(
   return busyIntervals
 }
 
-function getOAuth2Client() {
-  return new google.auth.OAuth2(
-    import.meta.env.GOOGLE_CLIENT_ID,
-    import.meta.env.GOOGLE_CLIENT_SECRET
-  )
-}
-
 /**
  * Creates a calendar adapter that loads credentials from the database.
  * Each call to a method will fetch the current connection from DB.
@@ -107,14 +100,14 @@ function getOAuth2Client() {
  * The calendar ID for appointments is now read from calendar_settings table,
  * falling back to the connection table for backwards compatibility.
  */
-export function createCalendarAdapter(db: WardenDB): CalendarAdapter {
+export function createCalendarAdapter(db: WardenDB, oauth: GoogleOAuthConfig): CalendarAdapter {
   async function getCalendarClient() {
     const connection = await db.getCalendarConnection()
     if (!connection) {
       throw new CalendarNotConnectedError()
     }
 
-    const oauth2Client = getOAuth2Client()
+    const oauth2Client = createOAuth2Client(oauth)
     oauth2Client.setCredentials({ refresh_token: connection.refreshToken })
 
     // Get appointment calendar from settings, fallback to connection table
@@ -177,7 +170,12 @@ function getWorkingIntervalsForDate(
     const start = parseTime(entry.startTime)
     const end = parseTime(entry.endTime)
 
-    const startDate = parseDate({ date: dateStr, hour: start.hours, minute: start.minutes, timezone })
+    const startDate = parseDate({
+      date: dateStr,
+      hour: start.hours,
+      minute: start.minutes,
+      timezone,
+    })
     const endDate = parseDate({ date: dateStr, hour: end.hours, minute: end.minutes, timezone })
 
     intervals.push({ start: startDate, end: endDate })
@@ -217,7 +215,10 @@ function rangesOverlap(a: TimeSlot, b: TimeSlot): boolean {
 /**
  * Generate available slots for a date range.
  */
-function generateSlots(options: CheckAvailabilityOptions, busyIntervals: BusyInterval[]): TimeSlot[] {
+function generateSlots(
+  options: CheckAvailabilityOptions,
+  busyIntervals: BusyInterval[]
+): TimeSlot[] {
   const {
     startDate,
     endDate,
@@ -234,19 +235,19 @@ function generateSlots(options: CheckAvailabilityOptions, busyIntervals: BusyInt
   const minNoticeTime = new Date(now.getTime() + minNoticeMinutes * 60 * 1000)
 
   const slots: TimeSlot[] = []
-  
+
   // Get start and end dates in the calendar's timezone
   const startDateStr = getDateStringInTimezone(startDate, timezone)
   const endDateStr = getDateStringInTimezone(endDate, timezone)
-  
+
   // Iterate by date string to ensure we cover the correct days in the target timezone
   let currentDateStr = startDateStr
-  
+
   while (currentDateStr <= endDateStr) {
     // Create a Date object for midnight on this day in the target timezone
     const [year, month, day] = currentDateStr.split('-').map(Number)
     const currentDate = parseDate({ date: currentDateStr, timezone })
-    
+
     const workingIntervals = getWorkingIntervalsForDate(currentDate, workingHours, timezone)
 
     for (const interval of workingIntervals) {

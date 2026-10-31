@@ -19,20 +19,24 @@
     "knip": "bunx knip"
   },
   "dependencies": {
+    "@ai-sdk/google": "catalog:",
     "@ai-sdk/openai": "catalog:",
+    "@sentry/bun": "catalog:",
     "@wa/core": "workspace:*",
     "@wa/server": "workspace:*",
     "@wa/whatsapp": "workspace:*",
-    "@sentry/bun": "catalog:",
     "ai": "catalog:",
     "drizzle-orm": "catalog:",
     "hono": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "catalog:",
+    "@electric-sql/pglite-pgvector": "catalog:",
     "@types/bun": "catalog:",
     "drizzle-kit": "catalog:",
     "oxlint": "catalog:",
+    "postgres": "catalog:",
     "typescript": "catalog:"
   }
 }

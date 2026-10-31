@@ -5,6 +5,8 @@ export interface ServerConfig {
   name: string
   version: string
   port: number
+  /** Enables Bun's development mode (detailed error pages) */
+  development?: boolean
 }
 
 export function createServer(config: ServerConfig): {
@@ -24,7 +26,7 @@ export function createServer(config: ServerConfig): {
       Bun.serve({
         port: config.port,
         fetch: app.fetch,
-        development: import.meta.env.NODE_ENV !== 'production',
+        development: config.development ?? false,
       })
     },
   }

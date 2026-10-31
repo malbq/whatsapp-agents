@@ -1,4 +1,7 @@
 import { SQL } from 'bun'
+import { ok } from 'node:assert'
+
+ok(import.meta.env.DATABASE_URL, 'DATABASE_URL is required')
 
 const client = new SQL(import.meta.env.DATABASE_URL)
 

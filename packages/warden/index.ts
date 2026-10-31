@@ -1,11 +1,16 @@
+import { createOpenAI } from '@ai-sdk/openai'
 import { createWebhookApp, createWhatsappClient } from '@wa/whatsapp'
+import { drizzle } from 'drizzle-orm/bun-sql'
 import { Hono } from 'hono'
 import { secureHeaders } from 'hono/secure-headers'
-import { ok } from 'node:assert'
 import { createCalendarAdapter } from './calendar/googleCalendar'
-import { dbFactory } from './db'
-import { requireAuthApi } from './lib/authMiddleware'
+import { loadConfig } from './config'
+import { createWardenRepository } from './db'
+import * as schema from './dbSchema'
+import { createAuthMiddleware } from './lib/authMiddleware'
+import type { GoogleOAuthConfig } from './lib/googleOAuth'
 import { processMessage } from './lib/processMessage'
+import { createSessions } from './lib/session'
 import pkg from './package.json'
 import dashboard from './ui/index.html'
 import { createAuthRoutes } from './routes/auth.ts'
@@ -15,56 +20,75 @@ import { createCalendarSettingsRoute } from './routes/calendarSettings.ts'
 import { createClearMessagesRoute } from './routes/clearMessages.ts'
 import { createServicesRoute } from './routes/services.ts'
 
-ok(import.meta.env.META_WEBHOOK_VERIFY_TOKEN, 'META_WEBHOOK_VERIFY_TOKEN is required')
-ok(import.meta.env.META_API_TOKEN, 'META_API_TOKEN is required')
-ok(import.meta.env.META_APP_SECRET, 'META_APP_SECRET is required')
-ok(import.meta.env.WA_BUSINESS_PHONE_ID, 'WA_BUSINESS_PHONE_ID is required')
-ok(import.meta.env.DATABASE_URL, 'DATABASE_URL is required')
-ok(import.meta.env.GOOGLE_CLIENT_ID, 'GOOGLE_CLIENT_ID is required')
-ok(import.meta.env.GOOGLE_CLIENT_SECRET, 'GOOGLE_CLIENT_SECRET is required')
-ok(import.meta.env.DASHBOARD_SESSION_SECRET, 'DASHBOARD_SESSION_SECRET is required')
+const config = loadConfig()
+const secureCookies = config.NODE_ENV === 'production'
 
-const db = dbFactory()
-const calendar = createCalendarAdapter(db)
+const db = createWardenRepository(drizzle(config.DATABASE_URL, { schema }))
+const oauth: GoogleOAuthConfig = {
+  clientId: config.GOOGLE_CLIENT_ID,
+  clientSecret: config.GOOGLE_CLIENT_SECRET,
+}
+const calendar = createCalendarAdapter(db, oauth)
+const sessions = createSessions(config.DASHBOARD_SESSION_SECRET)
+const auth = createAuthMiddleware(sessions)
+const openai = createOpenAI({ apiKey: config.OPENAI_API_KEY })
+const model = openai.responses('gpt-5-mini-2025-08-07')
 
 const chat = createWhatsappClient({
-  apiToken: import.meta.env.META_API_TOKEN,
-  businessPhoneId: import.meta.env.WA_BUSINESS_PHONE_ID,
+  apiToken: config.META_API_TOKEN,
+  businessPhoneId: config.WA_BUSINESS_PHONE_ID,
+  apiVersion: config.WA_API_VERSION,
 })
 
 const webhookApp = createWebhookApp(
   chat,
   {
-    appSecret: import.meta.env.META_APP_SECRET,
-    verifyToken: import.meta.env.META_WEBHOOK_VERIFY_TOKEN,
+    appSecret: config.META_APP_SECRET,
+    verifyToken: config.META_WEBHOOK_VERIFY_TOKEN,
   },
-  { onMessage: processMessage({ db, chat, calendar }) }
+  { onMessage: processMessage({ db, chat, calendar, model }) }
 )
-
-const port = parseInt(import.meta.env.PORT || '8080')
 
 const app = new Hono()
 app.use(secureHeaders())
 app.get('/health', (c) => c.text('OK'))
 
 app.route('/webhook', webhookApp)
-app.route('/auth', createAuthRoutes(db))
-app.route('/api/calendar', createCalendarAuthRoutes(db))
-app.route('/api/calendar', createCalendarSettingsRoute(db))
-app.route('/api/availability', createAvailabilitySettingsRoute(db))
-app.route('/api/services', createServicesRoute(db))
+app.route(
+  '/auth',
+  createAuthRoutes({
+    db,
+    sessions,
+    oauth,
+    redirectUri: config.DASHBOARD_REDIRECT_URI,
+    secureCookies,
+  })
+)
+app.route(
+  '/api/calendar',
+  createCalendarAuthRoutes({
+    db,
+    auth,
+    oauth,
+    redirectUri: config.CALENDAR_REDIRECT_URI,
+    secureCookies,
+  })
+)
+app.route('/api/calendar', createCalendarSettingsRoute({ db, auth, oauth }))
+app.route('/api/availability', createAvailabilitySettingsRoute(db, auth))
+app.route('/api/services', createServicesRoute(db, auth))
 
-app.get('/api/session', requireAuthApi, (c) => {
+app.get('/api/session', auth.requireAuthApi, (c) => {
   const session = c.get('session')
   return c.json({ session })
 })
 
-app.get('/api/threads', requireAuthApi, async (c) => {
+app.get('/api/threads', auth.requireAuthApi, async (c) => {
   const threads = await db.listThreads()
   return c.json({ threads })
 })
 
-app.get('/api/threads/:userId', requireAuthApi, async (c) => {
+app.get('/api/threads/:userId', auth.requireAuthApi, async (c) => {
   const userId = c.req.param('userId')
   const thread = await db.getThread(userId)
   if (!thread) {
@@ -73,13 +97,13 @@ app.get('/api/threads/:userId', requireAuthApi, async (c) => {
   return c.json({ thread })
 })
 
-app.delete('/api/threads/:userId/messages', requireAuthApi, createClearMessagesRoute(db))
+app.delete('/api/threads/:userId/messages', auth.requireAuthApi, createClearMessagesRoute(db))
 
-console.log(`Warden agent (${pkg.version}) starting on port ${port}`)
+console.log(`Warden agent (${pkg.version}) starting on port ${config.PORT}`)
 
 Bun.serve({
-  port,
-  development: import.meta.env.NODE_ENV !== 'production',
+  port: config.PORT,
+  development: config.NODE_ENV !== 'production',
   // We explicitly list SPA routes here because Bun's HTMLBundle is supported
   // in Bun.serve({ routes }) but cannot be returned from fetch() as a Response.
   routes: {

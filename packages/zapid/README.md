@@ -110,14 +110,15 @@ A chat-based personal assistant for WhatsApp. Stores messages as semantic memory
 
 Zapid follows a pipeline built around a **Context** (ephemeral per-request state, kept in `AsyncLocalStorage`), with well-defined phases:
 
-1. User setup (`index.ts`): `db.persistUser` creates or loads the user (including the latest saved profile) and loads their entitlements into `context`.
+0. Startup (`index.ts`): `config.ts` validates the environment with zod, `deps.ts` builds the long-lived dependencies (database, WhatsApp client, storage, web search and the AI models), and the webhook is mounted with `createMessageHandler(deps)`.
+1. User setup (`handler.ts`): `db.persistUser` creates or loads the user (including the latest saved profile) and loads their entitlements into `context`.
 2. Message ingestion (`ingest.ts`): the WhatsApp notification is converted into a `DB.MessageInsert` via `toUserModelMessage`:
    - text is used directly
    - voice/audio is transcribed with Google Gemini
    - images and documents are deduplicated by hash and saved to `resource` + filesystem storage
    - the message is written to `message`, then embedded asynchronously by `embedInboundMessage` (images are analyzed; PDFs go through `parsePdf`, other documents through `transcribeDocument`).
 3. Consent and quota (`checkUserConsent`, `entitlements`): users without consent receive the onboarding template and stop here; users over the daily message quota get a limit notice.
-4. `responseGeneration` builds the agent context (current date/time, user profile, recent messages, system instructions) and calls the `gpt-5-mini-2025-08-07` model via Vercel AI SDK to generate a `GeneratedWhatsappMessage`.
+4. `responseGeneration` builds the instructions (system prompt, current date, user profile) and the recent messages, and calls the `gpt-5-mini-2025-08-07` model via Vercel AI SDK to generate a `GeneratedWhatsappMessage`.
 5. Response delivery: `sendWhatsappMessage` sends the output through the WhatsApp client (`chat`) and populates `context.outbound` with the AI message and usage metadata.
 6. Post-response (best‑effort): `storeAgentResponse` persists the outbound message and token usage; if `context.improvedProfile` exists, it writes a new version to `user_profile_version`.
 7. Embeddings: `embedOutboundMessages` extracts text from the response, generates embeddings via Cloudflare Workers AI, and writes `snippet` rows for semantic search.
@@ -142,15 +143,15 @@ Characteristics:
 
 ## Code Structure
 
-- `prompts/`: short, token-focused prompts (e.g. `system.ts`, `userProfile.ts`, `recentMessages.ts`)
+- `index.ts`: composition root; `config.ts` (env schema), `deps.ts` (production wiring), `handler.ts` (per-message flow)
+- `prompts/`: short, token-focused prompts (e.g. `system.ts`, `userProfile.ts`)
 - `systems/`: focused async functions that read/write `Context` via `getContext()`
   - Examples: `checkUserConsent.ts`, `responseGeneration.ts`, `storeAgentResponse.ts`, `embedInboundMessage.ts`, `embedOutboundMessages.ts`
 - `tools/`: first-class tools called by the model
   - Agent-specific: `googlePlaces.ts`, `updateUserProfile.ts`
   - Generic (file/history search, reactions, web): exposed by `@wa/core/tools`
-- `context.ts`: defines the `Context` type and per-request storage (`runContext` / `getContext`)
+- `context.ts`: `AgentDeps` (injected services and models) and the per-request `Context` (`runContext` / `getContext`)
 - `db.ts` / `dbSchema.ts`: reuses the base schema from `@wa/core` + agent-specific tables (`user_profile_version`, plans and entitlements)
-- `zapid.d.ts`: agent helper types
 
 ## Database
 
@@ -167,19 +168,16 @@ Characteristics:
 1. Run `docker compose up -d` (at the monorepo root) to start the PostgreSQL container.
 2. Connect to the server and create the database: `CREATE DATABASE zapid;`.
 3. Enable the pgvector extension: `CREATE EXTENSION IF NOT EXISTS vector;`.
-4. Run the migrations:
-   - `bun run --filter '@wa/agent-zapid' db:clean`
-   - `bun run --filter '@wa/agent-zapid' db:generate`
+4. Copy `.env.example` to `.env` and fill in the values.
+5. Apply migrations and seed the plans:
    - `bun run --filter '@wa/agent-zapid' db:migrate`
    - `bun run --filter '@wa/agent-zapid' db:seed`
 
-## Testing Tips
+## Testing
 
-- Use Bun's runner; keep tests deterministic and small
-- Mirror existing test patterns in `packages/core` and in `packages/zapid/agent.integration.test.ts` (`bun run test:integration`, requires Docker and API keys)
-- Mock only chat and AI dependencies
-- Prefer exact asserts: object/array shapes, `toThrow(ErrorClass)`, `toThrow(/message/)`
-- Clean the database in `afterEach` with helpers (see `agent.integration.test.ts`)
+- `handler.test.ts`: offline smoke tests of the full message flow. Runs the real migrations on in-process Postgres (PGlite + pgvector) with mock models and a recording chat from `@wa/core/testing`. No network or API keys.
+- `agent.integration.test.ts`: end-to-end against real models and the local Postgres container (`bun run test:integration`, needs Docker and API keys).
+- Mock only chat and AI dependencies; prefer exact asserts on object/array shapes.
 
 ## Build, lint, typecheck
 

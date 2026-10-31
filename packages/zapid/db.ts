@@ -1,8 +1,6 @@
 import type { DB } from '@wa/core/infra/db'
-import { Postgres } from '@wa/core/infra/dbPostgres'
+import { Postgres, type PostgresClient, type PostgresOptions } from '@wa/core/infra/dbPostgres'
 import { and, desc, eq, inArray, sql } from 'drizzle-orm'
-import { BunSQLDatabase, drizzle } from 'drizzle-orm/bun-sql'
-import { ok } from 'node:assert'
 import * as schema from './dbSchema'
 import {
   BOOLEAN_ENTITLEMENTS,
@@ -12,8 +10,6 @@ import {
   type DailyLedgerEntitlementKey,
   type NumericEntitlementKey,
 } from './systems/entitlements'
-
-ok(import.meta.env.DATABASE_URL, 'DATABASE_URL is required')
 
 export interface UserWithProfile extends DB.User {
   profile: string
@@ -30,8 +26,10 @@ export interface UserEntitlements {
   quotas: Record<NumericEntitlementKey, RemainingUsage>
 }
 
+export type ZapidClient = PostgresClient<typeof schema>
+
 export interface ZapidRepository extends DB.Repository {
-  $client: BunSQLDatabase<typeof schema>
+  $client: ZapidClient
   updateUserProfile: (params: {
     userId: string
     profile: string
@@ -52,9 +50,20 @@ export interface ZapidRepository extends DB.Repository {
   }) => Promise<void>
 }
 
-export const dbFactory = (): ZapidRepository => {
-  const client = drizzle(import.meta.env.DATABASE_URL, { schema })
-  const coreDB = Postgres.dbFactory({ client })
+export const createZapidRepository = (
+  client: ZapidClient,
+  options?: PostgresOptions
+): ZapidRepository => {
+  const coreDB = Postgres.dbFactory({ client, options })
+
+  async function hasSubscription(userId: string): Promise<boolean> {
+    const rows = await client
+      .select({ id: schema.userSubscription.id })
+      .from(schema.userSubscription)
+      .where(eq(schema.userSubscription.userId, userId))
+      .limit(1)
+    return rows.length > 0
+  }
 
   return {
     ...coreDB,
@@ -67,7 +76,7 @@ export const dbFactory = (): ZapidRepository => {
       const profileResult = await client.query.userProfileVersion.findFirst({
         columns: { profile: true },
         where: eq(schema.userProfileVersion.userId, user.id),
-        orderBy: ({ id }, { desc }) => [desc(id)],
+        orderBy: ({ id }) => [desc(id)],
       })
 
       return {
@@ -94,10 +103,10 @@ export const dbFactory = (): ZapidRepository => {
             profileVersions: {
               columns: { profile: true },
               limit: 1,
-              orderBy: (profile, { desc }) => [desc(profile.id)],
+              orderBy: (profile) => [desc(profile.id)],
             },
           },
-          where: (user, { eq }) => eq(user.id, id),
+          where: (user) => eq(user.id, id),
         })
         .then((result) =>
           result
@@ -119,10 +128,10 @@ export const dbFactory = (): ZapidRepository => {
             profileVersions: {
               columns: { profile: true },
               limit: 1,
-              orderBy: (profile, { desc }) => [desc(profile.id)],
+              orderBy: (profile) => [desc(profile.id)],
             },
           },
-          where: (user, { eq }) => eq(user.waId, waId),
+          where: (user) => eq(user.waId, waId),
         })
         .then((result) =>
           result
@@ -138,19 +147,12 @@ export const dbFactory = (): ZapidRepository => {
     },
 
     async hasConsent({ userId }) {
-      const result = await client.execute(
-        sql`select 1 from ${schema.userSubscription} where ${schema.userSubscription.userId} = ${userId} limit 1`
-      )
-      return result.length >= 1
+      return hasSubscription(userId)
     },
 
     async completeOnboarding({ userId }) {
-      const existing = await client.execute(
-        sql`select 1 from ${schema.userSubscription} where ${schema.userSubscription.userId} = ${userId} limit 1`
-      )
-      if (existing.length === 0) {
-        await client.insert(schema.userSubscription).values({ userId, planId: STARTER_PLAN_ID })
-      }
+      if (await hasSubscription(userId)) return
+      await client.insert(schema.userSubscription).values({ userId, planId: STARTER_PLAN_ID })
     },
 
     async getUserEntitlements({ userId }) {

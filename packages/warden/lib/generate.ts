@@ -1,23 +1,22 @@
-import { openai } from '@ai-sdk/openai'
 import {
   generateWhatsappMessage,
   type GeneratedResponse,
 } from '@wa/core/ai/generateWhatsappMessage'
-import { stepCountIs, type ModelMessage, type Tool } from 'ai'
+import { stepCountIs, type LanguageModel, type ModelMessage, type Tool } from 'ai'
 import type { WardenDB } from '../db'
 import { createSystemPrompt } from '../prompts/system'
 
 const MAX_STEPS = 10
 
-const model = openai.responses('gpt-5-mini-2025-08-07')
-
 export interface GenerateParams {
+  model: LanguageModel
   messages: ModelMessage[]
   tools: Tool[]
   db: WardenDB
 }
 
 export async function generate({
+  model,
   messages,
   tools,
   db,

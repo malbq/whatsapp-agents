@@ -1,4 +1,3 @@
-import { ok } from 'node:assert'
 import { createHash } from 'node:crypto'
 import { FailedToDownloadMediaError, MediaHashMismatchError, ResponseDeliveryError } from './errors'
 import type {
@@ -12,17 +11,17 @@ import type {
 import { getExtFromMimeType } from './utils'
 import { WhatsAppApi } from './whatsappTypes'
 
-ok(import.meta.env.WA_API_VERSION, 'WA_API_VERSION is required')
-
 const MAX_OPTIONS_PER_SECTION = 10
 
 export interface WhatsappConfig {
   apiToken: string
   businessPhoneId: string
+  /** Graph API version, e.g. `v23.0` */
+  apiVersion?: string
 }
 
 export function createWhatsappClient(config: WhatsappConfig): Chat {
-  const WA_API_VERSION = import.meta.env.WA_API_VERSION
+  const WA_API_VERSION = config.apiVersion ?? 'v23.0'
   const authorizationHeader = `Bearer ${config.apiToken}`
 
   async function fetchReceivedMedia(mediaId: string, sha256: string): Promise<ArrayBuffer> {
@@ -30,7 +29,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
     const urlData = (await fetch(
       `https://graph.facebook.com/${WA_API_VERSION}/${mediaId}/`,
       init
-    ).then((response) => response.json())) as WhatsAppApi.MediaUrlResponse
+    ).then((res) => res.json())) as WhatsAppApi.MediaUrlResponse
     console.debug('Downloading media', { url: urlData.url })
 
     const mediaResponse = await fetch(urlData.url, init)
@@ -304,7 +303,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
           }),
         }
       )
-        .then((response) => response.json())
+        .then((res) => res.json())
         .catch((error) => {
           return {
             success: false,
@@ -342,7 +341,7 @@ export function createWhatsappClient(config: WhatsappConfig): Chat {
           }),
         }
       )
-        .then((response) => response.json())
+        .then((res) => res.json())
         .catch((error) => {
           return {
             success: false,

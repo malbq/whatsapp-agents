@@ -11,7 +11,7 @@ import {
   sql,
   type SQL,
 } from 'drizzle-orm'
-import type { BunSQLDatabase } from 'drizzle-orm/bun-sql'
+import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core'
 import { FailedToPersistUserError } from '../errors'
 import type { DB } from './db'
 import { PostgresSchema as Schema } from './dbSchema'
@@ -35,12 +35,37 @@ interface RankedSnippet extends HybridSearchRow {
   rrfScore: number
 }
 
+export interface PostgresOptions {
+  maxRecentMessages?: number
+  maxSimilarMessages?: number
+  fileSearchLimit?: number
+  /** Reciprocal rank fusion constant used by hybrid search */
+  rrfK?: number
+  reminderSendingStaleSeconds?: number
+}
+
+/** Any Drizzle Postgres driver (Bun SQL in production, PGlite in tests) */
+export type PostgresClient<TSchema extends CoreSchema = CoreSchema> = PgDatabase<
+  PgQueryResultHKT,
+  TSchema
+>
+
 export namespace Postgres {
   export const dbFactory = <TSchema extends CoreSchema = CoreSchema>({
     client,
+    options = {},
   }: {
-    client: BunSQLDatabase<TSchema>
+    client: PostgresClient<TSchema>
+    options?: PostgresOptions
   }): DB.Repository => {
+    const {
+      maxRecentMessages = 10,
+      maxSimilarMessages = 10,
+      fileSearchLimit = 5,
+      rrfK = 10,
+      reminderSendingStaleSeconds = 300,
+    } = options
+
     /**
      * Performs hybrid search (vector + FTS) with RRF fusion.
      * Returns snippets ranked by combined score.
@@ -50,11 +75,10 @@ export namespace Postgres {
       query: string
       queryEmbedding: Array<number>
       limit: number
-      rrfK: number
       extraConditions?: Array<SQL>
       joinResource?: boolean
     }): Promise<Array<RankedSnippet>> {
-      const { userId, query, queryEmbedding, limit, rrfK, extraConditions = [] } = params
+      const { userId, query, queryEmbedding, limit, extraConditions = [] } = params
       if (query.trim().length === 0) return []
 
       const vectorLiteral = `[${queryEmbedding.join(',')}]`
@@ -150,7 +174,7 @@ export namespace Postgres {
           if (entry.textRank !== undefined) {
             rrfScore += 1 / (entry.textRank + rrfK)
           }
-          return { ...entry, rrfScore } as RankedSnippet
+          return Object.assign(entry, { rrfScore }) as RankedSnippet
         })
         .toArray()
         .toSorted((a, b) => b.rrfScore - a.rrfScore)
@@ -227,7 +251,6 @@ export namespace Postgres {
       },
 
       async findRecentMessages({ userId }) {
-        const MAX_RECENT_MESSAGES = parseInt(import.meta.env.MAX_RECENT_MESSAGES ?? '10')
         return await client
           .select({
             id: Schema.message.id,
@@ -244,14 +267,11 @@ export namespace Postgres {
           .leftJoin(Schema.resource, eq(Schema.message.resourceId, Schema.resource.id))
           .where(eq(Schema.message.userId, userId))
           .orderBy(desc(Schema.message.timestamp))
-          .limit(MAX_RECENT_MESSAGES)
+          .limit(maxRecentMessages)
           .then((result) => result.toReversed())
       },
 
       async searchSnippets({ userId, query, queryEmbedding, excludeIds = [] }) {
-        const MAX_SIMILAR_MESSAGES = parseInt(import.meta.env.MAX_SIMILAR_MESSAGES ?? '10')
-        const RRF_K = parseInt(import.meta.env.RRF_K ?? '10')
-
         const extraConditions =
           excludeIds.length > 0 ? [notInArray(Schema.message.id, excludeIds)] : []
 
@@ -259,8 +279,7 @@ export namespace Postgres {
           userId,
           query,
           queryEmbedding,
-          limit: MAX_SIMILAR_MESSAGES * 10,
-          rrfK: RRF_K,
+          limit: maxSimilarMessages * 10,
           extraConditions,
           joinResource: false,
         })
@@ -284,7 +303,7 @@ export namespace Postgres {
           }
         }
 
-        return ranked.slice(0, MAX_SIMILAR_MESSAGES).map(
+        return ranked.slice(0, maxSimilarMessages).map(
           (entry) =>
             ({
               id: entry.snippetId,
@@ -294,7 +313,7 @@ export namespace Postgres {
               timestamp: entry.timestamp,
               sequence: entry.sequence,
               total: totalChunksByMessage.get(entry.messageId) ?? 1,
-            } satisfies DB.SimilarSnippet)
+            }) satisfies DB.SimilarSnippet
         )
       },
 
@@ -346,15 +365,11 @@ export namespace Postgres {
       },
 
       async searchResources({ userId, query, queryEmbedding }) {
-        const MAX_FILES = parseInt(import.meta.env.FILE_SEARCH_LIMIT ?? '5')
-        const RRF_K = parseInt(import.meta.env.RRF_K ?? '10')
-
         const ranked = await hybridSearch({
           userId,
           query,
           queryEmbedding,
-          limit: MAX_FILES * 10,
-          rrfK: RRF_K,
+          limit: fileSearchLimit * 10,
           extraConditions: [
             isNotNull(Schema.message.resourceId),
             isNull(Schema.resource.deletedAt),
@@ -406,7 +421,7 @@ export namespace Postgres {
             }
           })
           .toSorted((a, b) => b.score - a.score)
-          .slice(0, MAX_FILES)
+          .slice(0, fileSearchLimit)
       },
 
       async createReminder(params) {
@@ -452,10 +467,7 @@ export namespace Postgres {
       },
 
       async takeDueReminders({ now, limit = 100 }) {
-        const SENDING_STALE_SECONDS = parseInt(
-          import.meta.env.REMINDER_SENDING_STALE_SECONDS ?? '300'
-        )
-        const staleBefore = new Date(now.getTime() - SENDING_STALE_SECONDS * 1000)
+        const staleBefore = new Date(now.getTime() - reminderSendingStaleSeconds * 1000)
 
         return await client.transaction(async (tx) => {
           const candidates = await tx

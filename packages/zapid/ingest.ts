@@ -15,7 +15,7 @@ export async function ingest(): Promise<void> {
 
   ok(user, 'User must be set before ingesting message')
 
-  const { message: modelMessage, usage } = await toUserModelMessage(message)
+  const { message: modelMessage, usage } = await toUserModelMessage(message, context.ai)
   const inbound = toDbMessage({
     userId: user.id,
     notification,

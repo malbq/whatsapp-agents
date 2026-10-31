@@ -1,6 +1,3 @@
-import { analyzeImage } from '@wa/core/ai/analyzeImage'
-import { generateEmbeddings } from '@wa/core/ai/generateEmbeddings'
-import { transcribeDocument } from '@wa/core/ai/transcribeDocument'
 import type { DB } from '@wa/core/infra/db'
 import { parsePdf } from '@wa/core/utils/parsePdf'
 import { toDbTokenUsage } from '@wa/core/utils/toDbUsage'
@@ -39,7 +36,7 @@ export async function embedInboundMessage(
     console.debug(`Stored ${result.source} usage`, { messageId: inbound.id })
   }
 
-  const [embeddingGroup] = await generateEmbeddings([result.text])
+  const [embeddingGroup] = await context.ai.generateEmbeddings([result.text])
   if (!embeddingGroup) return
 
   const snippetInserts: Array<DB.SnippetInsert> = embeddingGroup.map((chunk, sequence) => ({
@@ -57,6 +54,8 @@ export async function embedInboundMessage(
 }
 
 async function extractText(message: IncomingMessage): Promise<ExtractTextResult | undefined> {
+  const { ai } = getContext()
+
   if (message.type === 'text') {
     const text = message.text.trim()
     return text ? { text } : undefined
@@ -67,7 +66,7 @@ async function extractText(message: IncomingMessage): Promise<ExtractTextResult 
       'base64'
     )}`
     const caption = 'caption' in message ? message.caption : undefined
-    const result = await analyzeImage({ imageUrl, caption })
+    const result = await ai.analyzeImage({ imageUrl, caption })
     const text = result.text.trim()
     return text ? { text, usage: result.usage, source: 'image_analysis' } : undefined
   }
@@ -82,7 +81,7 @@ async function extractText(message: IncomingMessage): Promise<ExtractTextResult 
       const text = await parsePdf(message.data)
       if (text.length > 0) return { text }
     }
-    const result = await transcribeDocument({
+    const result = await ai.transcribeDocument({
       document: message.data,
       mimeType: message.mimeType,
       filename: message.filename,

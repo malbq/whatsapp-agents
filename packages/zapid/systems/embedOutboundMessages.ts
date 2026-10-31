@@ -1,4 +1,3 @@
-import { generateEmbeddings } from '@wa/core/ai/generateEmbeddings'
 import type { DB } from '@wa/core/infra/db'
 import type { OutgoingMessage } from '@wa/whatsapp'
 import { getContext } from '../context'
@@ -26,7 +25,7 @@ export async function embedOutboundMessages() {
 
   console.debug('Embedding outbound message')
 
-  const [embeddingGroup] = await generateEmbeddings([assistantText])
+  const [embeddingGroup] = await context.ai.generateEmbeddings([assistantText])
   if (!embeddingGroup) return
 
   const snippetInserts: Array<DB.SnippetInsert> = embeddingGroup.map((chunk, sequence) => ({
